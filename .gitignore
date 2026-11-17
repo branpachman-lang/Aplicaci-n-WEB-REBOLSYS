@@ -1,0 +1,38 @@
+# Versionar los dos proyectos REBOLSYS y las instrucciones compartidas.
+/*
+!/.gitignore
+!/AGENTS.md
+!/rebolsysBackend/
+!/rebolsysFrontend/
+!/docs/
+/docs/*
+!/docs/despliegue/
+
+# Dependencias, compilaciones y archivos de ejecucion.
+node_modules/
+target/
+dist/
+.angular/
+.local/
+runtime/
+*.log
+*.bak
+*.zip
+*.dmp
+
+# Configuracion privada y certificados.
+.env
+.env.*
+!.env.example
+application-local-private.*
+*.pem
+*.key
+*.pfx
+*.p12
+*.jks
+
+# Configuracion del equipo.
+.idea/
+.vscode/
+Thumbs.db
+.DS_Store

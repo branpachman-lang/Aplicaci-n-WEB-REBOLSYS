@@ -1,0 +1,118 @@
+<article class="ticket">
+  <header>
+    <app-marca-hospedaje [mostrarSinConfigurar]="true" />
+  </header>
+  @if (venta().comprobante; as c) {
+  <h3>COMPROBANTE INTERNO</h3>
+  <p class="numero">{{ c.numero }}</p>
+  <div class="datos">
+    <span>Fecha</span><span>{{ c.fecha | date: 'dd/MM/yyyy HH:mm' }}</span
+    ><span>Receptor</span><span>{{ c.receptor }}</span>
+    @if (c.documento) {
+    <span>Documento</span><span>{{ c.documento }}</span>
+    }
+    <span>Estado</span><span>{{ c.estado }}</span>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>CONCEPTO</th>
+        <th>IMPORTE</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (l of c.lineas; track $index) {
+      <tr>
+        <td>
+          {{ l.descripcion }}<small
+            >{{ l.cantidad }} × {{ l.valorUnitario | currency: 'PEN' : 'S/ '
+            }}</small
+          >
+        </td>
+        <td>{{ l.total | currency: 'PEN' : 'S/ ' }}</td>
+      </tr>
+      }
+    </tbody>
+  </table>
+  <div class="totales">
+    <p>
+      <span>Total del comprobante</span
+      ><strong>{{ c.total | currency: 'PEN' : 'S/ ' }}</strong>
+    </p>
+    <p>
+      <span>Cobrado</span
+      ><strong>{{ c.pagado | currency: 'PEN' : 'S/ ' }}</strong>
+    </p>
+    <p>
+      <span>Saldo</span
+      ><strong
+        >{{ (c.estado === 'ANULADO' ? 0 : c.total - c.pagado) | currency: 'PEN'
+        : 'S/ ' }}</strong
+      >
+    </p>
+  </div>
+  } @else {
+  <h3>
+    {{venta().modoVenta==='SEPARADA'?'CONSTANCIA DE VENTA':'CONSTANCIA DE
+    CONSUMO'}}
+  </h3>
+  <p class="numero">Venta #{{ venta().numero }}</p>
+  <div class="datos">
+    <span>Fecha</span
+    ><span>{{ venta().fechaVenta | date: 'dd/MM/yyyy HH:mm' }}</span
+    ><span>Comprador</span
+    ><span>{{ venta().compradorNombre }}</span>@if(venta().habitacion){<span
+      >Habitación</span
+    ><span>{{ venta().habitacion }}</span>}@if(venta().referenciaReserva){<span
+      >Reserva</span
+    ><span>{{venta().referenciaReserva}}</span>}
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>PRODUCTO</th>
+        <th>IMPORTE</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (l of venta().detalles; track l.idConsumo) {
+      <tr>
+        <td>
+          {{ l.nombreProducto }}<small
+            >{{ l.cantidad }} × {{ l.precioUnitario | currency: 'PEN' : 'S/ '
+            }}</small
+          >
+        </td>
+        <td>{{ l.total | currency: 'PEN' : 'S/ ' }}</td>
+      </tr>
+      }
+    </tbody>
+  </table>
+  <div class="totales">
+    <p>
+      <span>Total de la venta</span
+      ><strong>{{ venta().total | currency: 'PEN' : 'S/ ' }}</strong>
+    </p>
+    @if(venta().modoVenta==='SEPARADA'){
+    <p>
+      <span>Pagado</span
+      ><strong>{{venta().pagado??0|currency:'PEN':'S/ '}}</strong>
+    </p>
+    <p>
+      <span>Saldo</span
+      ><strong>{{venta().saldo??venta().total|currency:'PEN':'S/ '}}</strong>
+    </p>
+    }
+  </div>
+  <p class="pendiente">
+    {{venta().modoVenta==='CARGO_RESERVA'?'Añadido a la cuenta de la reserva.
+    Esta constancia no acredita un pago.':'Constancia interna del pago
+    registrado. La boleta o factura requiere emitir el comprobante con los datos
+    del receptor.'}}
+  </p>
+  }
+  <footer>
+    Documento interno sin valor tributario.<br />Gracias por elegir Real
+    Bolognesi.
+  </footer>
+</article>
