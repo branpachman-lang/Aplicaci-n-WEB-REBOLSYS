@@ -31,28 +31,28 @@ public class DocumentoConsultaServiceImpl implements DocumentoConsultaService {
     @Override
     public DocumentoConsultaResponseDTO consultarDni(String numero) {
         ApisPeruDniResponseDTO persona = consultar("dni", numero, ApisPeruDniResponseDTO.class);
-        if (persona == null || persona.getDni() == null) throw new RecursoNoEncontradoException(
+        if (persona == null || persona.dni() == null) throw new RecursoNoEncontradoException(
             "No se encontró el DNI en APIs Perú. Puedes completar los datos manualmente."
         );
-        if (!numero.equals(persona.getDni()) || persona.getNombres() == null || persona.getNombres().isBlank()) {
+        if (!numero.equals(persona.dni()) || persona.nombres() == null || persona.nombres().isBlank()) {
             throw respuestaInvalida();
         }
-        String apellidos = Stream.of(persona.getApellidoPaterno(), persona.getApellidoMaterno())
+        String apellidos = Stream.of(persona.apellidoPaterno(), persona.apellidoMaterno())
             .filter(valor -> valor != null && !valor.isBlank())
             .map(String::trim)
             .collect(Collectors.joining(" "));
         if (apellidos.isBlank()) throw respuestaInvalida();
-        return new DocumentoConsultaResponseDTO(numero, persona.getNombres().trim(), apellidos, null, null);
+        return new DocumentoConsultaResponseDTO(numero, persona.nombres().trim(), apellidos, null, null);
     }
 
     @Override
     public DocumentoConsultaResponseDTO consultarRuc(String numero) {
         ApisPeruRucResponseDTO empresa = consultar("ruc", numero, ApisPeruRucResponseDTO.class);
-        if (empresa == null || empresa.getRuc() == null) throw new RecursoNoEncontradoException(
+        if (empresa == null || empresa.ruc() == null) throw new RecursoNoEncontradoException(
             "No se encontró el RUC en APIs Perú. Puedes completar los datos manualmente."
         );
         if (
-            !numero.equals(empresa.getRuc()) || empresa.getRazonSocial() == null || empresa.getRazonSocial().isBlank()
+            !numero.equals(empresa.ruc()) || empresa.razonSocial() == null || empresa.razonSocial().isBlank()
         ) {
             throw respuestaInvalida();
         }
@@ -60,8 +60,8 @@ public class DocumentoConsultaServiceImpl implements DocumentoConsultaService {
             numero,
             null,
             null,
-            empresa.getRazonSocial().trim(),
-            empresa.getDireccion()
+            empresa.razonSocial().trim(),
+            empresa.direccion()
         );
     }
 

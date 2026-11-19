@@ -8,52 +8,41 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PastOrPresent;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
-import lombok.AllArgsConstructor;
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
 import pe.com.rebolsysBackend.validation.DocumentoIdentidadValido;
 
-@AllArgsConstructor
-@NoArgsConstructor
-@Getter
-@Setter
-@EqualsAndHashCode
 @DocumentoIdentidadValido
-public class ClienteRegistroRequestDTO {
-
+public record ClienteRegistroRequestDTO(
     @NotNull(message = "idTipoDocumento es obligatorio")
-    private Long idTipoDocumento;
+    Long idTipoDocumento,
 
     @NotBlank(message = "numeroDocumento es obligatorio")
     @Size(max = 50, message = "numeroDocumento no debe superar 50 caracteres")
-    private String numeroDocumento;
+    String numeroDocumento,
 
     @NotNull(message = "empresa es obligatorio")
-    private Boolean empresa;
+    Boolean empresa,
 
     @Size(max = 100, message = "nombres no debe superar 100 caracteres")
-    private String nombres;
+    String nombres,
 
     @Size(max = 100, message = "apellidos no debe superar 100 caracteres")
-    private String apellidos;
+    String apellidos,
 
     @PastOrPresent(message = "La fecha de nacimiento no puede ser futura")
-    private LocalDate fechaNacimiento;
+    LocalDate fechaNacimiento,
 
     @Size(max = 250, message = "razonSocial no debe superar 250 caracteres")
-    private String razonSocial;
+    String razonSocial,
 
     @Size(max = 200, message = "direccionFiscal no debe superar 200 caracteres")
-    private String direccionFiscal;
+    String direccionFiscal,
 
     @Email(message = "El correo electrónico no tiene un formato válido")
     @Size(max = 100, message = "correo no debe superar 100 caracteres")
-    private String correo;
+    String correo,
 
     @Size(max = 15, message = "telefono no debe superar 15 caracteres")
-    private String telefono;
+    String telefono) {
 
     @AssertTrue(message = "Completa nombres y apellidos, o la razón social de la empresa")
     @JsonIgnore

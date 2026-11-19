@@ -12,19 +12,19 @@ public class DocumentoIdentidadValidator implements ConstraintValidator<Document
     private final TipoDocumentoRepository tipoDocumentoRepository;
     @Override
     public boolean isValid(ClienteRegistroRequestDTO datos, ConstraintValidatorContext context) {
-        if (datos == null || datos.getIdTipoDocumento() == null || datos.getNumeroDocumento() == null) return true;
-        TipoDocumento tipo = tipoDocumentoRepository.findById(datos.getIdTipoDocumento()).orElse(null);
+        if (datos == null || datos.idTipoDocumento() == null || datos.numeroDocumento() == null) return true;
+        TipoDocumento tipo = tipoDocumentoRepository.findById(datos.idTipoDocumento()).orElse(null);
         if (tipo == null) return error(context, "idTipoDocumento", "El tipo de documento no existe");
         String nombre = tipo.getNombreDocumento().trim().toUpperCase(java.util.Locale.ROOT);
         boolean dni = "1".equals(tipo.getCodigoSunat()) || "DNI".equals(nombre);
         boolean ruc = !dni && ("6".equals(tipo.getCodigoSunat()) || "RUC".equals(nombre));
-        if (dni && !datos.getNumeroDocumento().matches("[0-9]{8}")) {
+        if (dni && !datos.numeroDocumento().matches("[0-9]{8}")) {
             return error(context, "numeroDocumento", "El DNI debe contener exactamente 8 dígitos");
         }
-        if (ruc && !datos.getNumeroDocumento().matches("[0-9]{11}")) {
+        if (ruc && !datos.numeroDocumento().matches("[0-9]{11}")) {
             return error(context, "numeroDocumento", "El RUC debe contener exactamente 11 dígitos");
         }
-        if (dni && Boolean.TRUE.equals(datos.getEmpresa())) {
+        if (dni && Boolean.TRUE.equals(datos.empresa())) {
             return error(context, "empresa", "El DNI corresponde a una persona natural");
         }
         return true;

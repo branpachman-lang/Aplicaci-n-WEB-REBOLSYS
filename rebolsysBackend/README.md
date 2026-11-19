@@ -80,6 +80,7 @@ Las tarifas por habitación y el inventario documentado están en
 
 ## Contrato y ejemplos
 
+- [Organización de DTOs, records y compatibilidad JSON](DTO-GUIA.md).
 - [Rutas y reglas de los siete casos](API-PROPUESTA.md).
 - [Configuraciones de habitaciones, mobiliario y productos](API-CONFIGURACIONES.md).
 - [Flujo de informes de limpieza y tickets de mantenimiento](API-LIMPIEZA.md).

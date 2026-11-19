@@ -1,21 +1,12 @@
 package pe.com.rebolsysBackend.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
-@AllArgsConstructor
-@NoArgsConstructor
-@Getter
-@Setter
-public class CatalogoItemResponseDTO {
-
-    private Long id;
-
-    private String nombre;
-
-    private String codigoSunat;
+@JsonPropertyOrder({"codigoSunat", "id", "nombre"})
+public record CatalogoItemResponseDTO(
+    Long id,
+    String nombre,
+    String codigoSunat) {
 
     public CatalogoItemResponseDTO(Long id, String nombre) {
         this(id, nombre, null);

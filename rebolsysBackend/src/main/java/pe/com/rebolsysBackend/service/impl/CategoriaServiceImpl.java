@@ -25,11 +25,11 @@ public class CategoriaServiceImpl implements CategoriaService {
     @Transactional
     public CategoriaResponseDTO create(CategoriaRequestDTO r) {
         reglas.validar(r);
-        if (categoriaRepository.existsByNombreCategoria(r.getNombreCategoria().trim())) throw new ReglaNegocioException(
+        if (categoriaRepository.existsByNombreCategoria(r.nombreCategoria().trim())) throw new ReglaNegocioException(
             "Ya existe una categoría con ese nombre"
         );
         var c = new Categoria();
-        c.setNombreCategoria(r.getNombreCategoria().trim());
+        c.setNombreCategoria(r.nombreCategoria().trim());
         return convertirResponse(categoriaRepository.saveAndFlush(c));
     }
 
@@ -38,7 +38,7 @@ public class CategoriaServiceImpl implements CategoriaService {
     public CategoriaResponseDTO update(Long id, CategoriaRequestDTO r) {
         reglas.validar(r);
         var c = buscar(id);
-        c.setNombreCategoria(r.getNombreCategoria().trim());
+        c.setNombreCategoria(r.nombreCategoria().trim());
         return convertirResponse(categoriaRepository.saveAndFlush(c));
     }
 

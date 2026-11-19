@@ -66,24 +66,24 @@ public class ClienteServiceImpl implements ClienteService {
   @Override
   @Transactional
   public Perfil guardarPersona(ClienteRegistroRequestDTO datos) {
-    TipoDocumento tipo = tiposDocumento.findById(datos.getIdTipoDocumento()).orElse(null);
+    TipoDocumento tipo = tiposDocumento.findById(datos.idTipoDocumento()).orElse(null);
     if (tipo == null || "INTERNO".equalsIgnoreCase(tipo.getNombreDocumento()))
       throw new ReglaNegocioException("Selecciona un tipo de documento válido");
     var found =
         perfiles.findByTipoDocumentoIdTipoDocumentoAndNumeroDocumento(
-            datos.getIdTipoDocumento(), datos.getNumeroDocumento().trim());
+            datos.idTipoDocumento(), datos.numeroDocumento().trim());
     if (found.isPresent()) {
       var perfil = found.get();
       boolean juridica = juridicas.findById(perfil.getIdPerfil()).orElse(null) != null;
-      if (juridica != Boolean.TRUE.equals(datos.getEmpresa()))
+      if (juridica != Boolean.TRUE.equals(datos.empresa()))
         throw new ReglaNegocioException("El documento ya corresponde a otro tipo de persona");
       if (!juridica) {
         var natural = naturales.findById(perfil.getIdPerfil()).orElseThrow();
-        if (natural.getFechaNacimiento() == null && datos.getFechaNacimiento() != null) {
-          natural.setFechaNacimiento(datos.getFechaNacimiento());
+        if (natural.getFechaNacimiento() == null && datos.fechaNacimiento() != null) {
+          natural.setFechaNacimiento(datos.fechaNacimiento());
           naturales.saveAndFlush(natural);
-        } else if (datos.getFechaNacimiento() != null
-            && !datos.getFechaNacimiento().equals(natural.getFechaNacimiento())) {
+        } else if (datos.fechaNacimiento() != null
+            && !datos.fechaNacimiento().equals(natural.getFechaNacimiento())) {
           throw new ReglaNegocioException(
               "La fecha de nacimiento no coincide con la persona registrada; revisa sus datos");
         }
@@ -92,22 +92,22 @@ public class ClienteServiceImpl implements ClienteService {
     }
     var perfil = new Perfil();
     perfil.setTipoDocumento(tipo);
-    perfil.setNumeroDocumento(datos.getNumeroDocumento().trim());
-    perfil.setCorreo(limpiar(datos.getCorreo()));
-    perfil.setTelefono(limpiar(datos.getTelefono()));
+    perfil.setNumeroDocumento(datos.numeroDocumento().trim());
+    perfil.setCorreo(limpiar(datos.correo()));
+    perfil.setTelefono(limpiar(datos.telefono()));
     perfiles.save(perfil);
-    if (Boolean.TRUE.equals(datos.getEmpresa())) {
+    if (Boolean.TRUE.equals(datos.empresa())) {
       var empresa = new PersonaJuridica();
       empresa.setPerfil(perfil);
-      empresa.setRazonSocial(datos.getRazonSocial().trim());
-      empresa.setDireccionFiscal(limpiar(datos.getDireccionFiscal()));
+      empresa.setRazonSocial(datos.razonSocial().trim());
+      empresa.setDireccionFiscal(limpiar(datos.direccionFiscal()));
       juridicas.save(empresa);
     } else {
       var natural = new PersonaNatural();
       natural.setPerfil(perfil);
-      natural.setNombres(datos.getNombres().trim());
-      natural.setApellidos(datos.getApellidos().trim());
-      natural.setFechaNacimiento(datos.getFechaNacimiento());
+      natural.setNombres(datos.nombres().trim());
+      natural.setApellidos(datos.apellidos().trim());
+      natural.setFechaNacimiento(datos.fechaNacimiento());
       naturales.save(natural);
     }
     return perfil;
@@ -140,9 +140,9 @@ public class ClienteServiceImpl implements ClienteService {
   @Transactional(readOnly = true)
   public String nombre(Perfil perfil) {
     ClienteRegistroRequestDTO datos = datos(perfil);
-    return Boolean.TRUE.equals(datos.getEmpresa())
-        ? datos.getRazonSocial()
-        : datos.getNombres() + " " + datos.getApellidos();
+    return Boolean.TRUE.equals(datos.empresa())
+        ? datos.razonSocial()
+        : datos.nombres() + " " + datos.apellidos();
   }
 
   @Override
@@ -154,30 +154,30 @@ public class ClienteServiceImpl implements ClienteService {
             .orElseThrow(() -> new RecursoNoEncontradoException("La persona no existe"));
     var existente =
         perfiles.findByTipoDocumentoIdTipoDocumentoAndNumeroDocumento(
-            datos.getIdTipoDocumento(), datos.getNumeroDocumento().trim());
+            datos.idTipoDocumento(), datos.numeroDocumento().trim());
     if (existente.isPresent() && !existente.get().getIdPerfil().equals(idPerfil))
       throw new ReglaNegocioException("El documento ya pertenece a otra persona registrada");
     var natural = naturales.findById(idPerfil).orElse(null);
     var juridica = juridicas.findById(idPerfil).orElse(null);
-    if (Boolean.TRUE.equals(datos.getEmpresa()) != (juridica != null))
+    if (Boolean.TRUE.equals(datos.empresa()) != (juridica != null))
       throw new ReglaNegocioException(
           "No se puede convertir una persona natural en empresa ni una empresa en persona natural"
               + " desde la reserva");
     perfil.setTipoDocumento(
         tiposDocumento
-            .findById(datos.getIdTipoDocumento())
+            .findById(datos.idTipoDocumento())
             .orElseThrow(() -> new RecursoNoEncontradoException("El tipo de documento no existe")));
-    perfil.setNumeroDocumento(datos.getNumeroDocumento().trim());
-    perfil.setCorreo(limpiar(datos.getCorreo()));
-    perfil.setTelefono(limpiar(datos.getTelefono()));
+    perfil.setNumeroDocumento(datos.numeroDocumento().trim());
+    perfil.setCorreo(limpiar(datos.correo()));
+    perfil.setTelefono(limpiar(datos.telefono()));
     if (natural != null) {
-      natural.setNombres(datos.getNombres().trim());
-      natural.setApellidos(datos.getApellidos().trim());
-      natural.setFechaNacimiento(datos.getFechaNacimiento());
+      natural.setNombres(datos.nombres().trim());
+      natural.setApellidos(datos.apellidos().trim());
+      natural.setFechaNacimiento(datos.fechaNacimiento());
       naturales.save(natural);
     } else {
-      juridica.setRazonSocial(datos.getRazonSocial().trim());
-      juridica.setDireccionFiscal(limpiar(datos.getDireccionFiscal()));
+      juridica.setRazonSocial(datos.razonSocial().trim());
+      juridica.setDireccionFiscal(limpiar(datos.direccionFiscal()));
       juridicas.save(juridica);
     }
     return perfiles.save(perfil);

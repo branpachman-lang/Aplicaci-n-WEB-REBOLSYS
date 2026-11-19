@@ -36,12 +36,12 @@ public class ProductoServiceImpl implements ProductoService {
   @Transactional
   public ProductoResponseDTO create(ProductoRequestDTO request) {
     validar(request);
-    ReglasPropuesta.exigir(request.getStock()==0 || request.getIdUsuario()!=null,
+    ReglasPropuesta.exigir(request.stock()==0 || request.idUsuario()!=null,
         "Selecciona al responsable para registrar las existencias iniciales");
-    var responsable=request.getStock()>0?reglas.bloquearUsuario(request.getIdUsuario()):null;
+    var responsable=request.stock()>0?reglas.bloquearUsuario(request.idUsuario()):null;
     var p = new Producto();
     completar(p, request);
-    p.setStock(request.getStock());
+    p.setStock(request.stock());
     productoRepository.saveAndFlush(p);
     if(p.getStock()>0) {
       var movimiento=new MovimientoInventario();
@@ -67,14 +67,14 @@ public class ProductoServiceImpl implements ProductoService {
             .bloquear(id)
             .orElseThrow(() -> new RecursoNoEncontradoException("El producto no existe"));
     entityManager.refresh(p);
-    if (p.getEstadoProducto() != EstadoProducto.INACTIVO && request.getEstadoProducto() == EstadoProducto.INACTIVO) {
+    if (p.getEstadoProducto() != EstadoProducto.INACTIVO && request.estadoProducto() == EstadoProducto.INACTIVO) {
       SesionOperacionService.exigirPermisoEnPeticion("PRODUCTOS:ELIMINAR");
     }
     int actual = p.getStock();
     ReglasPropuesta.exigir(
-        request.getStock() == actual
-            || (request.getStockAnterior() != null
-                && request.getStock().equals(request.getStockAnterior())),
+        request.stock() == actual
+            || (request.stockAnterior() != null
+                && request.stock().equals(request.stockAnterior())),
         "Usa la operación de ajuste para modificar existencias");
     completar(p, request);
     productoRepository.saveAndFlush(p);
@@ -151,17 +151,17 @@ public class ProductoServiceImpl implements ProductoService {
   }
 
   private void completar(Producto p, ProductoRequestDTO r) {
-    p.setNombreProducto(r.getNombreProducto().trim());
-    p.setDescripcion(r.getDescripcion()==null||r.getDescripcion().isBlank()?null:r.getDescripcion().trim());
-    p.setPrecioActual(r.getPrecioActual());
-    p.setStockMinimo(r.getStockMinimo());
-    p.setEstadoProducto(r.getEstadoProducto());
+    p.setNombreProducto(r.nombreProducto().trim());
+    p.setDescripcion(r.descripcion()==null||r.descripcion().isBlank()?null:r.descripcion().trim());
+    p.setPrecioActual(r.precioActual());
+    p.setStockMinimo(r.stockMinimo());
+    p.setEstadoProducto(r.estadoProducto());
     p.setCategoria(
         categoriaRepository
-            .findById(r.getIdCategoria())
+            .findById(r.idCategoria())
             .orElseThrow(() -> new RecursoNoEncontradoException("La categoría no existe")));
     p.setImagenRuta(
-        r.getImagenRuta() == null || r.getImagenRuta().isBlank() ? null : r.getImagenRuta().trim());
+        r.imagenRuta() == null || r.imagenRuta().isBlank() ? null : r.imagenRuta().trim());
   }
 
   @Override

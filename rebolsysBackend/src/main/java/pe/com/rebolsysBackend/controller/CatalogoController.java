@@ -27,7 +27,7 @@ public class CatalogoController {
         if (actual == null || "PRUEBA".equals(actual.modo())) return ResponseEntity.ok(datos);
         return ResponseEntity.ok(new CatalogosResponseDTO(datos.tiposDocumento(), datos.formasPago(),
             datos.tiposHabitacion(), datos.tiposItem(), datos.tiposGasto(),
-            datos.usuarios().stream().filter(u -> u.getId().equals(actual.idUsuario())).toList(),
+            datos.usuarios().stream().filter(u -> u.id().equals(actual.idUsuario())).toList(),
             datos.turnosAbiertos().stream().filter(t -> t.idUsuario().equals(actual.idUsuario())).toList()));
     }
 }

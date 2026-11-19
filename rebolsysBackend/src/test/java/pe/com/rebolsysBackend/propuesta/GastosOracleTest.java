@@ -132,7 +132,7 @@ class GastosOracleTest {
         .andExpect(jsonPath("$.gastos.contenido[0].usuario").value(recepcionista.getUsername()))
         .andExpect(jsonPath("$.gastos.contenido[0].tipoGasto").value(repuestos.getNombreMovimiento()));
     var pagina = gastos.historial(filtro(turno.getIdTurno(), null, null, null, null, null, null, null, 1, 1));
-    assertThat(pagina.gastos().getContenido().getFirst().idFlujo()).isEqualTo(segundo.getIdFlujo());
+    assertThat(pagina.gastos().contenido().getFirst().idFlujo()).isEqualTo(segundo.getIdFlujo());
     assertThat(pagina.resumen().totalGastado()).isEqualByComparingTo("60");
     assertThat(primero.getIdFlujo()).isLessThan(tercero.getIdFlujo());
   }
@@ -163,7 +163,7 @@ class GastosOracleTest {
     em.flush();
     var h = gastos.historial(filtro(turno.getIdTurno(), recepcionista.getIdUsuario(), taxi.getIdTipoMovimiento(),
         null, null, "  b001-900  ", "10", "10", null, null));
-    assertThat(h.gastos().getContenido()).extracting(GastoResponseDTO::idFlujo).containsExactly(esperado.getIdFlujo());
+    assertThat(h.gastos().contenido()).extracting(GastoResponseDTO::idFlujo).containsExactly(esperado.getIdFlujo());
     assertThat(h.resumen().totalGastado()).isEqualByComparingTo("10");
     assertThat(gastos.historial(filtro(null, otro.getIdUsuario(), null, null, null, null, null, null, null, null))
         .resumen().cantidadGastos()).isEqualTo(1);
@@ -175,7 +175,7 @@ class GastosOracleTest {
     movimiento(turno, taxi, "Oferta 100Xlocal", "20", "2026-11-02T12:00:00");
     for (String buscar : List.of("%", "_", "\\")) {
       var h = gastos.historial(filtro(turno.getIdTurno(), null, null, null, null, buscar, null, null, null, null));
-      assertThat(h.gastos().getContenido()).extracting(GastoResponseDTO::idFlujo).containsExactly(especial.getIdFlujo());
+      assertThat(h.gastos().contenido()).extracting(GastoResponseDTO::idFlujo).containsExactly(especial.getIdFlujo());
     }
   }
 
@@ -187,19 +187,19 @@ class GastosOracleTest {
     assertThat(h.resumen().cantidadGastos()).isEqualTo(1);
     assertThat(h.resumen().totalGastado()).isEqualByComparingTo("5");
     assertThatThrownBy(() -> gastos.obtener(cobro.getIdFlujo())).isInstanceOf(RecursoNoEncontradoException.class);
-    assertThat(gastos.tipos()).extracting(CatalogoItemResponseDTO::getId).contains(taxi.getIdTipoMovimiento())
+    assertThat(gastos.tipos()).extracting(CatalogoItemResponseDTO::id).contains(taxi.getIdTipoMovimiento())
         .doesNotContain(ingreso.getIdTipoMovimiento());
   }
 
   @Test
   void resultadoVacioYPaginaFueraDeRangoConservanResumenCorrecto() throws Exception {
     var vacio = gastos.historial(delTurno());
-    assertThat(vacio.gastos().getContenido()).isEmpty();
+    assertThat(vacio.gastos().contenido()).isEmpty();
     assertThat(vacio.resumen().cantidadGastos()).isZero();
     assertThat(vacio.resumen().totalGastado()).isZero();
     gastos.registrar(solicitud(UUID.randomUUID().toString(), "12.50"));
     var fuera = gastos.historial(filtro(turno.getIdTurno(), null, null, null, null, null, null, null, 10, 1));
-    assertThat(fuera.gastos().getContenido()).isEmpty();
+    assertThat(fuera.gastos().contenido()).isEmpty();
     assertThat(fuera.resumen().totalGastado()).isEqualByComparingTo("12.50");
     mvc.perform(get("/api/v1/gastos/historial")).andExpect(status().isOk())
         .andExpect(jsonPath("$.gastos.tamanio").value(20));
@@ -220,7 +220,7 @@ class GastosOracleTest {
     em.flush();
     var h = gastos.historial(filtro(null, recepcionista.getIdUsuario(), null, null, null, null, null, null, null, null));
     assertThat(h.resumen().cantidadGastos()).isEqualTo(1);
-    assertThat(h.gastos().getContenido().getFirst().turnoAbierto()).isFalse();
+    assertThat(h.gastos().contenido().getFirst().turnoAbierto()).isFalse();
   }
 
   @Test

@@ -26,7 +26,15 @@ public class HabitacionController {
     var habitaciones = servicio.estado(desde, hasta);
     var actual = SesionOperacionService.enPeticion();
     if (actual != null && !actual.tiene("RESERVAS:VER")) {
-      habitaciones.forEach(h -> h.reservas().forEach(r -> r.setCliente("Ocupación reservada")));
+      return habitaciones.stream()
+          .map(h -> new HabitacionEstadoResponseDTO(
+              h.idHabitacion(), h.numero(), h.tipo(), h.capacidad(), h.plazasCama(),
+              h.maxMenoresSinCama(), h.precio(), h.estado(), h.ocupadaActualmente(), h.disponible(),
+              h.reservas().stream()
+                  .map(r -> new HabitacionReservaResponseDTO(
+                      r.referencia(), "Ocupación reservada", r.ingreso(), r.salida(), r.estado()))
+                  .toList()))
+          .toList();
     }
     return habitaciones;
   }

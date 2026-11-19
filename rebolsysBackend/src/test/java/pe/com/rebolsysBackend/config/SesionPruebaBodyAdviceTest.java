@@ -19,6 +19,7 @@ class SesionPruebaBodyAdviceTest {
   @RestController static class Operaciones {
     @PostMapping("/api/v1/ventas/confirmadas") public VentaRequestDTO venta(@Valid @RequestBody VentaRequestDTO r){return r;}
     @PostMapping("/api/v1/ventas/1/pagos") public PagoCuentaDTO pago(@Valid @RequestBody PagoCuentaDTO r){return r;}
+    @PostMapping("/api/v1/productos") public ProductoRequestDTO producto(@Valid @RequestBody ProductoRequestDTO r){return r;}
   }
   @BeforeEach void preparar(){
     sesion=mock(SesionOperacionService.class);when(sesion.actual()).thenReturn(new SesionActualDTO(130L,"operacion_local","PRUEBA",101L,1L));
@@ -35,6 +36,11 @@ class SesionPruebaBodyAdviceTest {
   @Test void completarUsuarioYTurnoDeUnPago()throws Exception{
     mvc.perform(post("/api/v1/ventas/1/pagos").contentType(MediaType.APPLICATION_JSON).content("{\"claveOperacion\":\"sesion-pago\",\"idFormaPago\":1,\"monto\":5}"))
       .andExpect(status().isOk()).andExpect(jsonPath("$.idUsuario").value(130)).andExpect(jsonPath("$.idTurno").value(101));
+  }
+  @Test void completarResponsableDeProductoSinPerderStockPredeterminado()throws Exception{
+    mvc.perform(post("/api/v1/productos").contentType(MediaType.APPLICATION_JSON).content("{\"nombreProducto\":\"Agua sin gas\",\"precioActual\":2.50,\"idCategoria\":2,\"estadoProducto\":\"ACTIVO\"}"))
+      .andExpect(status().isOk()).andExpect(jsonPath("$.idUsuario").value(130))
+      .andExpect(jsonPath("$.stock").value(0)).andExpect(jsonPath("$.stockMinimo").value(0));
   }
   @Test void noCobrarSinTurnoAbierto()throws Exception{
     when(sesion.actual()).thenReturn(new SesionActualDTO(130L,"operacion_local","PRUEBA",null,1L));

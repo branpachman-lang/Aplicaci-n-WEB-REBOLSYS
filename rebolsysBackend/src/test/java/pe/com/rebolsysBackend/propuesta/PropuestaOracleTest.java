@@ -154,7 +154,7 @@ class PropuestaOracleTest {
                     1,
                     categoria,
                     EstadoProducto.ACTIVO))
-            .getIdProducto();
+            .idProducto();
     prepararCatalogosCuenta();
     em.flush();
   }
@@ -268,7 +268,7 @@ class PropuestaOracleTest {
         new AjusteStockDTO(
             UUID.randomUUID().toString(),
             usuario,
-            productos.read(producto).getStock(),
+            productos.read(producto).stock(),
             cantidad,
             "Preparación de prueba"));
   }
@@ -463,7 +463,7 @@ class PropuestaOracleTest {
     var r = venta("venta-idempotente", 3);
     var v = ventas.registrar(r);
     assertThat(ventas.registrar(r).idVenta()).isEqualTo(v.idVenta());
-    assertThat(productos.read(producto).getStock()).isEqualTo(10);
+    assertThat(productos.read(producto).stock()).isEqualTo(10);
     mvc.perform(
             post("/api/v1/ventas/" + v.idVenta() + "/confirmacion")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -472,7 +472,7 @@ class PropuestaOracleTest {
         .andExpect(jsonPath("$.estadoVenta").value("CONFIRMADA"))
         .andExpect(jsonPath("$.total").value(10.5));
     ventas.confirmar(v.idVenta(), new OperacionUsuarioDTO(usuario));
-    assertThat(productos.read(producto).getStock()).isEqualTo(7);
+    assertThat(productos.read(producto).stock()).isEqualTo(7);
     assertThat(movimientos.findByProductoIdProductoOrderByIdMovimientoDesc(producto)).hasSize(2);
     em.flush();
     em.clear();
@@ -480,7 +480,7 @@ class PropuestaOracleTest {
     assertThat(linea.getTotal()).isEqualByComparingTo("10.50");
     ventas.anular(v.idVenta(), new OperacionUsuarioDTO(usuario));
     ventas.anular(v.idVenta(), new OperacionUsuarioDTO(usuario));
-    assertThat(productos.read(producto).getStock()).isEqualTo(10);
+    assertThat(productos.read(producto).stock()).isEqualTo(10);
     assertThat(movimientos.findByProductoIdProductoOrderByIdMovimientoDesc(producto)).hasSize(3);
   }
 
@@ -490,7 +490,7 @@ class PropuestaOracleTest {
     assertThatThrownBy(() -> ventas.confirmar(v.idVenta(), new OperacionUsuarioDTO(usuario)))
         .isInstanceOf(ReglaNegocioException.class)
         .hasMessageContaining("Stock insuficiente");
-    assertThat(productos.read(producto).getStock()).isZero();
+    assertThat(productos.read(producto).stock()).isZero();
     assertThat(movimientos.findByProductoIdProductoOrderByIdMovimientoDesc(producto)).isEmpty();
   }
 
@@ -568,7 +568,7 @@ class PropuestaOracleTest {
     var a = new AjusteStockDTO("ajuste", usuario, 0, 5, "Carga inicial");
     productos.ajustarStock(producto, a);
     productos.ajustarStock(producto, a);
-    assertThat(productos.read(producto).getStock()).isEqualTo(5);
+    assertThat(productos.read(producto).stock()).isEqualTo(5);
     assertThat(productos.movimientos(producto)).hasSize(1);
     assertThatThrownBy(
             () ->
@@ -669,13 +669,13 @@ class PropuestaOracleTest {
     mvc.perform(delete("/api/v1/tipos-item/" + tipoItem)).andExpect(status().isNoContent());
     var cat = categorias.create(new CategoriaRequestDTO("Snacks " + sufijo));
     mvc.perform(
-            put("/api/v1/categorias/" + cat.getIdCategoria())
+            put("/api/v1/categorias/" + cat.idCategoria())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"nombreCategoria\":\"Bocaditos " + sufijo + "\"}"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.nombreCategoria").value("Bocaditos " + sufijo));
     mvc.perform(delete("/api/v1/categorias/" + categoria)).andExpect(status().isConflict());
-    mvc.perform(delete("/api/v1/categorias/" + cat.getIdCategoria()))
+    mvc.perform(delete("/api/v1/categorias/" + cat.idCategoria()))
         .andExpect(status().isNoContent());
     mvc.perform(
             post("/api/v1/tipos-habitacion")
@@ -852,7 +852,7 @@ class PropuestaOracleTest {
     var primero = cuentasReserva.consumir(r.idReserva(), req);
     var segundo = cuentasReserva.consumir(r.idReserva(), req);
     assertThat(segundo.venta().idVenta()).isEqualTo(primero.venta().idVenta());
-    assertThat(productos.read(producto).getStock()).isEqualTo(3);
+    assertThat(productos.read(producto).stock()).isEqualTo(3);
     assertThat(cuentasReserva.cuenta(r.idReserva()).totalCargos()).isEqualByComparingTo("87");
     assertThat(cuentasReserva.cuenta(r.idReserva()).cuentas().getFirst().lineas()).hasSize(2);
     assertThatThrownBy(
@@ -1075,9 +1075,9 @@ class PropuestaOracleTest {
   Long productoAdicional(String precio, int existencias) {
     var p = productos.create(new ProductoRequestDTO("Producto " + UUID.randomUUID().toString().substring(0, 8),
         new BigDecimal(precio), 0, 0, categoria, EstadoProducto.ACTIVO));
-    if (existencias > 0) productos.ajustarStock(p.getIdProducto(), new AjusteStockDTO(
+    if (existencias > 0) productos.ajustarStock(p.idProducto(), new AjusteStockDTO(
         UUID.randomUUID().toString(), usuario, 0, existencias, "Preparación de prueba"));
-    return p.getIdProducto();
+    return p.idProducto();
   }
 
   @Test
@@ -1094,43 +1094,47 @@ class PropuestaOracleTest {
     var v=ventas.registrarConfirmada(req);var pago=new PagoCuentaDTO("pago-sesion-"+UUID.randomUUID(),usuario,turno,formaPago,new BigDecimal("7.00"),null);
     var c=cuentasVenta.pagar(v.idVenta(),pago);assertThat(c.saldo()).isEqualByComparingTo("0");assertThat(v.idUsuario()).isEqualTo(usuario);
     assertThat(ventas.registrarConfirmada(req).idVenta()).isEqualTo(v.idVenta());
-    assertThat(cuentasVenta.pagar(v.idVenta(),pago).pagos()).hasSize(1);assertThat(productos.read(producto).getStock()).isEqualTo(8);
+    assertThat(cuentasVenta.pagar(v.idVenta(),pago).pagos()).hasSize(1);assertThat(productos.read(producto).stock()).isEqualTo(8);
     assertThat(movimientos.findByProductoIdProductoOrderByIdMovimientoDesc(producto).getFirst().getUsuario().getIdUsuario()).isEqualTo(usuario);
   }
 
   @Test
   void precioModificadoNoConfirmaUnaVentaConOtroImporte() {
     stock(10);var req=new VentaRequestDTO("precio-sesion-"+UUID.randomUUID(),usuario,null,null,ModalidadCobro.SEPARADA,null,List.of(new VentaLineaRegistroDTO(producto,1,BigDecimal.ONE)));
-    assertThatThrownBy(()->ventas.registrarConfirmada(req)).isInstanceOf(ReglaNegocioException.class).hasMessageContaining("cambió");assertThat(productos.read(producto).getStock()).isEqualTo(10);
+    assertThatThrownBy(()->ventas.registrarConfirmada(req)).isInstanceOf(ReglaNegocioException.class).hasMessageContaining("cambió");assertThat(productos.read(producto).stock()).isEqualTo(10);
   }
 
   @Test
   void altaDeProductoGuardaDescripcionYExistenciasConMovimientoInicial() {
-    var req=new ProductoRequestDTO("Alta inicial "+UUID.randomUUID().toString().substring(0,8),new BigDecimal("3.50"),50,2,categoria,EstadoProducto.ACTIVO);
-    req.setIdUsuario(usuario);req.setDescripcion("  Agua sin gas de 500 ml  ");
+    var req=new ProductoRequestDTO("Alta inicial "+UUID.randomUUID().toString().substring(0,8),new BigDecimal("3.50"),50,2,categoria,EstadoProducto.ACTIVO,
+        null,null,"  Agua sin gas de 500 ml  ",usuario);
     var p=productos.create(req);
-    assertThat(p.getStock()).isEqualTo(50);assertThat(p.getDescripcion()).isEqualTo("Agua sin gas de 500 ml");
-    var historial=productos.movimientos(p.getIdProducto());assertThat(historial).hasSize(1);
+    assertThat(p.stock()).isEqualTo(50);assertThat(p.descripcion()).isEqualTo("Agua sin gas de 500 ml");
+    var historial=productos.movimientos(p.idProducto());assertThat(historial).hasSize(1);
     assertThat(historial.getFirst().cantidad()).isEqualTo(50);assertThat(historial.getFirst().stockResultante()).isEqualTo(50);
     assertThat(historial.getFirst().idUsuario()).isEqualTo(usuario);assertThat(historial.getFirst().observacion()).isEqualTo("Existencias iniciales al registrar el producto");
-    assertThat(productos.read(p.getIdProducto()).getDescripcion()).isEqualTo(p.getDescripcion());
+    assertThat(productos.read(p.idProducto()).descripcion()).isEqualTo(p.descripcion());
   }
 
   @Test
   void altaConExistenciasExigeResponsableYDescripcionAcotada() {
     var req=new ProductoRequestDTO("Alta inválida",BigDecimal.ONE,50,0,categoria,EstadoProducto.ACTIVO);
     assertThatThrownBy(()->productos.create(req)).isInstanceOf(ReglaNegocioException.class).hasMessageContaining("responsable");
-    req.setIdUsuario(usuario);req.setDescripcion("x".repeat(501));
-    assertThatThrownBy(()->productos.create(req)).isInstanceOf(jakarta.validation.ConstraintViolationException.class).hasMessageContaining("descripción");
+    var descripcionInvalida=new ProductoRequestDTO(req.nombreProducto(),req.precioActual(),req.stock(),req.stockMinimo(),
+        req.idCategoria(),req.estadoProducto(),null,null,"x".repeat(501),usuario);
+    assertThatThrownBy(()->productos.create(descripcionInvalida)).isInstanceOf(jakarta.validation.ConstraintViolationException.class).hasMessageContaining("descripción");
   }
 
   @Test
   void editarDescripcionConservaStockYElMotivoDeAjustes() {
-    var req=new ProductoRequestDTO("Editar descripción "+UUID.randomUUID().toString().substring(0,8),BigDecimal.ONE,10,0,categoria,EstadoProducto.ACTIVO);
-    req.setIdUsuario(usuario);var p=productos.create(req);req.setDescripcion("Producto con descripción");
-    productos.update(p.getIdProducto(),req);assertThat(productos.read(p.getIdProducto()).getStock()).isEqualTo(10);assertThat(productos.movimientos(p.getIdProducto())).hasSize(1);
-    productos.ajustarStock(p.getIdProducto(),new AjusteStockDTO(UUID.randomUUID().toString(),usuario,10,8,"Dos unidades dañadas"));
-    var ultimo=productos.movimientos(p.getIdProducto()).getFirst();assertThat(ultimo.observacion()).isEqualTo("Dos unidades dañadas");assertThat(ultimo.stockResultante()).isEqualTo(8);
+    var req=new ProductoRequestDTO("Editar descripción "+UUID.randomUUID().toString().substring(0,8),BigDecimal.ONE,10,0,categoria,EstadoProducto.ACTIVO,
+        null,null,null,usuario);
+    var p=productos.create(req);
+    var editado=new ProductoRequestDTO(req.nombreProducto(),req.precioActual(),req.stock(),req.stockMinimo(),
+        req.idCategoria(),req.estadoProducto(),null,null,"Producto con descripción",usuario);
+    productos.update(p.idProducto(),editado);assertThat(productos.read(p.idProducto()).stock()).isEqualTo(10);assertThat(productos.movimientos(p.idProducto())).hasSize(1);
+    productos.ajustarStock(p.idProducto(),new AjusteStockDTO(UUID.randomUUID().toString(),usuario,10,8,"Dos unidades dañadas"));
+    var ultimo=productos.movimientos(p.idProducto()).getFirst();assertThat(ultimo.observacion()).isEqualTo("Dos unidades dañadas");assertThat(ultimo.stockResultante()).isEqualTo(8);
   }
 
   VentaRequestDTO carrito(String clave, Long segundo, int primeraCantidad, int segundaCantidad) {
@@ -1152,12 +1156,12 @@ class PropuestaOracleTest {
     assertThat(v.total()).isEqualByComparingTo("13");
     assertThat(v.detalles()).hasSize(2);
     assertThat(ventas.registrar(req).idVenta()).isEqualTo(v.idVenta());
-    assertThat(productos.read(producto).getStock()).isEqualTo(10);
-    assertThat(productos.read(segundo).getStock()).isEqualTo(10);
+    assertThat(productos.read(producto).stock()).isEqualTo(10);
+    assertThat(productos.read(segundo).stock()).isEqualTo(10);
     ventas.confirmar(v.idVenta(), new OperacionUsuarioDTO(usuario));
     ventas.confirmar(v.idVenta(), new OperacionUsuarioDTO(usuario));
-    assertThat(productos.read(producto).getStock()).isEqualTo(8);
-    assertThat(productos.read(segundo).getStock()).isEqualTo(7);
+    assertThat(productos.read(producto).stock()).isEqualTo(8);
+    assertThat(productos.read(segundo).stock()).isEqualTo(7);
     assertThat(movimientos.findByProductoIdProductoOrderByIdMovimientoDesc(producto)).hasSize(2);
     assertThat(movimientos.findByProductoIdProductoOrderByIdMovimientoDesc(segundo)).hasSize(2);
   }
@@ -1195,8 +1199,8 @@ class PropuestaOracleTest {
     var v = ventas.registrar(carrito("segunda-sin-stock", segundo, 2, 1));
     assertThatThrownBy(() -> ventas.confirmar(v.idVenta(), new OperacionUsuarioDTO(usuario)))
         .isInstanceOf(ReglaNegocioException.class).hasMessageContaining("Stock insuficiente");
-    assertThat(productos.read(producto).getStock()).isEqualTo(10);
-    assertThat(productos.read(segundo).getStock()).isZero();
+    assertThat(productos.read(producto).stock()).isEqualTo(10);
+    assertThat(productos.read(segundo).stock()).isZero();
     assertThat(ventas.obtener(v.idVenta()).estadoVenta()).isEqualTo(EstadoVenta.BORRADOR);
     assertThat(movimientos.findByProductoIdProductoOrderByIdMovimientoDesc(producto)).hasSize(1);
     assertThat(movimientos.findByProductoIdProductoOrderByIdMovimientoDesc(segundo)).isEmpty();
@@ -1210,8 +1214,8 @@ class PropuestaOracleTest {
     productos.delete(segundo);
     assertThatThrownBy(() -> ventas.confirmar(v.idVenta(), new OperacionUsuarioDTO(usuario)))
         .isInstanceOf(ReglaNegocioException.class).hasMessageContaining("inactivo");
-    assertThat(productos.read(producto).getStock()).isEqualTo(10);
-    assertThat(productos.read(segundo).getStock()).isEqualTo(10);
+    assertThat(productos.read(producto).stock()).isEqualTo(10);
+    assertThat(productos.read(segundo).stock()).isEqualTo(10);
   }
 
   @Test
@@ -1303,8 +1307,8 @@ class PropuestaOracleTest {
     var v = ventas.registrarConfirmada(carrito("anular-multiple", segundo, 2, 3));
     ventas.anular(v.idVenta(), new OperacionUsuarioDTO(usuario));
     ventas.anular(v.idVenta(), new OperacionUsuarioDTO(usuario));
-    assertThat(productos.read(producto).getStock()).isEqualTo(10);
-    assertThat(productos.read(segundo).getStock()).isEqualTo(10);
+    assertThat(productos.read(producto).stock()).isEqualTo(10);
+    assertThat(productos.read(segundo).stock()).isEqualTo(10);
     assertThat(movimientos.findByProductoIdProductoOrderByIdMovimientoDesc(segundo)).hasSize(3);
     assertThat(ventas.obtener(v.idVenta()).estadoVenta()).isEqualTo(EstadoVenta.ANULADA);
   }
@@ -1484,10 +1488,10 @@ class PropuestaOracleTest {
   void busquedaProductosTrataComodinesComoTextoYBuscaCategoria() {
     for (String caracter : List.of("%", "_", "!", "\\")) {
       var p = productos.create(new ProductoRequestDTO("Especial " + caracter, BigDecimal.ONE, 0, 0, categoria, EstadoProducto.ACTIVO));
-      assertThat(productos.listar(0, 10, caracter, categoria, null, null).getContenido())
-          .extracting(ProductoResponseDTO::getIdProducto).containsExactly(p.getIdProducto());
+      assertThat(productos.listar(0, 10, caracter, categoria, null, null).contenido())
+          .extracting(ProductoResponseDTO::idProducto).containsExactly(p.idProducto());
     }
-    assertThat(productos.listar(0, 10, categorias.read(categoria).getNombreCategoria(), categoria, null, null).getTotalElementos())
+    assertThat(productos.listar(0, 10, categorias.read(categoria).nombreCategoria(), categoria, null, null).totalElementos())
         .isEqualTo(5);
   }
 
