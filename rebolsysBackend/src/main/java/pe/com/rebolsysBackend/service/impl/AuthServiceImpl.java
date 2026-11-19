@@ -13,7 +13,7 @@ import pe.com.rebolsysBackend.dto.auth.LoginRequestDTO;
 import pe.com.rebolsysBackend.security.*;
 import pe.com.rebolsysBackend.service.service.AuthService;
 
-/** Coordina autenticación y JWT; CredencialesService conserva las transacciones de credenciales y turnos. */
+
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {

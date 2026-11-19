@@ -7,5 +7,7 @@ import java.util.*;
 import pe.com.rebolsysBackend.enums.*;
 
 public record ClienteGuardarDTO(
-    @NotNull @Valid ClienteRegistroRequestDTO persona,
-    @Size(max = 500) String restriccionesMedicas) {}
+    @NotNull
+    @Valid ClienteRegistroRequestDTO persona,
+    @Size(max = 500)
+    String restriccionesMedicas) {}

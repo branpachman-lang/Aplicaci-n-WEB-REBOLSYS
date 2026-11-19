@@ -6,4 +6,6 @@ import java.util.*;
 import pe.com.rebolsysBackend.enums.*;
 
 public record ClienteDetalleDTO(
-    Long idCliente, ClienteRegistroRequestDTO persona, String restriccionesMedicas) {}
+    Long idCliente,
+    ClienteRegistroRequestDTO persona,
+    String restriccionesMedicas) {}
