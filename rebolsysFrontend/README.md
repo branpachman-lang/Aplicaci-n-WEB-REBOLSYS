@@ -33,6 +33,14 @@ la segunda permite abrir directamente rutas Angular como `/reservas`. Se conserv
 llamadas autenticadas y el backend sigue conectándose a Oracle con su configuración
 privada. No se deben guardar credenciales de Oracle ni `JWT_SECRET` en el frontend.
 
+El backend también debe autorizar el origen del navegador, porque el proxy puede
+conservar la cabecera `Origin`. Para el despliegue actual, configurar en el proceso
+Java `CORS_ALLOWED_ORIGINS=http://localhost:4200,http://127.0.0.1:4200,https://rebolsys12.vercel.app`.
+En desarrollo también se puede establecer `app.cors.allowed-origins` con esa lista en
+`rebolsysBackend/.local/application-local-private.properties`. Reiniciar el backend
+después de cambiarla. Mantener orígenes exactos; los dominios de previews adicionales
+se autorizan por separado. Un rechazo `Invalid CORS request` ocurre antes del login.
+
 Para pruebas con el backend local en 8080, mantenerlo encendido junto con el túnel:
 
 ```powershell
