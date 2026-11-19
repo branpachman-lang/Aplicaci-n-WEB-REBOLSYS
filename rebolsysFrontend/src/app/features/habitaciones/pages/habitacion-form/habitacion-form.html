@@ -39,7 +39,7 @@
           maxlength="10"
           [ngModel]="formNumero()"
           (ngModelChange)="formNumero.set($event)"
-          [disabled]="formOcupado()"
+          [disabled]="formOcupado() || estadoOriginal() === 'EN_LIMPIEZA'"
           placeholder="Ej. 101, 202-B"
           required
         />
@@ -54,7 +54,7 @@
           name="idTipoHabitacion"
           [ngModel]="formIdTipo()"
           (ngModelChange)="onTipoChange($event)"
-          [disabled]="formOcupado()"
+          [disabled]="formOcupado() || estadoOriginal() === 'EN_LIMPIEZA'"
           required
         >
           <option [ngValue]="null" disabled>Selecciona un tipo…</option>
@@ -98,7 +98,7 @@
           step="0.01"
           [ngModel]="formPrecioPorNoche()"
           (ngModelChange)="formPrecioPorNoche.set($event)"
-          [disabled]="formOcupado()"
+          [disabled]="formOcupado() || estadoOriginal() === 'EN_LIMPIEZA'"
         />
         <small class="muted">
           {{
@@ -131,18 +131,21 @@
             name="estadoHabitacion"
             [ngModel]="formEstado()"
             (ngModelChange)="formEstado.set($event)"
-            [disabled]="formOcupado()"
+            [disabled]="formOcupado() || estadoOriginal() === 'EN_LIMPIEZA'"
             required
           >
             <option value="DISPONIBLE">Disponible</option>
-            <option value="LIMPIEZA">Limpieza</option>
+            <option value="POR_LIMPIAR">Por limpiar</option>
+            @if (estadoOriginal() === 'EN_LIMPIEZA') {
+              <option value="EN_LIMPIEZA">En limpieza</option>
+            }
             <option value="MANTENIMIENTO">
               Mantenimiento (Retirada de reservas)
             </option>
           </select>
           @if (modoEdicion() && estadoOriginal() === "MANTENIMIENTO") {
             <small class="rehab-note">
-              Rehabilita la habitación cambiándola a Disponible o Limpieza para
+              Rehabilita la habitación cambiándola a Disponible o Por limpiar para
               devolverla a la oferta.
             </small>
           } @else {
@@ -184,7 +187,7 @@
           [max]="formCapacidad()"
           [ngModel]="formPlazasCama()"
           (ngModelChange)="onPlazasChange($event)"
-          [disabled]="formOcupado()"
+          [disabled]="formOcupado() || estadoOriginal() === 'EN_LIMPIEZA'"
           required
         />
         <small class="muted">
@@ -220,7 +223,7 @@
         <button
           type="button"
           class="button"
-          [disabled]="formOcupado()"
+          [disabled]="formOcupado() || estadoOriginal() === 'EN_LIMPIEZA'"
           (click)="cancelar()"
         >
           Cancelar

@@ -34,7 +34,7 @@ export interface MobiliarioHabitacion {
 }
 
 export type EstadoHabitacion =
-  'DISPONIBLE' | 'OCUPADO' | 'LIMPIEZA' | 'MANTENIMIENTO';
+  'DISPONIBLE' | 'OCUPADO' | 'POR_LIMPIAR' | 'EN_LIMPIEZA' | 'MANTENIMIENTO';
 
 export interface HabitacionConfiguracion {
   idHabitacion: number;

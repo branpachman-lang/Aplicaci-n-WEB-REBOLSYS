@@ -24,7 +24,7 @@ public interface InformeRevisionRepository extends JpaRepository<InformeRevision
   Optional<InformeRevision> findByHabitacionIdHabitacionAndEstadoInformeIn(
       Long idHabitacion, Collection<EstadoInforme> estados);
 
-  Optional<InformeRevision> findFirstByHabitacionIdHabitacionAndEstadoInformeNotOrderByFechaHoraDescIdInformeRevisionDesc(
+  Optional<InformeRevision> findFirstByHabitacionIdHabitacionAndEstadoInformeOrderByFechaHoraDescIdInformeRevisionDesc(
       Long idHabitacion, EstadoInforme estado);
 
   @Query("select i.habitacion.idHabitacion from InformeRevision i where i.idInformeRevision = :id")

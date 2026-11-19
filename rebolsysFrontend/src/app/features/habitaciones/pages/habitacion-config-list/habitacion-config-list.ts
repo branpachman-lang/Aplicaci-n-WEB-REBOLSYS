@@ -125,12 +125,13 @@ export class HabitacionConfigList implements OnInit {
   }
 
   puedeRetirar(room: HabitacionConfiguracion): boolean {
-    if (room.estadoHabitacion === 'OCUPADO') return false;
+    if (room.estadoHabitacion === 'OCUPADO' || room.estadoHabitacion === 'EN_LIMPIEZA') return false;
     if (room.estadoHabitacion === 'MANTENIMIENTO') return false;
     return true;
   }
 
   motivoBloqueoRetiro(room: HabitacionConfiguracion): string {
+    if (room.estadoHabitacion === 'EN_LIMPIEZA') return 'Finaliza el flujo de limpieza antes de retirar la habitación.';
     if (room.estadoHabitacion === 'OCUPADO') {
       return 'No se puede retirar una habitación que se encuentra ocupada por una estancia activa.';
     }
@@ -146,7 +147,8 @@ export class HabitacionConfigList implements OnInit {
         return 'badge disponible';
       case 'OCUPADO':
         return 'badge en_curso';
-      case 'LIMPIEZA':
+      case 'POR_LIMPIAR':
+      case 'EN_LIMPIEZA':
         return 'badge limpieza';
       case 'MANTENIMIENTO':
         return 'badge mantenimiento';
@@ -161,8 +163,10 @@ export class HabitacionConfigList implements OnInit {
         return 'Disponible';
       case 'OCUPADO':
         return 'Ocupada';
-      case 'LIMPIEZA':
-        return 'Limpieza';
+      case 'POR_LIMPIAR':
+        return 'Por limpiar';
+      case 'EN_LIMPIEZA':
+        return 'En limpieza';
       case 'MANTENIMIENTO':
         return 'Mantenimiento';
       default:

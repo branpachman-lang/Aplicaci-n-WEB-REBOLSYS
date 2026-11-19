@@ -200,6 +200,10 @@ public class HabitacionServiceImpl implements HabitacionService {
     exigir(
         (r.estadoHabitacion() == EstadoHabitacion.OCUPADO) == enCurso,
         "El estado OCUPADO solo corresponde a una estancia en curso");
+    if (id == null) {
+      exigir(r.estadoHabitacion() != EstadoHabitacion.EN_LIMPIEZA,
+          "Inicia la limpieza desde el módulo de limpieza");
+    }
     if (id != null) {
       if (h.getEstadoHabitacion() != r.estadoHabitacion()) {
         SesionOperacionService.exigirPermisoEnPeticion("HABITACIONES:CAMBIAR_ESTADO");
@@ -231,6 +235,9 @@ public class HabitacionServiceImpl implements HabitacionService {
 
   private void validarEstadoLimpieza(Habitacion habitacion, EstadoHabitacion estado) {
     if (habitacion.getEstadoHabitacion() != estado) {
+      exigir(estado != EstadoHabitacion.EN_LIMPIEZA
+          && habitacion.getEstadoHabitacion() != EstadoHabitacion.EN_LIMPIEZA,
+          "Inicia o finaliza la limpieza desde el módulo de limpieza");
       exigir(!informes.existsByHabitacionIdHabitacionAndEstadoInformeIn(
           habitacion.getIdHabitacion(), List.of(EstadoInforme.BORRADOR, EstadoInforme.POR_APROBAR)),
           "Finaliza el flujo de limpieza antes de cambiar el estado de la habitación");

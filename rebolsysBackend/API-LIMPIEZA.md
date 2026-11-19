@@ -20,7 +20,7 @@ Todas las rutas de la tabla empiezan con `/api/v1/limpieza`.
 | --- | --- |
 | `GET /inicio` | Gerencia recibe totales generales con `alcance=GENERAL`, recepción los de su turno con `alcance=TURNO` y el resto su actividad de hoy con `alcance=DIA`. Solo recepción sin turno recibe contadores en cero. La consulta y gestión de informes y tickets no exige turno de caja. |
 | `GET /habitaciones` | Filtra por `numeroHabitacion`, `idTipoHabitacion`, `estado` y `fechaSalida`. Muestra la salida prevista de la estancia en curso o la última salida de una estancia finalizada. Usa la hora real cuando está registrada. |
-| `GET /habitaciones/{id}` | Muestra el inventario actual, el último informe enviado y sus tickets. Mientras el informe está en borrador devuelve `SIN_REGISTRAR` en los ítems, `SIN_INFORME` y `SIN_TICKET`. |
+| `GET /habitaciones/{id}` | Muestra el inventario actual, el último informe aprobado y sus tickets. Mientras la habitación está en `EN_LIMPIEZA` (borrador o informe por aprobar) devuelve `SIN_REGISTRAR` en los ítems, `SIN_INFORME` y `SIN_TICKET`. |
 | `POST /habitaciones/{id}/iniciar` | Abre la limpieza de una habitación `POR_LIMPIAR` y devuelve el borrador. El gerente también puede iniciar una revisión de una habitación `DISPONIBLE` sin estancia en curso, que pasa a `EN_LIMPIEZA`. El responsable puede retomar su borrador. |
 | `DELETE /borradores/{id}` | Cancela el borrador propio y deja la habitación `POR_LIMPIAR`. |
 | `POST /borradores/{id}/enviar` | Exige un estado por cada ítem actual y deja el informe `POR_APROBAR`. |
@@ -83,6 +83,30 @@ Crear, editar y eliminar tickets exige el rol `MANTENIMIENTO` y el permiso corre
 
 Para editar un ticket se envían directamente los campos de `accion`. El costo es opcional para `REPARACION` y debe omitirse para `REPOSICION`. La evidencia queda registrada al crear el ticket.
 
-Los campos `puedeAprobar`, `puedeEditar`, `puedeEliminar` y `puedeCrearTicket` permiten activar los botones correspondientes. La API vuelve a comprobar cada regla al recibir la acción. Los conflictos de estado devuelven HTTP 409. Las operaciones de escritura se serializan por habitación y las actualizaciones de conservación usan el historial de inventario.
+Las banderas combinan el estado persistido, los permisos efectivos y el rol requerido del usuario actual. Un permiso de edición de informe no sustituye al de crear tickets; Gerencia necesita también el rol `MANTENIMIENTO` para aprobar y atender tickets. Los campos `puedeAprobar`, `puedeEditar`, `puedeEliminar` y `puedeCrearTicket` permiten activar los botones correspondientes. La API vuelve a comprobar cada regla al recibir la acción. Los conflictos de estado devuelven HTTP 409. Las operaciones de escritura se serializan por habitación y las actualizaciones de conservación usan el historial de inventario.
 
 `tieneIncidencias` indica si el informe registró algún hallazgo. `incidenciasPendientes` cuenta los hallazgos que todavía requieren un ticket. Ambos valores se mantienen separados para que el historial conserve lo observado.
+
+## Estados persistidos y actualización V17
+
+En `REBOLSYSDBV2`, aplicar [V17](src/main/resources/db/iteration/V17__estados_limpieza_explicitos.sql)
+después de V16 y con la aplicación detenida. El script es repetible: valida informes sin
+estado, duplicados y habitaciones incompatibles antes de modificar datos. Agrega el índice
+único de informe activo si falta y sincroniza las habitaciones pendientes o en limpieza.
+Revisar el resultado y confirmar con `COMMIT`; la creación del índice es DDL con confirmación
+implícita de Oracle. Flyway permanece deshabilitado.
+
+`POR_LIMPIAR` y `EN_LIMPIEZA` son estados independientes en Java, Oracle y la API.
+El valor anterior `LIMPIEZA` deja de ser una entrada válida del contrato de habitaciones.
+La salida del huésped deja `POR_LIMPIAR`; iniciar crea un `BORRADOR` y persiste `EN_LIMPIEZA`;
+enviar deja `POR_APROBAR` sin liberar la habitación; aprobar persiste `DISPONIBLE`.
+Cancelar el borrador o eliminar el informe pendiente devuelve `POR_LIMPIAR`.
+La configuración general no permite entrar ni salir manualmente de `EN_LIMPIEZA`.
+
+En Ver habitación se ocultan condiciones, informe y tickets durante toda la limpieza.
+También se ocultan si existe un informe activo con un estado de habitación incompatible,
+y se registra una advertencia en el servidor. Los objetos ocultos no se incluyen en la
+respuesta. Fuera de la limpieza se muestra el inventario registrado y solo el último
+informe `APROBADO`, con sus tickets, sujeto a permisos. Esto incluye habitaciones
+`POR_LIMPIAR` y `MANTENIMIENTO`. La pantalla Informes conserva el acceso autorizado a los
+pendientes para que Mantenimiento pueda resolverlos.
