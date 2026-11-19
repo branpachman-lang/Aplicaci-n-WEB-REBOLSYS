@@ -37,11 +37,12 @@ public class UsuarioDetailsService implements UserDetailsService {
         : Stream.concat(Stream.of("ACCESO_OPERATIVO"),
             Stream.concat(perfil.roles().stream().map(r -> "ROLE_" + r), perfil.permisos().stream()))
             .distinct().<GrantedAuthority>map(SimpleGrantedAuthority::new).toList();
-    return new Detalle(principal, cuenta.usuario().getUsername(), authorities);
+    return new Detalle(principal, cuenta.usuario().getUsername(), authorities, cuenta.requiereCambio(), perfil);
   }
 
   public record Detalle(CredencialesService.Principal principal, String nombre,
-      List<GrantedAuthority> authorities) implements UserDetails {
+      List<GrantedAuthority> authorities, boolean requiereCambio,
+      AccesosService.PerfilAcceso perfil) implements UserDetails {
     @Override public String getUsername() { return nombre; }
     // El proveedor verifica BCrypt dentro de la transacción de CredencialesService; no transportamos el hash.
     @Override public String getPassword() { return null; }

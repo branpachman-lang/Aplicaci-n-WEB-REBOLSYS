@@ -8,7 +8,7 @@ export const sesionGuard: CanActivateChildFn = (ruta: ActivatedRouteSnapshot) =>
   const sesion = inject(SesionService);
   const router = inject(Router);
   const acceso = inject(PermisosUi);
-  return sesion.cargar(true).pipe(
+  return sesion.cargarEnNavegacion(router.currentNavigation()?.id ?? 0).pipe(
     map(s => {
       if (s.requiereCambio) return router.parseUrl("/cambiar-contrasena");
       if (ruta.data['soloGerencia'] && !acceso.esGerente()) return router.parseUrl('/inicio');

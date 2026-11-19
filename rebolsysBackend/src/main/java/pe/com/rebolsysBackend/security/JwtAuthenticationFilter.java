@@ -44,8 +44,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
       var usuario = usuarios.cargar(token.idUsuario());
       if (!jwt.vigente(token, usuario.principal())) throw new BadCredentialsException("Credencial revocada");
       var contexto = SecurityContextHolder.createEmptyContext();
-      contexto.setAuthentication(UsernamePasswordAuthenticationToken.authenticated(
-          usuario.principal(), null, usuario.getAuthorities()));
+      var autenticacion = UsernamePasswordAuthenticationToken.authenticated(
+          usuario.principal(), null, usuario.getAuthorities());
+      autenticacion.setDetails(usuario);
+      contexto.setAuthentication(autenticacion);
       SecurityContextHolder.setContext(contexto);
       request.setAttribute(JwtService.ATRIBUTO, token);
       response.setHeader("Cache-Control", "no-store");

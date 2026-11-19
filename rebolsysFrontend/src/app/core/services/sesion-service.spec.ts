@@ -25,6 +25,9 @@ describe('Inicio y cierre con JWT', () => {
     expect(respuesta).toHaveBeenCalledWith(sesion);
     expect(servicio.actual()?.idTurno).toBe(8);
     expect(sessionStorage.getItem('rebolsys.auth.jwt')).not.toContain('clave-de-prueba');
+    servicio.cargar().subscribe();
+    servicio.cargarEnNavegacion(1).subscribe();
+    TestBed.inject(HttpTestingController).expectNone('/api/v1/sesion/actual');
   });
 
   it('sustituye la credencial después del cambio obligatorio', () => {
@@ -34,6 +37,8 @@ describe('Inicio y cierre con JWT', () => {
       .flush({ token: token(), tipo: 'Bearer', expiraEnSegundos: 1800, sesion: { ...sesion, requiereCambio: false } });
     expect(servicio.actual()?.requiereCambio).toBe(false);
     expect(TestBed.inject(TokenService).token()).toBe(token());
+    servicio.cargarEnNavegacion(1).subscribe();
+    TestBed.inject(HttpTestingController).expectNone('/api/v1/sesion/actual');
   });
 
   it('elimina token y operaciones pendientes al cerrar', () => {
@@ -54,5 +59,65 @@ describe('Inicio y cierre con JWT', () => {
     servicio.limpiar();
     expect(pendiente.cancelled).toBe(true);
     expect(servicio.actual()).toBeNull();
+  });
+
+  it('comparte la consulta pendiente incluso cuando varios consumidores fuerzan la carga', () => {
+    const servicio = TestBed.inject(SesionService), http = TestBed.inject(HttpTestingController);
+    const recibir = vi.fn();
+    servicio.cargar(true).subscribe(recibir);
+    servicio.cargar(true).subscribe(recibir);
+    servicio.cargar().subscribe(recibir);
+    http.expectOne('/api/v1/sesion/actual').flush(sesion);
+    expect(recibir).toHaveBeenCalledTimes(3);
+    servicio.cargar().subscribe();
+    http.expectNone('/api/v1/sesion/actual');
+  });
+
+  it('consulta una vez por navegación y actualiza permisos en la siguiente', () => {
+    const servicio = TestBed.inject(SesionService), http = TestBed.inject(HttpTestingController);
+    servicio.cargarEnNavegacion(10).subscribe();
+    servicio.cargarEnNavegacion(10).subscribe();
+    http.expectOne('/api/v1/sesion/actual').flush({ ...sesion, permisos: ['VENTAS:VER'] });
+    servicio.cargarEnNavegacion(10).subscribe();
+    http.expectNone('/api/v1/sesion/actual');
+    servicio.cargarEnNavegacion(11).subscribe();
+    http.expectOne('/api/v1/sesion/actual').flush({ ...sesion, permisos: [] });
+    expect(servicio.permite('VENTAS:VER')).toBe(false);
+  });
+
+  it('descarta una consulta anterior al refrescar tras cerrar caja', () => {
+    const servicio = TestBed.inject(SesionService), http = TestBed.inject(HttpTestingController);
+    servicio.cargar().subscribe();
+    const anterior = http.expectOne('/api/v1/sesion/actual');
+    servicio.refrescar().subscribe();
+    expect(anterior.cancelled).toBe(true);
+    http.expectOne('/api/v1/sesion/actual').flush({ ...sesion, idTurno: null });
+    servicio.cargar().subscribe();
+    http.expectNone('/api/v1/sesion/actual');
+    expect(servicio.actual()?.idTurno).toBeNull();
+  });
+
+  it('permite reintentar después de fallar la consulta', () => {
+    const servicio = TestBed.inject(SesionService), http = TestBed.inject(HttpTestingController);
+    servicio.cargar().subscribe({ error: () => {} });
+    http.expectOne('/api/v1/sesion/actual').flush({}, { status: 503, statusText: 'Unavailable' });
+    servicio.cargar().subscribe();
+    http.expectOne('/api/v1/sesion/actual').flush(sesion);
+    expect(servicio.actual()).toEqual(sesion);
+    expect(servicio.error()).toBe('');
+  });
+
+  it('no inicia una consulta guardada antes de salir ni mezcla cuentas al ingresar otra vez', () => {
+    const servicio = TestBed.inject(SesionService), http = TestBed.inject(HttpTestingController);
+    const anterior = servicio.cargar();
+    servicio.limpiar();
+    anterior.subscribe();
+    http.expectNone('/api/v1/sesion/actual');
+    servicio.iniciar('recepcion', 'clave').subscribe();
+    http.expectOne('/api/v1/sesion/iniciar').flush({ token: token(), tipo: 'Bearer',
+      expiraEnSegundos: 1800, sesion: { ...sesion, idUsuario: 9, usuario: 'recepcion' } });
+    servicio.cargarEnNavegacion(12).subscribe();
+    expect(servicio.actual()?.idUsuario).toBe(9);
+    http.expectNone('/api/v1/sesion/actual');
   });
 });

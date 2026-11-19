@@ -1,6 +1,6 @@
 import { Injectable, inject, signal } from "@angular/core";
 import { HttpClient } from "@angular/common/http";
-import { Observable, Subject, catchError, map, shareReplay, takeUntil, tap, throwError } from "rxjs";
+import { EMPTY, Observable, Subject, catchError, defer, finalize, map, of, shareReplay, takeUntil, tap, throwError } from "rxjs";
 import { environment } from "../../../environments/environment";
 import { PermisosUi } from "./permisos-ui";
 import { TokenService } from './token-service';
@@ -28,38 +28,65 @@ export class SesionService {
   private readonly tokens = inject(TokenService);
   private readonly cambioDeAcceso = new Subject<void>();
   private peticion?: Observable<SesionActual>;
+  private pendiente?: Observable<SesionActual>;
+  private versionAcceso = 0;
+  private navegacion?: number;
+  private recienAutenticado = false;
   readonly actual = this.acceso.actual;
   readonly versionPendientes = signal(0);
   error = signal("");
   cargar(forzar = false) {
-    if (forzar) this.peticion = undefined;
-    return (this.peticion ??= this.http
-      .get<SesionActual>(environment.apiUrl + "/sesion/actual")
+    if (this.pendiente) return this.pendiente;
+    if (!forzar && this.peticion) return this.peticion;
+    const version = this.versionAcceso;
+    const consulta: Observable<SesionActual> = defer(() => version === this.versionAcceso
+      ? this.http.get<SesionActual>(environment.apiUrl + '/sesion/actual')
+      : EMPTY)
       .pipe(
         takeUntil(this.cambioDeAcceso),
         tap((s) => {
           this.recordar(s);
         }),
         catchError((e) => {
-          this.peticion = undefined;
-          this.actual.set(null);
-          this.error.set("No se pudo obtener la sesión de operación.");
+          if (version === this.versionAcceso) {
+            this.peticion = undefined;
+            this.actual.set(null);
+            this.error.set("No se pudo obtener la sesión de operación.");
+          }
           return throwError(() => e);
         }),
+        finalize(() => {
+          if (this.pendiente === consulta) this.pendiente = undefined;
+        }),
         shareReplay({ bufferSize: 1, refCount: false }),
-      ));
+      );
+    this.peticion = this.pendiente = consulta;
+    return consulta;
+  }
+
+  cargarEnNavegacion(id: number) {
+    if (this.navegacion === id) return this.cargar();
+    this.navegacion = id;
+    const forzar = !this.recienAutenticado;
+    this.recienAutenticado = false;
+    return this.cargar(forzar);
+  }
+
+  refrescar() {
+    this.invalidarConsulta();
+    return this.cargar(true);
   }
 
   iniciar(usuario: string, contrasena: string) {
     return this.http.post<Autenticacion>(environment.apiUrl + "/sesion/iniciar", { usuario, contrasena })
       .pipe(map(respuesta => this.autenticar(respuesta)),
-        tap(s => { this.limpiarPendientes(); this.peticion = undefined; this.recordar(s); }));
+        tap(s => { this.limpiarPendientes(); this.recordar(s); }));
   }
 
   cambiar(actual: string, nueva: string) {
     return this.http.post<Autenticacion>(environment.apiUrl + "/sesion/contrasena", { actual, nueva })
       .pipe(map(respuesta => this.autenticar(respuesta)),
-        tap(s => { this.peticion = undefined; this.recordar(s); }));
+        tap(s => this.recordar(s)));
   }
 
   cerrar() {
@@ -71,10 +98,11 @@ export class SesionService {
   }
 
   limpiar() {
-    this.cambioDeAcceso.next();
+    this.invalidarConsulta();
     this.tokens.limpiar();
     this.limpiarPendientes();
-    this.peticion = undefined;
+    this.navegacion = undefined;
+    this.recienAutenticado = false;
     this.actual.set(null);
     this.error.set("");
   }
@@ -102,7 +130,16 @@ export class SesionService {
   private autenticar(respuesta: Autenticacion): SesionActual {
     if (respuesta.tipo !== 'Bearer' || !respuesta.sesion) throw new Error('La respuesta de autenticación no es válida');
     this.tokens.guardar(respuesta.token);
-    this.cambioDeAcceso.next();
+    this.invalidarConsulta();
+    this.peticion = of(respuesta.sesion);
+    this.navegacion = undefined;
+    this.recienAutenticado = true;
     return respuesta.sesion;
+  }
+
+  private invalidarConsulta() {
+    this.versionAcceso++;
+    this.cambioDeAcceso.next();
+    this.peticion = this.pendiente = undefined;
   }
 }

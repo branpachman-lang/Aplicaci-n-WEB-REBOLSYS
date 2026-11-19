@@ -32,13 +32,13 @@ public class SesionOperacionService {
     if (request != null && request.getAttribute(ATRIBUTO) instanceof SesionActualDTO actual) return actual;
     var autenticacion = SecurityContextHolder.getContext().getAuthentication();
     if (autenticacion != null && autenticacion.getPrincipal() instanceof CredencialesService.Principal principal) {
-      var cuenta = credenciales.vigente(principal);
-      var u = cuenta.usuario();
-      var perfil = cuenta.requiereCambio() ? null : accesos.perfil(u.getIdUsuario());
-      var actual = cuenta.requiereCambio()
-          ? new SesionActualDTO(u.getIdUsuario(), u.getUsername(), "ACTIVA", null, null, true, false,
+      var detalle = autenticacion.getDetails() instanceof UsuarioDetailsService.Detalle validado
+          && principal.equals(validado.principal()) ? validado : cargarDetalle(principal);
+      var perfil = detalle.perfil();
+      var actual = detalle.requiereCambio()
+          ? new SesionActualDTO(principal.idUsuario(), detalle.nombre(), "ACTIVA", null, null, true, false,
               java.util.List.of(), java.util.List.of())
-          : new SesionActualDTO(u.getIdUsuario(), u.getUsername(), "ACTIVA", turno(u.getIdUsuario()), efectivo(),
+          : new SesionActualDTO(principal.idUsuario(), detalle.nombre(), "ACTIVA", turno(principal.idUsuario()), efectivo(),
               false, perfil.gerente(), perfil.roles(), perfil.permisos());
       if (request != null) request.setAttribute(ATRIBUTO, actual);
       return actual;
@@ -51,6 +51,13 @@ public class SesionOperacionService {
     if (atributos instanceof ServletRequestAttributes req
         && req.getRequest().getAttribute(ATRIBUTO) instanceof SesionActualDTO actual) return actual;
     return null;
+  }
+
+  private UsuarioDetailsService.Detalle cargarDetalle(CredencialesService.Principal principal) {
+    var cuenta = credenciales.vigente(principal);
+    var perfil = cuenta.requiereCambio() ? null : accesos.perfil(principal.idUsuario());
+    return new UsuarioDetailsService.Detalle(principal, cuenta.usuario().getUsername(), java.util.List.of(),
+        cuenta.requiereCambio(), perfil);
   }
 
   public static void exigirPermisoEnPeticion(String permiso) {

@@ -21,7 +21,9 @@ public class CredencialesAuthenticationProvider implements AuthenticationProvide
     if (!principal.equals(usuario.principal())) {
       throw new org.springframework.security.authentication.BadCredentialsException("Credenciales inválidas o vencidas");
     }
-    return UsernamePasswordAuthenticationToken.authenticated(usuario.principal(), null, usuario.getAuthorities());
+    var autenticacion = UsernamePasswordAuthenticationToken.authenticated(usuario.principal(), null, usuario.getAuthorities());
+    autenticacion.setDetails(usuario);
+    return autenticacion;
   }
 
   @Override

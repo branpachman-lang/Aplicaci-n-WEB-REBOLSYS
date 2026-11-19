@@ -26,10 +26,9 @@ public class AuthServiceImpl implements AuthService {
 
   @Override
   public AutenticacionResponseDTO iniciar(LoginRequestDTO datos) {
-    // No envolver en otra transacción: los intentos fallidos deben persistir aunque falle el acceso.
     var autenticacion = authenticationManager.authenticate(
         UsernamePasswordAuthenticationToken.unauthenticated(datos.usuario(), datos.contrasena()));
-    return autenticar((CredencialesService.Principal) autenticacion.getPrincipal());
+    return autenticar((UsuarioDetailsService.Detalle) autenticacion.getDetails());
   }
 
   @Override
@@ -45,7 +44,7 @@ public class AuthServiceImpl implements AuthService {
     }
     var nuevo = credenciales.cambiar(principal, datos.actual(), datos.nueva());
     if (tokenActual != null) jwt.revocar(tokenActual);
-    return autenticar(nuevo);
+    return autenticar(usuarios.cargar(nuevo.idUsuario()));
   }
 
   @Override
@@ -54,11 +53,12 @@ public class AuthServiceImpl implements AuthService {
     SecurityContextHolder.clearContext();
   }
 
-  private AutenticacionResponseDTO autenticar(CredencialesService.Principal principal) {
-    var usuario = usuarios.cargar(principal.idUsuario());
+  private AutenticacionResponseDTO autenticar(UsuarioDetailsService.Detalle usuario) {
     var contexto = SecurityContextHolder.createEmptyContext();
-    contexto.setAuthentication(UsernamePasswordAuthenticationToken.authenticated(
-        usuario.principal(), null, usuario.getAuthorities()));
+    var autenticacion = UsernamePasswordAuthenticationToken.authenticated(
+        usuario.principal(), null, usuario.getAuthorities());
+    autenticacion.setDetails(usuario);
+    contexto.setAuthentication(autenticacion);
     SecurityContextHolder.setContext(contexto);
     sesion.limpiarCache();
     var token = jwt.emitir(usuario.principal(), politica.minutosInactividad());

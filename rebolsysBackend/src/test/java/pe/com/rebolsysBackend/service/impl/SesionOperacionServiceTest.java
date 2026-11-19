@@ -10,6 +10,8 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+import org.springframework.mock.web.MockHttpServletRequest;
 import pe.com.rebolsysBackend.dto.SesionActualDTO;
 import pe.com.rebolsysBackend.entity.*;
 import pe.com.rebolsysBackend.repository.*;
@@ -89,5 +91,29 @@ class SesionOperacionServiceTest {
   @Test void unaEtiquetaDeSesionNoConcedePermisos() {
     var sesion = new SesionActualDTO(130L, "recepcion.flujo", "LEGADO", 101L, 1L);
     assertThat(sesion.tiene("RESERVAS:CREAR")).isFalse();
+  }
+
+  @Test void reutilizaLosDatosValidadosYElTurnoSoloDuranteLaPeticion() {
+    var perfil = new AccesosService.PerfilAcceso(List.of(1L), List.of(AccesosService.RECEPCIONISTA),
+        List.of(), List.of("RESERVAS:VER"));
+    var validado = new UsuarioDetailsService.Detalle(principal, usuario.getUsername(), List.of(), false, perfil);
+    var autenticacion = UsernamePasswordAuthenticationToken.authenticated(principal, null, List.of());
+    autenticacion.setDetails(validado);
+    SecurityContextHolder.getContext().setAuthentication(autenticacion);
+    RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(new MockHttpServletRequest()));
+    var primera = servicio.actual();
+    assertThat(servicio.actual()).isSameAs(primera);
+    verifyNoInteractions(credenciales, accesos);
+    verify(turnos).findByUsuarioIdUsuarioAndEstadoSesionAndFechaCierreIsNullOrderByIdTurno(130L, 1);
+  }
+
+  @Test void noReutilizaElDetalleDeOtraCredencial() {
+    var otro = new CredencialesService.Principal(130L, "credencial-anterior");
+    var autenticacion = UsernamePasswordAuthenticationToken.authenticated(principal, null, List.of());
+    autenticacion.setDetails(new UsuarioDetailsService.Detalle(otro, "cuenta-anterior", List.of(), true, null));
+    SecurityContextHolder.getContext().setAuthentication(autenticacion);
+    assertThat(servicio.actual().requiereCambio()).isFalse();
+    verify(credenciales).vigente(principal);
+    verify(accesos).perfil(130L);
   }
 }

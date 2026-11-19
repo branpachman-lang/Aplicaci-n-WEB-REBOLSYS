@@ -72,6 +72,19 @@ La [colección JWT](api/postman/seguridad-jwt.postman_collection.json) prueba in
 
 Gerencia y recepción recuperan su turno abierto al iniciar sesión. Si el usuario carece de turno abierto, se abre uno con monto base S/ 0.00. En el primer acceso con clave temporal, la apertura ocurre al establecer la contraseña definitiva. Cerrar sesión conserva el turno de caja.
 
+Angular reutiliza la sesión recibida al iniciar o cambiar la contraseña. En las navegaciones
+posteriores consulta `/sesion/actual` una vez, compartiendo el resultado entre los guards
+anidados, el encabezado y los formularios. El cierre de caja usa `SesionService.refrescar()`
+para cancelar una consulta anterior y obtener el turno actualizado. Salir o cambiar de
+cuenta cancela las consultas pendientes. Los cambios de permisos realizados por otro
+usuario se reflejan en la siguiente navegación; cada operación de la API comprueba los
+permisos actuales aunque la pantalla todavía muestre los anteriores.
+
+En la API, el filtro JWT carga cuenta y permisos en cada petición y coloca sus datos
+validados en `Authentication.details`. `SesionOperacionService` los reutiliza solo cuando
+corresponden al mismo principal. El contexto es transitorio: no se comparte entre
+peticiones, no se devuelve en el JSON y no contiene la contraseña ni su hash BCrypt.
+
 ## Empleados, usuarios y roles
 
 Las rutas de esta tabla empiezan con `/api/v1/seguridad`.

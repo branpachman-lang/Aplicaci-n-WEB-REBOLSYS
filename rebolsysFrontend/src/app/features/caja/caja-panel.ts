@@ -196,6 +196,6 @@ export class CajaPanel {
     this.cierre.set(null);
     this.avisos.mostrar(mensaje);
     this.cargar(0, turno.idTurno);
-    this.sesion.cargar(true).pipe(takeUntilDestroyed(this.destroy)).subscribe({ error: () => {} });
+    this.sesion.refrescar().pipe(takeUntilDestroyed(this.destroy)).subscribe({ error: () => {} });
   }
 }
