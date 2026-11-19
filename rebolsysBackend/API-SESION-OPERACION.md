@@ -1,15 +1,9 @@
-# Usuario de operación en desarrollo
+# Usuario autenticado de operación
 
-El perfil `dev` admite una sesión de prueba centralizada si se configura
-`SESION_PRUEBA_HABILITADA=true`. El inicio de sesión con contraseña y permisos
-está activo por defecto y se documenta en [API-SEGURIDAD.md](API-SEGURIDAD.md).
-En el modo de prueba, `GET /api/v1/sesion/actual`
-devuelve `idUsuario`, `usuario`, `modo`, `idTurno` e `idFormaPagoEfectivo`. El usuario
-se resuelve en la base por el nombre configurado, no tomando el primer usuario
-del catálogo. Por defecto es `operacion_local`; puede configurarse con
-`SESION_PRUEBA_USUARIO`. Debe existir y estar ACTIVO.
-
-El modo de prueba está previsto para validaciones locales de los módulos operativos.
+Todos los perfiles requieren iniciar sesión con sus credenciales y enviar JWT Bearer.
+GET /api/v1/sesion/actual devuelve el usuario autenticado, sus permisos y su turno.
+No se selecciona automáticamente una cuenta del catálogo ni existe un operador predeterminado.
+Consulta [API-SEGURIDAD.md](API-SEGURIDAD.md) para el flujo de autenticación.
 
 ## Escrituras y turno
 
@@ -18,10 +12,10 @@ operación activo. En los DTO de operaciones, el `idUsuario` omitido se completa
 antes de validar la solicitud; un identificador diferente al actual se rechaza.
 Los DTO de cobro/comprobante también reciben el turno actual si se omitió. Un
 turno de otro usuario o la falta de un único turno abierto se rechazan con un
-mensaje de negocio. La sesión de prueba usa un turno existente. La sesión con contraseña abre un turno con monto base cero para gerencia y recepción cuando corresponde.
+mensaje de negocio. El inicio de sesión abre o recupera un turno con monto base cero para gerencia y recepción cuando corresponde.
 
 El frontend comparte esta sesión mediante SesionService e incorpora el usuario
-en las escrituras de los módulos. La cabecera muestra el usuario de prueba y los
+en las escrituras de los módulos. La cabecera muestra el usuario autenticado y los
 formularios no permiten elegir otro operador. Los catálogos que usan los
 formularios se limitan al usuario actual y al turno abierto de su sesión.
 
@@ -29,8 +23,8 @@ Las operaciones HTTP exitosas se registran en AUDITORIA_GENERAL con usuario,
 tabla, identificador, acción, fecha, IP y método/ruta. Se registra la operación,
 sin copiar documentos personales ni credenciales al historial genérico. Los
 registros específicos de reservas, ventas, caja e inventario conservan además
-su responsable habitual. Las pruebas de servicios con actores aislados desactivan
-el contexto HTTP de prueba; sus transacciones se revierten al terminar.
+su responsable habitual. Las pruebas de servicios con actores aislados aíslan
+el contexto HTTP; sus transacciones se revierten al terminar.
 
 ## Venta hasta el cobro
 

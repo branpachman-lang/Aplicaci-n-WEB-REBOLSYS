@@ -20,7 +20,7 @@ import pe.com.rebolsysBackend.service.service.AuthService;
 @RequestMapping("/api/v1/sesion")
 @Tag(name = "sesion-operacion-controller")
 @RequiredArgsConstructor
-@PreAuthorize("@sesionOperacionService.esPrueba() or isAuthenticated()")
+@PreAuthorize("isAuthenticated()")
 public class AuthController {
   private final AuthService auth;
 

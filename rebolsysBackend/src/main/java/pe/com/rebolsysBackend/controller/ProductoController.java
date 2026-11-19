@@ -33,7 +33,7 @@ public class ProductoController {
     this.productoService = productoService;
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('PRODUCTOS:VER')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('PRODUCTOS:VER')")
   @GetMapping
   public ResponseEntity<PaginaResponseDTO<ProductoResponseDTO>> listar(
       @RequestParam(defaultValue = "0") @Min(value = 0, message = "La página no puede ser negativa")
@@ -49,47 +49,47 @@ public class ProductoController {
     return ResponseEntity.ok(productoService.listar(pagina, tamanio, buscar, idCategoria, estado, stockBajo));
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAnyAuthority('PRODUCTOS:VER', 'VENTAS:CREAR', 'VENTAS:CREAR_Y_CONFIRMAR', 'VENTAS:EDITAR', 'RESERVAS:REGISTRAR_CONSUMO')")
+  @PreAuthorize("hasRole('GERENTE') or hasAnyAuthority('PRODUCTOS:VER', 'VENTAS:CREAR', 'VENTAS:CREAR_Y_CONFIRMAR', 'VENTAS:EDITAR', 'RESERVAS:REGISTRAR_CONSUMO')")
   @GetMapping("/catalogo")
   public ResponseEntity<List<ProductoResponseDTO>> catalogo() {
     return ResponseEntity.ok(productoService.catalogo());
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('PRODUCTOS:VER')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('PRODUCTOS:VER')")
   @GetMapping("/{id}")
   public ResponseEntity<ProductoResponseDTO> read(@PathVariable Long id) {
     return ResponseEntity.ok(productoService.read(id));
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('PRODUCTOS:CREAR')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('PRODUCTOS:CREAR')")
   @PostMapping
   public ResponseEntity<ProductoResponseDTO> create(
       @Valid @RequestBody ProductoRequestDTO request) {
     return ResponseEntity.status(HttpStatus.CREATED).body(productoService.create(request));
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('PRODUCTOS:EDITAR')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('PRODUCTOS:EDITAR')")
   @PutMapping("/{id}")
   public ResponseEntity<ProductoResponseDTO> update(
       @PathVariable Long id, @Valid @RequestBody ProductoRequestDTO request) {
     return ResponseEntity.ok(productoService.update(id, request));
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('PRODUCTOS:ELIMINAR')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('PRODUCTOS:ELIMINAR')")
   @DeleteMapping("/{id}")
   public ResponseEntity<Void> delete(@PathVariable Long id) {
     productoService.delete(id);
     return ResponseEntity.noContent().build();
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('PRODUCTOS:AJUSTAR_STOCK')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('PRODUCTOS:AJUSTAR_STOCK')")
   @PostMapping("/{id}/ajustes-stock")
   public ProductoResponseDTO ajustar(
       @PathVariable Long id, @Valid @RequestBody pe.com.rebolsysBackend.dto.AjusteStockDTO r) {
     return productoService.ajustarStock(id, r);
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('PRODUCTOS:VER_MOVIMIENTOS')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('PRODUCTOS:VER_MOVIMIENTOS')")
   @GetMapping("/{id}/movimientos")
   public List<pe.com.rebolsysBackend.dto.MovimientoRespuestaDTO> movimientos(
       @PathVariable Long id) {

@@ -16,32 +16,32 @@ import pe.com.rebolsysBackend.service.service.TipoHabitacionService;
 public class TipoHabitacionController {
   private final TipoHabitacionService servicio;
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('HABITACIONES:VER')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('HABITACIONES:VER')")
   @GetMapping
   public Iterable<TipoHabitacionResponseDTO> listar() {
     return servicio.readAll();
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('HABITACIONES:VER')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('HABITACIONES:VER')")
   @GetMapping("/{id}")
   public TipoHabitacionResponseDTO obtener(@PathVariable Long id) {
     return servicio.read(id);
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('HABITACIONES:CREAR_TIPO')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('HABITACIONES:CREAR_TIPO')")
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
   public TipoHabitacionResponseDTO crear(@Valid @RequestBody TipoHabitacionRequestDTO r) {
     return servicio.create(r);
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('HABITACIONES:EDITAR_TIPO')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('HABITACIONES:EDITAR_TIPO')")
   @PutMapping("/{id}")
   public TipoHabitacionResponseDTO editar(@PathVariable Long id, @Valid @RequestBody TipoHabitacionRequestDTO r) {
     return servicio.update(id, r);
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('HABITACIONES:ELIMINAR_TIPO')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('HABITACIONES:ELIMINAR_TIPO')")
   @DeleteMapping("/{id}")
   @ResponseStatus(HttpStatus.NO_CONTENT)
   public void eliminar(@PathVariable Long id) {

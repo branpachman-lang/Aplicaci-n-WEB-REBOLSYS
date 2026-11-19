@@ -18,7 +18,7 @@ import pe.com.rebolsysBackend.service.impl.EvidenciaLimpiezaService;
 public class EvidenciaLimpiezaController {
   private final EvidenciaLimpiezaService evidencias;
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('LIMPIEZA:CARGAR_EVIDENCIA')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('LIMPIEZA:CARGAR_EVIDENCIA')")
   @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
   @ResponseStatus(HttpStatus.CREATED)
   @Operation(summary = "Cargar una foto de evidencia para un informe o ticket")
@@ -26,7 +26,7 @@ public class EvidenciaLimpiezaController {
     return evidencias.guardar(archivo);
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('LIMPIEZA:VER_EVIDENCIA')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('LIMPIEZA:VER_EVIDENCIA')")
   @GetMapping(value = "/{nombre}", produces = {MediaType.IMAGE_PNG_VALUE, MediaType.IMAGE_JPEG_VALUE})
   @Operation(operationId = "descargarEvidenciaLimpieza", summary = "Descargar una foto de evidencia de limpieza")
   public ResponseEntity<Resource> obtener(@PathVariable String nombre) {

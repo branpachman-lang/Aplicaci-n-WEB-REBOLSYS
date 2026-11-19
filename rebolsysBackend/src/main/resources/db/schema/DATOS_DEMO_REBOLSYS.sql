@@ -1,6 +1,6 @@
 -- Datos ficticios para el esquema Oracle de «DDL Actual.txt». Ejecutar con autocommit desactivado.
 -- Si el esquema está vacío, el lote RB01 prepara 20 habitaciones y un operador demo sin credencial.
--- Con datos existentes se usan las habitaciones actuales y un usuario activo, de preferencia operacion_local.
+-- Con datos existentes se usan las habitaciones actuales y un usuario activo, sin preferir ninguna cuenta de desarrollo.
 -- La fecha de referencia es el día de ejecución en Lima.
 -- Se necesitan 10 habitaciones aptas para estancias en curso y otras 10 libres para los informes pendientes.
 -- Los estados físicos de las habitaciones existentes y las fotos se gestionan desde la aplicación.
@@ -205,7 +205,7 @@ SELECT c.idPerfil, u.idUsuario,
        LOWER(RAWTOHEX(STANDARD_HASH('RB01-RES-' || LPAD(c.n, 4, '0'), 'SHA256')))
 FROM titulares c CROSS JOIN reloj f
 JOIN usuario u ON u.idUsuario = (
-    SELECT MIN(a.idUsuario) KEEP (DENSE_RANK FIRST ORDER BY CASE WHEN a.username = 'operacion_local' THEN 0 ELSE 1 END)
+    SELECT MIN(a.idUsuario)
     FROM usuario a WHERE a.estadoUsuario = 'ACTIVO'
 )
 WHERE NOT EXISTS (SELECT 1 FROM reserva r WHERE r.claveRegistro = 'RB01-RES-' || LPAD(c.n, 4, '0'));
@@ -432,7 +432,7 @@ SELECT p.idProducto, t.idTipoMovimientoAlmacen, p.stock + p.vendido, p.stock + p
        'RB01-STOCK-' || p.idProducto
 FROM entradas p JOIN tipo_movimiento_almacen t ON t.codigo = 'AJ_ENT' AND t.signo = 1
 JOIN usuario u ON u.idUsuario = (
-    SELECT MIN(a.idUsuario) KEEP (DENSE_RANK FIRST ORDER BY CASE WHEN a.username = 'operacion_local' THEN 0 ELSE 1 END)
+    SELECT MIN(a.idUsuario)
     FROM usuario a WHERE a.estadoUsuario = 'ACTIVO'
 )
 WHERE p.stock + p.vendido > 0
@@ -609,7 +609,7 @@ SELECT i.idItem, i.idHabitacion, t.idTipoMovimientoAlmacen, 1, u.idUsuario,
 FROM item i JOIN habitacion h ON h.idHabitacion = i.idHabitacion AND i.nombreItem LIKE '% [RB01 ' || h.numeroCuarto || ']'
 JOIN tipo_movimiento_almacen t ON t.codigo = 'ASIG_ITEM' AND t.signo = 0
 JOIN usuario u ON u.idUsuario = (
-    SELECT MIN(a.idUsuario) KEEP (DENSE_RANK FIRST ORDER BY CASE WHEN a.username = 'operacion_local' THEN 0 ELSE 1 END)
+    SELECT MIN(a.idUsuario)
     FROM usuario a WHERE a.estadoUsuario = 'ACTIVO'
 )
 WHERE i.estadoItem = 'EN_HABITACION'

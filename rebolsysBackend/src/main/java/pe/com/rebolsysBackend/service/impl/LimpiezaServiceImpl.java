@@ -337,7 +337,7 @@ public class LimpiezaServiceImpl implements LimpiezaService {
   private void exigirMantenimiento(String accion) {
     var actual = sesion.actual();
     if (!actual.tiene("LIMPIEZA:" + accion)
-        || (!"PRUEBA".equals(actual.modo()) && !actual.roles().contains(AccesosService.MANTENIMIENTO))) {
+        || !actual.roles().contains(AccesosService.MANTENIMIENTO)) {
       throw new AccessDeniedException("Esta acción requiere el rol de mantenimiento y el permiso correspondiente");
     }
   }

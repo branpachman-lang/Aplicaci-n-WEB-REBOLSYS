@@ -1,7 +1,6 @@
 package pe.com.rebolsysBackend.security;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.access.AccessDeniedException;
@@ -10,32 +9,16 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import pe.com.rebolsysBackend.dto.SesionActualDTO;
-import pe.com.rebolsysBackend.enums.EstadoUsuario;
 import pe.com.rebolsysBackend.repository.*;
-import static pe.com.rebolsysBackend.service.impl.ReglasPropuesta.exigir;
 
 @Service
 @RequiredArgsConstructor
 public class SesionOperacionService {
   public static final String ATRIBUTO = "rebolsys.sesion.actual";
-  private final UsuarioRepository usuarios;
   private final TurnoCajaRepository turnos;
   private final FormaPagoRepository pagos;
   private final CredencialesService credenciales;
   private final AccesosService accesos;
-  @Value("${app.sesion-prueba.habilitada:false}")
-  private boolean habilitada;
-  @Value("${app.sesion-prueba.usuario:operacion_local}")
-  private String username;
-
-  /** Excepción operativa local existente; SecurityConfig impide habilitarla en producción. */
-  public boolean esPrueba() {
-    var autenticacion = SecurityContextHolder.getContext().getAuthentication();
-    return habilitada && !(autenticacion != null
-        && autenticacion.getPrincipal() instanceof CredencialesService.Principal)
-        && "PRUEBA".equals(actual().modo());
-  }
-
   public void limpiarCache() {
     if (RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes atributos) {
       atributos.getRequest().removeAttribute(ATRIBUTO);
@@ -60,13 +43,7 @@ public class SesionOperacionService {
       if (request != null) request.setAttribute(ATRIBUTO, actual);
       return actual;
     }
-    if (!habilitada) throw new AuthenticationCredentialsNotFoundException("Inicia sesión para continuar");
-    var usuario = usuarios.findByUsername(username).orElseThrow(() -> new pe.com.rebolsysBackend.exception.ReglaNegocioException("El usuario de la sesión de prueba no existe"));
-    exigir(usuario.getEstadoUsuario() == EstadoUsuario.ACTIVO, "El usuario de la sesión debe estar activo");
-    var actual = new SesionActualDTO(usuario.getIdUsuario(), usuario.getUsername(), "PRUEBA",
-            turno(usuario.getIdUsuario()), efectivo());
-    if (request != null) request.setAttribute(ATRIBUTO, actual);
-    return actual;
+    throw new AuthenticationCredentialsNotFoundException("Inicia sesión para continuar");
   }
 
   public static SesionActualDTO enPeticion() {

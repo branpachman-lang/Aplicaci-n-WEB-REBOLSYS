@@ -37,8 +37,7 @@ BEGIN
         RAISE_APPLICATION_ERROR(-20011, 'RB02 tiene una carga parcial. Revisa las filas antes de repetirla.');
     END IF;
 
-    SELECT MIN(u.idUsuario) KEEP (DENSE_RANK FIRST ORDER BY
-        CASE WHEN u.username IN ('operacion_local', 'rb01_operador_demo') THEN 0 ELSE 1 END)
+    SELECT MIN(u.idUsuario)
     INTO v_usuario FROM usuario u WHERE u.estadoUsuario = 'ACTIVO';
     SELECT MIN(tc.idTipoComprobante) INTO v_tipo_cuenta
     FROM tipo_comprobante tc JOIN serie_comprobante s ON s.idTipoComprobante = tc.idTipoComprobante

@@ -11,7 +11,7 @@
   <h1>{{ titulo() }}</h1>
   @if(sesion.actual();as s){
     <span class="session-user">{{s.usuario}}
-      <small>{{ s.modo === 'PRUEBA' ? 'Sesión de prueba' : (s.roles?.join(', ') || 'Sesión activa') }}</small>
+      <small>{{ s.roles?.join(', ') || 'Sesión activa' }}</small>
       @if (s.idTurno) { <small>Turno #{{ s.idTurno }} abierto</small> }
     </span>
     @if (s.modo === 'ACTIVA') { <button class="button small" (click)="cerrarSesion()">Cerrar sesión</button> }

@@ -19,7 +19,7 @@ public class ClienteController {
         this.clienteService = clienteService;
     }
 
-    @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('CLIENTES:VER')")
+    @PreAuthorize("hasRole('GERENTE') or hasAuthority('CLIENTES:VER')")
     @GetMapping
     public ResponseEntity<ClienteResumenResponseDTO> buscar(
         @RequestParam Long tipoDocumento,

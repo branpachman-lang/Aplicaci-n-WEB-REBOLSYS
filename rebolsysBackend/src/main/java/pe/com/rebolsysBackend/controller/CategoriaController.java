@@ -27,32 +27,32 @@ public class CategoriaController {
         this.categoriaService = categoriaService;
     }
 
-    @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('PRODUCTOS:VER')")
+    @PreAuthorize("hasRole('GERENTE') or hasAuthority('PRODUCTOS:VER')")
     @GetMapping
     public ResponseEntity<Iterable<CategoriaResponseDTO>> readAll() {
         return ResponseEntity.ok(categoriaService.readAll());
     }
 
-    @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('PRODUCTOS:CREAR_CATEGORIA')")
+    @PreAuthorize("hasRole('GERENTE') or hasAuthority('PRODUCTOS:CREAR_CATEGORIA')")
     @PostMapping
     public ResponseEntity<CategoriaResponseDTO> create(@Valid @RequestBody CategoriaRequestDTO request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(categoriaService.create(request));
     }
 
-    @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('PRODUCTOS:VER')")
+    @PreAuthorize("hasRole('GERENTE') or hasAuthority('PRODUCTOS:VER')")
     @GetMapping("/{id}")
     public ResponseEntity<CategoriaResponseDTO> read(@PathVariable Long id) {
         return ResponseEntity.ok(categoriaService.read(id));
     }
 
-    @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('PRODUCTOS:EDITAR_CATEGORIA')")
+    @PreAuthorize("hasRole('GERENTE') or hasAuthority('PRODUCTOS:EDITAR_CATEGORIA')")
     @PutMapping("/{id}")
     public ResponseEntity<CategoriaResponseDTO> update(
             @PathVariable Long id, @Valid @RequestBody CategoriaRequestDTO request) {
         return ResponseEntity.ok(categoriaService.update(id, request));
     }
 
-    @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('PRODUCTOS:ELIMINAR_CATEGORIA')")
+    @PreAuthorize("hasRole('GERENTE') or hasAuthority('PRODUCTOS:ELIMINAR_CATEGORIA')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         categoriaService.delete(id);

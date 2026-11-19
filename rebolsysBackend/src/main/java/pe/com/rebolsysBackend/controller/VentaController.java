@@ -20,7 +20,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 public class VentaController {
   private final VentaService servicio;
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('VENTAS:CREAR')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('VENTAS:CREAR')")
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
   @Operation(summary = "Crear borrador de venta con varios productos")
@@ -29,7 +29,7 @@ public class VentaController {
   }
 
   //venta producto
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('VENTAS:CREAR_Y_CONFIRMAR')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('VENTAS:CREAR_Y_CONFIRMAR')")
   @PostMapping("/confirmadas")
   @ResponseStatus(HttpStatus.CREATED)
   @Operation(summary = "Registrar y confirmar venta completa en una sola operación")
@@ -37,20 +37,20 @@ public class VentaController {
     return servicio.registrarConfirmada(r);
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('VENTAS:EDITAR')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('VENTAS:EDITAR')")
   @PutMapping("/{id}")
   @Operation(summary = "Editar comprador y productos de una venta en borrador")
   public VentaResponseDTO editar(@PathVariable Long id, @Valid @RequestBody VentaEditarDTO r) {
     return servicio.editar(id, r);
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('VENTAS:VER')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('VENTAS:VER')")
   @GetMapping("/{id}")
   public VentaResponseDTO obtener(@PathVariable Long id) {
     return servicio.obtener(id);
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('VENTAS:VER')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('VENTAS:VER')")
   @GetMapping
   public PaginaResponseDTO<VentaResponseDTO> listar(
       @RequestParam(defaultValue = "0") @Min(0) int pagina,
@@ -58,7 +58,7 @@ public class VentaController {
     return servicio.listar(pagina, tamanio);
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('VENTAS:CONFIRMAR')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('VENTAS:CONFIRMAR')")
   @PostMapping("/{id}/confirmacion")
   @Operation(summary = "Confirmar el carrito y descontar stock de todos sus productos")
   public VentaResponseDTO confirmar(
@@ -66,7 +66,7 @@ public class VentaController {
     return servicio.confirmar(id, r);
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('VENTAS:ANULAR')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('VENTAS:ANULAR')")
   @PostMapping("/{id}/anulacion")
   @Operation(summary = "Anular venta sin cuenta ni cobros y reponer stock")
   public VentaResponseDTO anular(@PathVariable Long id, @Valid @RequestBody OperacionUsuarioDTO r) {

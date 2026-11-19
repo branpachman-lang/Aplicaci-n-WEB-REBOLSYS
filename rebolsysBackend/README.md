@@ -105,8 +105,8 @@ hasta 500 caracteres (migración V13). Para reponer o corregir existencias se us
 `POST /productos/{id}/ajustes-stock`, indicando operador, saldo observado, saldo
 nuevo, motivo y clave. Editar los datos del producto conserva las existencias.
 
-El perfil dev centraliza el usuario de prueba en `/api/v1/sesion/actual`, por
-defecto `operacion_local`, y comprueba que esté activo para las escrituras.
+Todos los perfiles requieren credenciales y JWT Bearer. El usuario autenticado se
+consulta en `/api/v1/sesion/actual`; no existe un operador automático de desarrollo.
 Completa el actor/turno de los DTO de operación y rechaza valores de otra sesión.
 Las operaciones HTTP exitosas se registran en AUDITORIA_GENERAL. Véase
 [API-SESION-OPERACION.md](API-SESION-OPERACION.md), incluido el flujo de confirmación

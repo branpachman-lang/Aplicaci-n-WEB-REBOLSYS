@@ -57,6 +57,7 @@ proxy.qa.json
 !src/app/core/services/token-service.spec.ts
 !src/app/core/services/proteccion-sesion-interceptor.spec.ts
 !src/app/core/services/sesion-service.spec.ts
+!src/app/core/services/permisos-ui.spec.ts
 !src/app/shared/directives/archivo-protegido.spec.ts
 !tsconfig.spec.json
 .env

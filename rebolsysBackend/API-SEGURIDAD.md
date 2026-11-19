@@ -19,7 +19,7 @@ El recorrido del acceso es `AuthController → AuthServiceImpl → Authenticatio
 
 En una petición protegida, el filtro valida el JWT y carga las autoridades desde Oracle; Spring Security evalúa `@PreAuthorize` antes de ejecutar el método. `PermisosEndpoint` solo extrae los códigos de esas anotaciones para el catálogo asignable y OpenAPI; no autoriza solicitudes. Los permisos siguen siendo editables desde Seguridad y se aplican en la siguiente petición. `ACCESO_OPERATIVO` es una autoridad interna para consultar catálogos; nunca se asigna a cuentas pendientes de cambiar su contraseña temporal.
 
-`SesionWebConfig` prepara el usuario y turno de la petición para las reglas de negocio y la auditoría. No decide permisos. Se retiraron `@Acceso`, `AccesoInterceptor` y `AccesosWebConfig`. El modo local de pruebas conserva su excepción operativa y no habilita funciones exclusivas de gerencia; producción lo rechaza.
+`SesionWebConfig` prepara el usuario y turno de la petición para las reglas de negocio y la auditoría. No decide permisos. Se retiraron `@Acceso`, `AccesoInterceptor` y `AccesosWebConfig`. Todos los perfiles exigen autenticación JWT; no existe una excepción de acceso automático para desarrollo.
 
 Esta reorganización conserva las rutas `/api/v1/sesion`, los nombres JSON, los cuatro roles, la renovación y revocación existentes. No requiere ejecutar SQL ni cambiar el frontend.
 
@@ -28,21 +28,21 @@ Como en Pharma, MVC valida los argumentos antes de invocar el método protegido.
 ## Preparar el gerente inicial
 
 1. En una instalación existente, ejecutar [V15](src/main/resources/db/iteration/V15__credencial_temporal.sql) como `PropuestaHospedajeRB` después de V14. El DDL para una instalación nueva ya incluye la columna de vencimiento.
-2. Elegir una cuenta activa de un empleado existente que deba administrar el sistema. Para una prueba local se puede usar el operador de [DATOS_INICIALES_PROPUESTA.sql](src/main/resources/db/schema/DATOS_INICIALES_PROPUESTA.sql).
+2. Elegir una cuenta activa de un empleado existente que deba administrar el sistema. Los scripts iniciales cargan catálogos y no crean cuentas ni turnos automáticos.
 3. Arrancar una instancia con `REBOLSYS_GERENTE_USUARIO` y `REBOLSYS_GERENTE_PASSWORD_TEMPORAL` en su entorno privado. La contraseña debe tener al menos 15 caracteres y ocupar como máximo 72 bytes. La preparación inicial asigna el rol protegido `GERENTE`. Los arranques posteriores conservan su contraseña.
 4. Retirar las variables de preparación después del primer arranque. Iniciar sesión en `/login` y elegir una contraseña nueva. Después aparece el menú **Seguridad**.
 
-El inicio de sesión real está activo por defecto. Los flujos locales antiguos pueden usar `SESION_PRUEBA_HABILITADA=true` en `dev`; en ese modo se omite la autenticación de los módulos operativos y se bloquea el módulo de seguridad. Producción rechaza ese modo y exige `JWT_SECRET` en Base64 con al menos 32 bytes. Usa HTTPS en producción. Angular conserva el JWT en `sessionStorage` y lo envía únicamente a la API mediante `Authorization: Bearer <token>`.
+El inicio de sesión con credenciales es obligatorio en todos los perfiles. Producción exige `JWT_SECRET` en Base64 con al menos 32 bytes. Usa HTTPS en producción. Angular conserva el JWT en `sessionStorage` y lo envía únicamente a la API mediante `Authorization: Bearer <token>`.
 
 ## Probar en el equipo local
 
 En SQL Developer, conéctate como `PropuestaHospedajeRB` y ejecuta como script (F5) [V14](src/main/resources/db/iteration/V14__flujo_limpieza.sql) y luego [V15](src/main/resources/db/iteration/V15__credencial_temporal.sql). En una instalación actualizada, ambos scripts se pueden volver a ejecutar.
 
-En PowerShell 7, abre una terminal en `rebolsysBackend`. Para el primer arranque con la cuenta de prueba `operacion_local` ya activa, ejecuta lo siguiente. Elige una contraseña temporal de al menos 15 caracteres y hasta 72 bytes.
+En PowerShell 7, abre una terminal en `rebolsysBackend`. Para el primer arranque con una cuenta existente y activa, ejecuta lo siguiente. Elige una contraseña temporal de al menos 15 caracteres y hasta 72 bytes.
 
 ```powershell
 $env:JAVA_HOME = "$env:USERPROFILE\.jdks\ms-21.0.12.1"
-$env:REBOLSYS_GERENTE_USUARIO = 'operacion_local'
+$env:REBOLSYS_GERENTE_USUARIO = Read-Host 'Usuario existente para gerencia'
 $env:REBOLSYS_GERENTE_PASSWORD_TEMPORAL = Read-Host 'Contraseña temporal del gerente' -MaskInput
 try {
     .\mvnw.cmd spring-boot:run

@@ -19,12 +19,12 @@ public class CatalogoController {
         this.catalogoService = catalogoService;
     }
 
-    @PreAuthorize("@sesionOperacionService.esPrueba() or hasAuthority('ACCESO_OPERATIVO')")
+    @PreAuthorize("hasAuthority('ACCESO_OPERATIVO')")
     @GetMapping
     public ResponseEntity<CatalogosResponseDTO> listar() {
         var datos = catalogoService.catalogos();
         var actual = SesionOperacionService.enPeticion();
-        if (actual == null || "PRUEBA".equals(actual.modo())) return ResponseEntity.ok(datos);
+        if (actual == null) throw new org.springframework.security.authentication.AuthenticationCredentialsNotFoundException("Inicia sesión para continuar");
         return ResponseEntity.ok(new CatalogosResponseDTO(datos.tiposDocumento(), datos.formasPago(),
             datos.tiposHabitacion(), datos.tiposItem(), datos.tiposGasto(),
             datos.usuarios().stream().filter(u -> u.id().equals(actual.idUsuario())).toList(),

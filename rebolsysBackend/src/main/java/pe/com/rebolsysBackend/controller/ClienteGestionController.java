@@ -14,20 +14,20 @@ import pe.com.rebolsysBackend.service.service.ClienteService;
 public class ClienteGestionController {
   private final ClienteService servicio;
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('CLIENTES:VER')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('CLIENTES:VER')")
   @GetMapping("/{id}")
   public ClienteDetalleDTO obtener(@PathVariable Long id) {
       return servicio.obtener(id);
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('CLIENTES:CREAR')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('CLIENTES:CREAR')")
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
   public ClienteDetalleDTO crear(@Valid @RequestBody ClienteGuardarDTO r) {
       return servicio.guardar(null, r);
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('CLIENTES:EDITAR')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('CLIENTES:EDITAR')")
   @PutMapping("/{id}")
   public ClienteDetalleDTO editar(@PathVariable Long id, @Valid @RequestBody ClienteGuardarDTO r) {
       return servicio.guardar(id, r);

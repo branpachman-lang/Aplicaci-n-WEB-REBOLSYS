@@ -3,7 +3,7 @@ package pe.com.rebolsysBackend.limpieza;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 
 import jakarta.persistence.EntityManager;
 import java.awt.image.BufferedImage;
@@ -26,7 +26,8 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.context.WebApplicationContext;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.client.RestClient;
 import pe.com.rebolsysBackend.dto.ItemAsignacionDTO;
@@ -35,6 +36,9 @@ import pe.com.rebolsysBackend.entity.*;
 import pe.com.rebolsysBackend.enums.*;
 import pe.com.rebolsysBackend.service.impl.ReglasPropuesta;
 import pe.com.rebolsysBackend.security.SesionOperacionService;
+import pe.com.rebolsysBackend.security.AccesosService;
+import pe.com.rebolsysBackend.security.CredencialesService;
+import pe.com.rebolsysBackend.security.JwtService;
 import pe.com.rebolsysBackend.service.service.ItemService;
 import pe.com.rebolsysBackend.service.service.ProveedorFacturacionClient;
 import tools.jackson.databind.JsonNode;
@@ -46,7 +50,6 @@ import tools.jackson.databind.ObjectMapper;
     "spring.datasource.driver-class-name=org.h2.Driver", "spring.jpa.database-platform=org.hibernate.dialect.H2Dialect",
     "spring.jpa.hibernate.ddl-auto=create-drop", "spring.jpa.show-sql=false",
     "springdoc.api-docs.version=OPENAPI_3_0",
-    "app.sesion-prueba.habilitada=true", "app.sesion-prueba.usuario=prueba_limpieza",
     "app.limpieza.directorio-evidencias=target/evidencias-limpieza-test"
 })
 @AutoConfigureMockMvc
@@ -58,17 +61,21 @@ class FlujoLimpiezaTest {
   @Autowired EntityManager em;
   @Autowired TransactionTemplate tx;
   @Autowired ItemService items;
+  @Autowired WebApplicationContext contexto;
+  @Autowired AccesosService accesos;
+  @Autowired CredencialesService credenciales;
+  @Autowired JwtService jwt;
   @MockitoBean(name = "apisPeruRestClient") RestClient consultaDocumentos;
   @MockitoBean ProveedorFacturacionClient facturacion;
   private Long habitacion;
   private Long item;
   private Long usuarioId;
+  private String contrasenaTemporal;
 
   private RequestPostProcessor actor(SesionActualDTO actual) {
     return request -> {
       request.setAttribute(SesionOperacionService.ATRIBUTO, actual);
-      var autoridades = actual.permisos().stream().map(SimpleGrantedAuthority::new).toList();
-      return user(actual.usuario()).authorities(autoridades).postProcessRequest(request);
+      return request;
     };
   }
 
@@ -86,6 +93,13 @@ class FlujoLimpiezaTest {
       var usuario = new Usuario(null, empleado, "prueba_limpieza", EstadoUsuario.ACTIVO);
       em.persist(usuario);
       usuarioId = usuario.getIdUsuario();
+      var rol = new Rol(null, AccesosService.MANTENIMIENTO);
+      em.persist(rol);
+      em.flush();
+      accesos.permisos(rol.getIdRol(), new java.util.HashSet<>(
+          accesos.catalogo().stream().map(AccesosService.Funcion::codigo).toList()));
+      accesos.vincular(usuarioId, rol.getIdRol());
+      contrasenaTemporal = credenciales.emitir(usuario).contrasenaTemporal();
       var turno = new TurnoCaja();
       turno.setUsuario(usuario);
       turno.setFechaApertura(ReglasPropuesta.ahora().minusHours(1));
@@ -118,6 +132,11 @@ class FlujoLimpiezaTest {
       items.asignar(item, new ItemAsignacionDTO("asignacion-prueba", usuarioId,
           habitacion, EstadoConservacion.DANADO, "Inventario anterior"));
     });
+    var temporal = credenciales.iniciar("prueba_limpieza", contrasenaTemporal);
+    var principal = credenciales.cambiar(temporal, contrasenaTemporal, "Acceso definitivo para el flujo de limpieza");
+    var token = jwt.emitir(principal, 30).token();
+    mvc = MockMvcBuilders.webAppContextSetup(contexto).apply(springSecurity())
+        .defaultRequest(get("/").header("Authorization", "Bearer " + token)).build();
   }
 
   @Test

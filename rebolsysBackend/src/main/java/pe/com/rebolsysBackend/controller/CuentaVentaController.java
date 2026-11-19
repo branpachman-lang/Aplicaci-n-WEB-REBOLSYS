@@ -17,14 +17,14 @@ import pe.com.rebolsysBackend.service.service.CuentaVentaService;
 public class CuentaVentaController {
   private final CuentaVentaService servicio;
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('VENTAS:VER')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('VENTAS:VER')")
   @GetMapping("/cuenta")
   @Operation(summary = "Consultar total, pagos y saldo de una venta separada")
   public CuentaDocumentoDTO cuenta(@PathVariable Long idVenta) {
     return servicio.cuenta(idVenta);
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('VENTAS:COBRAR')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('VENTAS:COBRAR')")
   @PostMapping("/pagos")
   @ResponseStatus(HttpStatus.CREATED)
   @Operation(summary = "Registrar pago parcial o completo de una venta separada")
@@ -32,7 +32,7 @@ public class CuentaVentaController {
     return servicio.pagar(idVenta, request);
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('VENTAS:EMITIR_COMPROBANTE')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('VENTAS:EMITIR_COMPROBANTE')")
   @PostMapping("/comprobantes")
   @Operation(summary = "Emitir boleta o factura interna de una venta separada")
   public CuentaDocumentoDTO emitir(@PathVariable Long idVenta, @Valid @RequestBody ComprobanteCuentaDTO request) {

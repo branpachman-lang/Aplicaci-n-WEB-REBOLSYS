@@ -40,13 +40,13 @@ public class SistemaController {
     return hospedaje.guardarLogo(archivo);
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or isAuthenticated()")
+  @PreAuthorize("isAuthenticated()")
   @GetMapping("/marca")
   public Marca marca() {
     return hospedaje.marca();
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or isAuthenticated()")
+  @PreAuthorize("isAuthenticated()")
   @GetMapping("/marca/logo/{nombre}")
   public ResponseEntity<Resource> logo(@PathVariable String nombre) {
     var logo = hospedaje.logo(nombre);

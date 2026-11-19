@@ -20,7 +20,7 @@ import org.springdoc.core.annotations.ParameterObject;
 public class GastoController {
   private final GastoService servicio;
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('GASTOS:CREAR')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('GASTOS:CREAR')")
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
   @Operation(summary = "Registrar gasto del turno abierto del recepcionista")
@@ -28,21 +28,21 @@ public class GastoController {
     return servicio.registrar(r);
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('GASTOS:VER')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('GASTOS:VER')")
   @GetMapping("/{id}")
   @Operation(summary = "Consultar detalle de un gasto y su responsable")
   public GastoResponseDTO obtener(@PathVariable Long id) {
     return servicio.obtener(id);
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('GASTOS:VER')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('GASTOS:VER')")
   @GetMapping
   @Operation(summary = "Consultar listado anterior de gastos de un turno")
   public List<GastoResponseDTO> listar(@RequestParam @Positive Long idTurno) {
     return servicio.listar(idTurno);
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('GASTOS:VER')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('GASTOS:VER')")
   @GetMapping("/historial")
   @Operation(summary = "Consultar historial filtrable de gastos y total gastado",
           description = "Fechas inclusivas en America/Lima. Página desde cero y tamaño por defecto 20. "
@@ -51,7 +51,7 @@ public class GastoController {
     return servicio.historial(filtros);
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('GASTOS:VER')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('GASTOS:VER')")
   @GetMapping("/tipos")
   @Operation(summary = "Consultar categorías disponibles para registrar o filtrar gastos")
   public List<CatalogoItemResponseDTO> tipos() {

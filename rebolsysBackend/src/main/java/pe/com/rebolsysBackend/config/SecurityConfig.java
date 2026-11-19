@@ -1,9 +1,7 @@
 package pe.com.rebolsysBackend.config;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.env.Environment;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -35,11 +33,7 @@ public class SecurityConfig {
   SecurityFilterChain securityFilterChain(HttpSecurity http,
       @org.springframework.beans.factory.annotation.Qualifier("corsConfigurationSource") CorsConfigurationSource cors,
       JwtService jwt, UsuarioDetailsService usuarios, PoliticaSeguridadService politica,
-      RestAuthenticationEntryPoint autenticacion, RestAccessDeniedHandler acceso,
-      @Value("${app.sesion-prueba.habilitada:false}") boolean prueba, Environment entorno) throws Exception {
-    if (prueba && entorno.matchesProfiles("prod")) {
-      throw new IllegalStateException("La sesión de prueba no está disponible en producción");
-    }
+      RestAuthenticationEntryPoint autenticacion, RestAccessDeniedHandler acceso) throws Exception {
     http.formLogin(AbstractHttpConfigurer::disable)
         .httpBasic(AbstractHttpConfigurer::disable)
         .logout(AbstractHttpConfigurer::disable)
@@ -53,8 +47,7 @@ public class SecurityConfig {
         .authorizeHttpRequests(auth -> {
           auth.requestMatchers("/api/health", "/error", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
               .requestMatchers(HttpMethod.POST, "/api/v1/sesion/iniciar").permitAll();
-          if (prueba) auth.requestMatchers("/api/v1/**").permitAll();
-          else auth.requestMatchers("/api/v1/**").authenticated();
+          auth.requestMatchers("/api/v1/**").authenticated();
           auth.anyRequest().denyAll();
         })
         .addFilterBefore(new JwtAuthenticationFilter(jwt, usuarios, politica, autenticacion),

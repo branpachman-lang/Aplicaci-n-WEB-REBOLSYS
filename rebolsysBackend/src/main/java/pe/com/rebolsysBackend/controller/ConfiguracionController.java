@@ -15,7 +15,7 @@ import pe.com.rebolsysBackend.service.service.ConfiguracionService;
 public class ConfiguracionController {
   private final ConfiguracionService servicio;
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasAuthority('ACCESO_OPERATIVO')")
+  @PreAuthorize("hasAuthority('ACCESO_OPERATIVO')")
   @GetMapping("/catalogos")
   @Operation(summary = "Obtener tipos, categorías y estados para los formularios de configuración")
   public ConfiguracionCatalogosDTO catalogos() {

@@ -197,7 +197,7 @@ try {
       }
       if ($null -eq $backend -or $backend.HasExited) {
         $backend = Start-Process -FilePath (Get-Command java.exe).Source -WorkingDirectory $runtime -WindowStyle Hidden -PassThru `
-          -ArgumentList '-jar backend.jar --spring.profiles.active=prod --server.address=127.0.0.1 --server.port=8080 --server.servlet.session.cookie.secure=false --app.sesion-prueba.habilitada=false' `
+          -ArgumentList '-jar backend.jar --spring.profiles.active=prod --server.address=127.0.0.1 --server.port=8080 --server.servlet.session.cookie.secure=false' `
           -RedirectStandardOutput (Join-Path $runtime 'backend.log') -RedirectStandardError (Join-Path $runtime 'backend-error.log')
         Write-Host "Backend iniciado con $($revisionBackend.Substring(0, 8))."
       }

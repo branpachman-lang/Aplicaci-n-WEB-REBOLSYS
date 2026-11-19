@@ -10,6 +10,6 @@ public record SesionActualDTO(Long idUsuario, String usuario, String modo,
   }
 
   public boolean tiene(String permiso) {
-    return !requiereCambio && (gerente || "PRUEBA".equals(modo) || permisos.contains(permiso));
+    return !requiereCambio && (gerente || permisos.contains(permiso));
   }
 }

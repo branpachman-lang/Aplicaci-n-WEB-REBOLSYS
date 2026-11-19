@@ -18,13 +18,13 @@ import pe.com.rebolsysBackend.service.service.*;
 public class ItemController {
   private final ItemService servicio;
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('MOBILIARIO:VER')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('MOBILIARIO:VER')")
   @GetMapping
   public List<ItemResponseDTO> listar() {
     return servicio.readAll();
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('MOBILIARIO:VER')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('MOBILIARIO:VER')")
   @GetMapping("/configuracion")
   @io.swagger.v3.oas.annotations.Operation(summary = "Buscar mobiliario por tipo, ubicación y conservación")
   public PaginaResponseDTO<ItemResponseDTO> configuracion(
@@ -32,53 +32,53 @@ public class ItemController {
     return servicio.configuracion(filtro);
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('MOBILIARIO:CONSERVACION')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('MOBILIARIO:CONSERVACION')")
   @PutMapping("/{id}/conservacion")
   @io.swagger.v3.oas.annotations.Operation(summary = "Registrar la conservación del mobiliario asignado")
   public ItemResponseDTO conservacion(@PathVariable Long id, @Valid @RequestBody ItemConservacionDTO r) {
     return servicio.conservacion(id, r);
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('MOBILIARIO:VER_HISTORIAL')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('MOBILIARIO:VER_HISTORIAL')")
   @GetMapping("/{id}/historial")
   @io.swagger.v3.oas.annotations.Operation(summary = "Consultar asignaciones, traslados, retiros y conservación")
   public List<ItemHistorialDTO> historial(@PathVariable Long id) {
     return servicio.historial(id);
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('MOBILIARIO:VER')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('MOBILIARIO:VER')")
   @GetMapping("/{id}")
   public ItemResponseDTO obtener(@PathVariable Long id) {
     return servicio.read(id);
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('MOBILIARIO:CREAR')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('MOBILIARIO:CREAR')")
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
   public ItemResponseDTO crear(@Valid @RequestBody ItemRequestDTO r) {
     return servicio.create(r);
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('MOBILIARIO:EDITAR')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('MOBILIARIO:EDITAR')")
   @PutMapping("/{id}")
   public ItemResponseDTO editar(@PathVariable Long id, @Valid @RequestBody ItemRequestDTO r) {
     return servicio.update(id, r);
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('MOBILIARIO:ELIMINAR')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('MOBILIARIO:ELIMINAR')")
   @DeleteMapping("/{id}")
   @ResponseStatus(HttpStatus.NO_CONTENT)
   public void eliminar(@PathVariable Long id) {
     servicio.delete(id);
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('MOBILIARIO:ASIGNAR')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('MOBILIARIO:ASIGNAR')")
   @PutMapping("/{id}/asignacion")
   public ItemResponseDTO asignar(@PathVariable Long id, @Valid @RequestBody ItemAsignacionDTO r) {
     return servicio.asignar(id, r);
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('MOBILIARIO:VER_HISTORIAL')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('MOBILIARIO:VER_HISTORIAL')")
   @GetMapping("/{id}/movimientos")
   public List<MovimientoRespuestaDTO> movimientos(@PathVariable Long id) {
     return servicio.movimientos(id);

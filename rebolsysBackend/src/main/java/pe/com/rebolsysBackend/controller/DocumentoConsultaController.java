@@ -20,7 +20,7 @@ public class DocumentoConsultaController {
         this.documentoConsultaService = documentoConsultaService;
     }
 
-    @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('CLIENTES:CONSULTAR_DOCUMENTOS')")
+    @PreAuthorize("hasRole('GERENTE') or hasAuthority('CLIENTES:CONSULTAR_DOCUMENTOS')")
     @GetMapping("/dni/{numero}")
     public ResponseEntity<DocumentoConsultaResponseDTO> consultarDni(
         @PathVariable @Pattern(
@@ -31,7 +31,7 @@ public class DocumentoConsultaController {
         return ResponseEntity.ok(documentoConsultaService.consultarDni(numero));
     }
 
-    @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('CLIENTES:CONSULTAR_DOCUMENTOS')")
+    @PreAuthorize("hasRole('GERENTE') or hasAuthority('CLIENTES:CONSULTAR_DOCUMENTOS')")
     @GetMapping("/ruc/{numero}")
     public ResponseEntity<DocumentoConsultaResponseDTO> consultarRuc(
         @PathVariable @Pattern(

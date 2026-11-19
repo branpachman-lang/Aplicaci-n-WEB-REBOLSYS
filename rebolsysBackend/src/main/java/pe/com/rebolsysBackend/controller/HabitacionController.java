@@ -19,7 +19,7 @@ import pe.com.rebolsysBackend.security.SesionOperacionService;
 public class HabitacionController {
   private final HabitacionService servicio;
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAnyAuthority('HABITACIONES:VER', 'RESERVAS:CREAR')")
+  @PreAuthorize("hasRole('GERENTE') or hasAnyAuthority('HABITACIONES:VER', 'RESERVAS:CREAR')")
   @GetMapping
   public List<HabitacionEstadoResponseDTO> estado(
       @RequestParam LocalDate desde, @RequestParam LocalDate hasta) {
@@ -39,13 +39,13 @@ public class HabitacionController {
     return habitaciones;
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAnyAuthority('HABITACIONES:VER', 'MOBILIARIO:ASIGNAR')")
+  @PreAuthorize("hasRole('GERENTE') or hasAnyAuthority('HABITACIONES:VER', 'MOBILIARIO:ASIGNAR')")
   @GetMapping("/configuracion")
   public List<HabitacionResponseDTO> listar() {
     return servicio.readAll();
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('HABITACIONES:VER')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('HABITACIONES:VER')")
   @GetMapping("/configuracion/pagina")
   @io.swagger.v3.oas.annotations.Operation(summary = "Buscar y filtrar la configuración de habitaciones")
   public PaginaResponseDTO<HabitacionResponseDTO> configuracion(
@@ -53,7 +53,7 @@ public class HabitacionController {
     return servicio.configuracion(filtro);
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('HABITACIONES:CAMBIAR_ESTADO')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('HABITACIONES:CAMBIAR_ESTADO')")
   @PatchMapping("/{id}/estado")
   @io.swagger.v3.oas.annotations.Operation(summary = "Cambiar el estado físico de una habitación")
   public HabitacionResponseDTO cambiarEstado(
@@ -61,34 +61,34 @@ public class HabitacionController {
     return servicio.cambiarEstado(id, r);
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('HABITACIONES:VER')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('HABITACIONES:VER')")
   @GetMapping("/{id}")
   public HabitacionResponseDTO obtener(@PathVariable Long id) {
     return servicio.read(id);
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('HABITACIONES:CREAR')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('HABITACIONES:CREAR')")
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
   public HabitacionResponseDTO crear(@Valid @RequestBody HabitacionRequestDTO r) {
     return servicio.create(r);
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('HABITACIONES:EDITAR')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('HABITACIONES:EDITAR')")
   @PutMapping("/{id}")
   public HabitacionResponseDTO editar(
       @PathVariable Long id, @Valid @RequestBody HabitacionRequestDTO r) {
     return servicio.update(id, r);
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('HABITACIONES:ELIMINAR')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('HABITACIONES:ELIMINAR')")
   @DeleteMapping("/{id}")
   @ResponseStatus(HttpStatus.NO_CONTENT)
   public void eliminar(@PathVariable Long id) {
     servicio.delete(id);
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAnyAuthority('HABITACIONES:VER', 'MOBILIARIO:VER')")
+  @PreAuthorize("hasRole('GERENTE') or hasAnyAuthority('HABITACIONES:VER', 'MOBILIARIO:VER')")
   @GetMapping("/{id}/items")
   public List<ItemResponseDTO> mobiliario(@PathVariable Long id) {
     return servicio.mobiliario(id);

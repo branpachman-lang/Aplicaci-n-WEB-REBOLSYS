@@ -16,32 +16,32 @@ import pe.com.rebolsysBackend.service.service.TipoItemService;
 public class TipoItemController {
   private final TipoItemService servicio;
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('MOBILIARIO:VER')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('MOBILIARIO:VER')")
   @GetMapping
   public Iterable<TipoItemResponseDTO> listar() {
     return servicio.readAll();
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('MOBILIARIO:VER')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('MOBILIARIO:VER')")
   @GetMapping("/{id}")
   public TipoItemResponseDTO obtener(@PathVariable Long id) {
     return servicio.read(id);
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('MOBILIARIO:CREAR_TIPO')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('MOBILIARIO:CREAR_TIPO')")
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
   public TipoItemResponseDTO crear(@Valid @RequestBody TipoItemRequestDTO r) {
     return servicio.create(r);
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('MOBILIARIO:EDITAR_TIPO')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('MOBILIARIO:EDITAR_TIPO')")
   @PutMapping("/{id}")
   public TipoItemResponseDTO editar(@PathVariable Long id, @Valid @RequestBody TipoItemRequestDTO r) {
     return servicio.update(id, r);
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('MOBILIARIO:ELIMINAR_TIPO')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('MOBILIARIO:ELIMINAR_TIPO')")
   @DeleteMapping("/{id}")
   @ResponseStatus(HttpStatus.NO_CONTENT)
   public void eliminar(@PathVariable Long id) {

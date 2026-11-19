@@ -15,7 +15,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.ApplicationContext;
 import org.springframework.test.web.servlet.MockMvc;
 
-@SpringBootTest(properties = "app.sesion-prueba.habilitada=false")
+@SpringBootTest
 @EnabledIfEnvironmentVariable(named = "RUN_ORACLE_TESTS", matches = "true")
 @AutoConfigureMockMvc
 class RebolsysBackendApplicationTests {

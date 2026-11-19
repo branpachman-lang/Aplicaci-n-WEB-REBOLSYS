@@ -14,13 +14,13 @@ No se modificaron Pharma ni los proyectos de frontend.
 
 Servidor: `http://localhost:8080`. Abrir
 [Swagger UI](http://localhost:8080/swagger-ui.html) para ejecutar las operaciones
-sin iniciar sesión. `GET /api/v1/recepcion/catalogos` entrega los identificadores
+con JWT Bearer para las rutas protegidas. `GET /api/v1/recepcion/catalogos` entrega los identificadores
 del operador, turno, documentos y catálogos disponibles.
 
 En Postman, importar `api/postman/siete-casos.postman_collection.json` y ejecutar
 la colección completa en orden, usando `baseUrl=http://localhost:8080`.
 Cada ejecución crea registros nuevos de demostración. Los identificadores se
-guardan durante la ejecución; no hay que escribirlos a mano ni proporcionar tokens.
+guardan durante la ejecución; no hay que escribirlos a mano. Configura un JWT válido en la variable local `rebolsysJwt`.
 La preparación inicial ya está cargada en el esquema local PropuestaHospedajeRB.
 
 | Funcionalidad | Qué probar | Resultado esperado |
@@ -127,3 +127,19 @@ Estas pruebas usan H2 para los flujos integrados. No se ejecutó SQL contra Orac
 ni se modificaron su configuración, entidades, scripts o el frontend. Consulta
 [la organización de seguridad](API-SEGURIDAD.md#organización-equivalente-a-pharma)
 para recorrer las clases y conocer el orden de validación y autorización.
+
+## Retiro del acceso automático de desarrollo
+
+Validación del 19 de noviembre de 2026: el backend compila y empaqueta con
+84 pruebas aprobadas y 109 opcionales omitidas (`RUN_ORACLE_TESTS=false`).
+Angular compila y aprueba 141 pruebas, con seis omitidas; conserva los tres
+avisos CSS preexistentes. El script de despliegue supera la revisión de sintaxis.
+
+Las rutas operativas exigen JWT en todos los perfiles. Las pruebas comprueban
+401 sin autenticación, ausencia de permisos implícitos, rechazo de credenciales
+revocadas y restricciones de contraseñas temporales. El flujo de limpieza usa
+JWT y conserva la exigencia del rol MANTENIMIENTO para atender y aprobar.
+
+Se retiró la creación del operador automático y su turno en la carga inicial,
+y las cargas de demostración ya no dan preferencia a esa cuenta. No se ejecutó
+SQL ni se eliminaron usuarios o registros históricos existentes en Oracle.

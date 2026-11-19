@@ -1,9 +1,7 @@
 -- Carga inicial OPCIONAL para desarrollo local; NO se ejecuta al arrancar.
 -- Ejecutar conectado a PropuestaHospedajeRB, después del DDL propuesto.
 -- No contiene contraseñas, no modifica tablas ni reemplaza registros existentes.
--- El operador local identifica movimientos; no permite iniciar sesión.
-DECLARE
-    v_tipo NUMBER; v_perfil NUMBER; v_empleado NUMBER; v_usuario NUMBER; v_n NUMBER;
+-- Solo carga catálogos. Las cuentas y sus turnos se gestionan desde el sistema.
 BEGIN
     IF UPPER(SYS_CONTEXT('USERENV','CURRENT_SCHEMA')) <> 'PROPUESTAHOSPEDAJERB' THEN
         RAISE_APPLICATION_ERROR(-20001,'Conectarse al esquema PropuestaHospedajeRB');
@@ -38,27 +36,6 @@ BEGIN
     WHEN NOT MATCHED THEN INSERT(nombreItem) VALUES(s.nombre);
     MERGE INTO categoria t USING (SELECT 'General' nombre FROM dual) s ON(t.nombreCategoria=s.nombre)
     WHEN NOT MATCHED THEN INSERT(nombreCategoria) VALUES(s.nombre);
-    SELECT COUNT(*) INTO v_n FROM usuario WHERE username='operacion_local';
-    IF v_n=0 THEN
-        SELECT idTipoDocumento INTO v_tipo FROM tipo_documento WHERE nombreDocumento='INTERNO';
-        SELECT COUNT(*) INTO v_n FROM perfil WHERE idTipoDocumento=v_tipo AND numeroDocumento='OPERADOR_LOCAL';
-        IF v_n=0 THEN
-            INSERT INTO perfil(idTipoDocumento,numeroDocumento) VALUES(v_tipo,'OPERADOR_LOCAL') RETURNING idPerfil INTO v_perfil;
-            INSERT INTO persona_natural(idPerfil,nombres,apellidos,fechaNacimiento) VALUES(v_perfil,'Operador','Local de desarrollo',DATE '1990-01-01');
-        ELSE SELECT idPerfil INTO v_perfil FROM perfil WHERE idTipoDocumento=v_tipo AND numeroDocumento='OPERADOR_LOCAL';
-        END IF;
-        SELECT COUNT(*) INTO v_n FROM empleado WHERE idPerfil=v_perfil;
-        IF v_n=0 THEN
-            INSERT INTO empleado(idPerfil,fechaContratacion) VALUES(v_perfil,TRUNC(SYSDATE)) RETURNING idEmpleado INTO v_empleado;
-        ELSE SELECT idEmpleado INTO v_empleado FROM empleado WHERE idPerfil=v_perfil;
-        END IF;
-        INSERT INTO usuario(idEmpleado,username,estadoUsuario) VALUES(v_empleado,'operacion_local','ACTIVO') RETURNING idUsuario INTO v_usuario;
-    ELSE SELECT idUsuario INTO v_usuario FROM usuario WHERE username='operacion_local';
-    END IF;
-    SELECT COUNT(*) INTO v_n FROM turno_caja WHERE idUsuario=v_usuario AND estadoSesion=1 AND fechaCierre IS NULL;
-    IF v_n=0 THEN INSERT INTO turno_caja(idUsuario,montoBase,estadoSesion) VALUES(v_usuario,0,1); END IF;
 END;
 /
 -- Revisar y confirmar con COMMIT; o ROLLBACK para descartar esta carga.
-SELECT idUsuario,username,estadoUsuario FROM usuario WHERE username='operacion_local';
-SELECT idTurno,idUsuario,estadoSesion,fechaCierre FROM turno_caja WHERE fechaCierre IS NULL;

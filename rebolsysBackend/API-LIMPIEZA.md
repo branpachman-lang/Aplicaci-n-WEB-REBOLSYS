@@ -1,6 +1,6 @@
 # Informes de limpieza y tickets de mantenimiento
 
-El módulo toma de la sesión al responsable del informe y al empleado del ticket. El gerente consulta un resumen general de todo el personal sin requerir un turno de caja. El personal con el rol `RECEPCIONISTA` consulta su turno abierto y el resto del personal consulta su propia actividad del día en hora de Lima. Las funciones de limpieza se asignan por separado en el módulo Seguridad. En el modo local de pruebas se puede configurar el usuario con `SESION_PRUEBA_USUARIO`.
+El módulo toma de la sesión al responsable del informe y al empleado del ticket. El gerente consulta un resumen general de todo el personal sin requerir un turno de caja. El personal con el rol `RECEPCIONISTA` consulta su turno abierto y el resto del personal consulta su propia actividad del día en hora de Lima. Las funciones de limpieza se asignan por separado en el módulo Seguridad. El responsable se obtiene siempre de la sesión autenticada con JWT.
 
 ## Preparación
 

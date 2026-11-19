@@ -18,7 +18,7 @@ import pe.com.rebolsysBackend.service.service.*;
 public class ReservaController {
   private final ReservaService reservaservice;
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('RESERVAS:CREAR')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('RESERVAS:CREAR')")
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
   @Operation(summary = "Registrar reserva asistida con ocupantes opcionales")
@@ -26,13 +26,13 @@ public class ReservaController {
     return reservaservice.registrar(r);
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('RESERVAS:VER')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('RESERVAS:VER')")
   @GetMapping("/{id}")
   public ReservaRespuestaDTO obtener(@PathVariable Long id) {
     return reservaservice.obtener(id);
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('RESERVAS:VER')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('RESERVAS:VER')")
   @GetMapping
   public PaginaResponseDTO<ReservaRespuestaDTO> listar(
       @RequestParam(defaultValue = "0") @Min(0) int pagina,
@@ -40,26 +40,26 @@ public class ReservaController {
     return reservaservice.listar(pagina, tamanio);
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('RESERVAS:REGISTRAR_INGRESO')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('RESERVAS:REGISTRAR_INGRESO')")
   @PostMapping("/detalles/{id}/ingreso")
   public ReservaDetalleRespuestaDTO ingreso(@PathVariable Long id, @Valid @RequestBody OperacionUsuarioDTO r) {
     return reservaservice.cambiarEstado(id, "ingreso", r);
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('RESERVAS:REGISTRAR_SALIDA')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('RESERVAS:REGISTRAR_SALIDA')")
   @PostMapping("/detalles/{id}/salida")
   public ReservaDetalleRespuestaDTO salida(@PathVariable Long id, @Valid @RequestBody OperacionUsuarioDTO r) {
     return reservaservice.cambiarEstado(id, "salida", r);
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('RESERVAS:CANCELAR')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('RESERVAS:CANCELAR')")
   @PostMapping("/detalles/{id}/cancelacion")
   @Operation(operationId = "cancelarEstancia")
   public ReservaDetalleRespuestaDTO cancelar(@PathVariable Long id, @Valid @RequestBody OperacionUsuarioDTO r) {
     return reservaservice.cambiarEstado(id, "cancelacion", r);
   }
 
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('RESERVAS:EDITAR_OCUPANTES')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('RESERVAS:EDITAR_OCUPANTES')")
   @PutMapping("/detalles/{id}/ocupantes")
   @Operation(summary = "Completar o corregir ocupantes antes del check-in")
   public ReservaDetalleRespuestaDTO ocupantes(

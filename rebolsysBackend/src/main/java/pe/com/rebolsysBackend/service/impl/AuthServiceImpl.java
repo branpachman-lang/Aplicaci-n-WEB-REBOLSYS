@@ -1,7 +1,6 @@
 package pe.com.rebolsysBackend.service.impl;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -24,11 +23,9 @@ public class AuthServiceImpl implements AuthService {
   private final JwtService jwt;
   private final PoliticaSeguridadService politica;
   private final SesionOperacionService sesion;
-  @Value("${app.sesion-prueba.habilitada:false}") private boolean prueba;
 
   @Override
   public AutenticacionResponseDTO iniciar(LoginRequestDTO datos) {
-    if (prueba) throw new AuthenticationCredentialsNotFoundException("Desactiva la sesión de pruebas para iniciar sesión");
     // No envolver en otra transacción: los intentos fallidos deben persistir aunque falle el acceso.
     var autenticacion = authenticationManager.authenticate(
         UsernamePasswordAuthenticationToken.unauthenticated(datos.usuario(), datos.contrasena()));

@@ -15,7 +15,7 @@ import pe.com.rebolsysBackend.exception.GlobalExceptionHandler;
 import pe.com.rebolsysBackend.security.SesionOperacionService;
 import tools.jackson.databind.json.JsonMapper;
 
-class SesionPruebaBodyAdviceTest {
+class OperacionUsuarioBodyAdviceTest {
   SesionOperacionService sesion;MockMvc mvc;
   @RestController static class Operaciones {
     @PostMapping("/api/v1/ventas/confirmadas") public VentaRequestDTO venta(@Valid @RequestBody VentaRequestDTO r){return r;}
@@ -23,7 +23,7 @@ class SesionPruebaBodyAdviceTest {
     @PostMapping("/api/v1/productos") public ProductoRequestDTO producto(@Valid @RequestBody ProductoRequestDTO r){return r;}
   }
   @BeforeEach void preparar(){
-    sesion=mock(SesionOperacionService.class);when(sesion.actual()).thenReturn(new SesionActualDTO(130L,"operacion_local","PRUEBA",101L,1L));
+    sesion=mock(SesionOperacionService.class);when(sesion.actual()).thenReturn(new SesionActualDTO(130L,"recepcion.flujo","ACTIVA",101L,1L));
     mvc=MockMvcBuilders.standaloneSetup(new Operaciones()).setControllerAdvice(new OperacionUsuarioBodyAdvice(sesion,JsonMapper.builder().build()),new GlobalExceptionHandler()).build();
   }
   @Test void completarUsuarioAntesDeValidarUnaVenta()throws Exception{
@@ -44,7 +44,7 @@ class SesionPruebaBodyAdviceTest {
       .andExpect(jsonPath("$.stock").value(0)).andExpect(jsonPath("$.stockMinimo").value(0));
   }
   @Test void noCobrarSinTurnoAbierto()throws Exception{
-    when(sesion.actual()).thenReturn(new SesionActualDTO(130L,"operacion_local","PRUEBA",null,1L));
+    when(sesion.actual()).thenReturn(new SesionActualDTO(130L,"recepcion.flujo","ACTIVA",null,1L));
     mvc.perform(post("/api/v1/ventas/1/pagos").contentType(MediaType.APPLICATION_JSON).content("{\"claveOperacion\":\"sesion-pago\",\"idFormaPago\":1,\"monto\":5}"))
       .andExpect(status().isConflict()).andExpect(jsonPath("$.message").value("El usuario actual necesita un único turno de caja abierto"));
   }

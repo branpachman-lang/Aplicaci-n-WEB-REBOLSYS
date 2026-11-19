@@ -96,7 +96,7 @@ export class LimpiezaPanel {
   permite(accion: string) { return this.acceso.permite("LIMPIEZA:" + accion); }
   private readonly rolMantenimiento = computed(() => {
     const sesion = this.acceso.actual();
-    return sesion?.modo === 'PRUEBA' || sesion?.roles?.includes('MANTENIMIENTO') === true;
+    return sesion?.roles?.includes('MANTENIMIENTO') === true;
   });
   puedeMantenimiento(accion: string) { return this.rolMantenimiento() && this.permite(accion); }
   texto(estado: string | null) { return estado ? (ETIQUETAS[estado] ?? estado) : "—"; }

@@ -13,7 +13,7 @@ export interface Autenticacion {
 export interface SesionActual {
   idUsuario: number;
   usuario: string;
-  modo: "PRUEBA" | "ACTIVA";
+  modo: "ACTIVA";
   idTurno: number | null;
   idFormaPagoEfectivo: number | null;
   requiereCambio?: boolean;

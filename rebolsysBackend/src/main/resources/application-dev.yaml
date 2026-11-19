@@ -1,9 +1,5 @@
 server:
   port: 8080
-app:
-  sesion-prueba:
-    habilitada: ${SESION_PRUEBA_HABILITADA:false}
-    usuario: ${SESION_PRUEBA_USUARIO:operacion_local}
 spring:
   config:
     import: optional:file:.local/application-local-private.properties

@@ -1,7 +1,8 @@
 {
   "info": {
     "name": "REBOLSYS - Sesión y validaciones sin crear operaciones",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Requiere JWT de una cuenta activa con permisos para las operaciones verificadas. No crea usuarios ni inicia sesiones automáticas."
   },
   "variable": [
     {
@@ -16,7 +17,7 @@
   ],
   "item": [
     {
-      "name": "Usuario actual de prueba",
+      "name": "Usuario autenticado actual",
       "request": {
         "method": "GET",
         "url": "{{baseUrl}}/api/v1/sesion/actual",
@@ -29,7 +30,7 @@
             "type": "text/javascript",
             "exec": [
               "pm.test(\"HTTP 200\",()=>pm.response.to.have.status(200));",
-              "const s=pm.response.json();pm.test(\"Usuario y turno locales\",()=>{pm.expect(s.idUsuario).to.eql(130);pm.expect(s.usuario).to.eql(\"operacion_local\");pm.expect(s.modo).to.eql(\"PRUEBA\");pm.expect(s.idTurno).to.eql(101);});"
+              "const s=pm.response.json();pm.test(\"Usuario autenticado y permisos vigentes\",()=>{pm.expect(s.idUsuario).to.be.above(0);pm.expect(s.usuario).to.be.a(\"string\");pm.expect(s.modo).to.eql(\"ACTIVA\");pm.expect(s.roles).to.be.an(\"array\");pm.expect(s.permisos).to.be.an(\"array\");});"
             ]
           }
         }

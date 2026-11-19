@@ -18,7 +18,7 @@ import pe.com.rebolsysBackend.service.impl.CajaService;
 
 @RestController
 @RequestMapping("/api/v1/caja")
-@PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAnyAuthority('CAJA:VER', 'CAJA:CERRAR', 'CAJA:REGISTRAR_INGRESO', 'GASTOS:CREAR')")
+@PreAuthorize("hasRole('GERENTE') or hasAnyAuthority('CAJA:VER', 'CAJA:CERRAR', 'CAJA:REGISTRAR_INGRESO', 'GASTOS:CREAR')")
 @RequiredArgsConstructor
 @Tag(name = "Caja")
 public class CajaController {
@@ -40,7 +40,7 @@ public class CajaController {
   }
 
   @PostMapping(value = "/turnos/{id}/movimientos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAnyAuthority('CAJA:REGISTRAR_INGRESO', 'GASTOS:CREAR')")
+  @PreAuthorize("hasRole('GERENTE') or hasAnyAuthority('CAJA:REGISTRAR_INGRESO', 'GASTOS:CREAR')")
   @ResponseStatus(HttpStatus.CREATED)
   @Operation(summary = "Registrar un ingreso manual o gasto en efectivo en el turno propio")
   public Movimiento registrar(@PathVariable @Positive Long id, @Valid @RequestPart("datos") RegistrarMovimiento datos,
@@ -49,7 +49,7 @@ public class CajaController {
   }
 
   @PostMapping("/turnos/{id}/cierre")
-  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('CAJA:CERRAR')")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('CAJA:CERRAR')")
   @Operation(summary = "Guardar las declaraciones y cerrar el turno en una sola transacción")
   public Contexto cerrar(@PathVariable @Positive Long id, @Valid @RequestBody Cerrar datos, HttpServletRequest solicitud) {
     return caja.cerrar(id, datos, solicitud.getRemoteAddr());

@@ -46,7 +46,7 @@ import tools.jackson.databind.ObjectMapper;
     "spring.datasource.username=sa", "spring.datasource.password=", "spring.datasource.driver-class-name=org.h2.Driver",
     "spring.jpa.database-platform=org.hibernate.dialect.H2Dialect", "spring.jpa.hibernate.ddl-auto=create-drop",
     "springdoc.api-docs.version=OPENAPI_3_0",
-    "app.sesion-prueba.habilitada=false", "app.caja.directorio-evidencias=target/evidencias-caja-test",
+    "app.caja.directorio-evidencias=target/evidencias-caja-test",
     "app.hospedaje.directorio-logotipos=target/logotipos-test"
 })
 @ActiveProfiles("seguridad-test")
@@ -67,6 +67,11 @@ class AccesoHttpTest {
 
   @Test
   void rechazaCookiesTokensEnUrlYFirmasInvalidas() throws Exception {
+    for (String ruta : List.of("/sesion/actual", "/recepcion/catalogos", "/habitaciones", "/limpieza/habitaciones")) {
+      mvc.perform(get(API + ruta)).andExpect(status().isUnauthorized());
+    }
+    mvc.perform(post(API + "/reservas").contentType(MediaType.APPLICATION_JSON).content("{}"))
+        .andExpect(status().isUnauthorized());
     mvc.perform(get(API + "/reservas").cookie(new jakarta.servlet.http.Cookie("JSESSIONID", "sesion-anterior")))
         .andExpect(status().isUnauthorized()).andExpect(header().string("WWW-Authenticate", "Bearer"))
         .andExpect(jsonPath("$.status").value(401));

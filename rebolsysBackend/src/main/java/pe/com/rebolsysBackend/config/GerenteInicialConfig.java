@@ -11,12 +11,11 @@ public class GerenteInicialConfig {
   @Bean
   ApplicationRunner gerenteInicial(CredencialesService credenciales,
       @Value("${REBOLSYS_GERENTE_USUARIO:}") String usuario,
-      @Value("${REBOLSYS_GERENTE_PASSWORD_TEMPORAL:}") String contrasena,
-      @Value("${app.sesion-prueba.habilitada:false}") boolean prueba) {
+      @Value("${REBOLSYS_GERENTE_PASSWORD_TEMPORAL:}") String contrasena) {
     return args -> {
       if (usuario.isBlank() && contrasena.isEmpty()) return;
-      if (prueba || usuario.isBlank() || contrasena.isEmpty()) {
-        throw new IllegalStateException("Configura el usuario y la contraseña temporal de gerencia con la sesión de prueba deshabilitada");
+      if (usuario.isBlank() || contrasena.isEmpty()) {
+        throw new IllegalStateException("Configura el usuario y la contraseña temporal de gerencia");
       }
       credenciales.prepararGerente(usuario, contrasena);
     };

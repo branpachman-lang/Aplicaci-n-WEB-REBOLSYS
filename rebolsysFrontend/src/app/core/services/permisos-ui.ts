@@ -12,7 +12,7 @@ export class PermisosUi {
 
   permite(...permisos: string[]) {
     const s = this.actual();
-    return !!s && !s.requiereCambio && (s.gerente || s.modo === "PRUEBA" ||
+    return !!s && !s.requiereCambio && (s.gerente ||
       permisos.some(permiso => s.permisos?.includes(permiso)));
   }
 }

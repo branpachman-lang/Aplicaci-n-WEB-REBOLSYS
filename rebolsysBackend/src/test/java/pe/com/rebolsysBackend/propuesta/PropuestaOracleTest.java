@@ -25,7 +25,7 @@ import pe.com.rebolsysBackend.service.service.*;
 import tools.jackson.databind.ObjectMapper;
 
 @SpringBootTest(
-    properties = {"spring.jpa.show-sql=false", "logging.level.pe.com.rebolsysBackend=INFO","app.sesion-prueba.habilitada=false"})
+    properties = {"spring.jpa.show-sql=false", "logging.level.pe.com.rebolsysBackend=INFO"})
 @MockMvcReglasNegocio
 @Transactional
 @EnabledIfEnvironmentVariable(named = "RUN_ORACLE_TESTS", matches = "true")
@@ -1082,7 +1082,7 @@ class PropuestaOracleTest {
 
   @Test
   void auditoriaDeCambiosConservaElUsuarioYRegistroAfectado() {
-    auditoriaOperacion.registrar(new SesionActualDTO(usuario,"operador de prueba","PRUEBA",turno,formaPago),"HABITACION",habitacion,"PUT","/api/v1/habitaciones/"+habitacion,"127.0.0.1");
+    auditoriaOperacion.registrar(new SesionActualDTO(usuario,"recepcion.flujo","ACTIVA",turno,formaPago),"HABITACION",habitacion,"PUT","/api/v1/habitaciones/"+habitacion,"127.0.0.1");
     var a=em.createQuery("select a from AuditoriaGeneral a where a.usuario.idUsuario=:usuario and a.nombreTabla='HABITACION'",AuditoriaGeneral.class).setParameter("usuario",usuario).getSingleResult();
     assertThat(a.getIdRegistro()).isEqualTo(habitacion);assertThat(a.getUsuario().getIdUsuario()).isEqualTo(usuario);assertThat(a.getAccion()).isEqualTo(AccionAuditoria.UPDATE);assertThat(a.getDatosNuevos()).contains("PUT /api/v1/habitaciones/");assertThat(a.getFechaHora()).isNotNull();
   }
