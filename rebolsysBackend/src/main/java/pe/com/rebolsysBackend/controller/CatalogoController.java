@@ -1,13 +1,13 @@
 package pe.com.rebolsysBackend.controller;
 
-import pe.com.rebolsysBackend.config.Acceso;
+import pe.com.rebolsysBackend.security.Acceso;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import pe.com.rebolsysBackend.dto.CatalogosResponseDTO;
 import pe.com.rebolsysBackend.service.service.CatalogoService;
-import pe.com.rebolsysBackend.service.impl.SesionOperacionService;
+import pe.com.rebolsysBackend.security.SesionOperacionService;
 
 @RestController
 @RequestMapping("/api/v1/recepcion/catalogos")

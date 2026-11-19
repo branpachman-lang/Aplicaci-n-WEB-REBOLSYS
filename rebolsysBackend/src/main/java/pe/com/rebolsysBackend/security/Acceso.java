@@ -1,4 +1,4 @@
-package pe.com.rebolsysBackend.config;
+package pe.com.rebolsysBackend.security;
 
 import java.lang.annotation.*;
 

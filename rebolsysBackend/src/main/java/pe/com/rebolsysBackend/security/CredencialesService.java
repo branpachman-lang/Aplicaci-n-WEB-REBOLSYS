@@ -1,4 +1,4 @@
-package pe.com.rebolsysBackend.service.impl;
+package pe.com.rebolsysBackend.security;
 
 import static pe.com.rebolsysBackend.service.impl.ReglasPropuesta.*;
 
@@ -31,7 +31,9 @@ public class CredencialesService {
   private final TurnoCajaRepository turnos;
   private final PoliticaSeguridadService politica;
 
-  public record Principal(Long idUsuario, String firmaCredencial) implements java.io.Serializable {}
+  public record Principal(Long idUsuario, String firmaCredencial) implements java.io.Serializable {
+    @Override public String toString() { return "Usuario autenticado " + idUsuario; }
+  }
 
   public record Temporal(String contrasenaTemporal, LocalDateTime vence) {
     @Override public String toString() { return "Credencial temporal con vencimiento " + vence; }
@@ -76,6 +78,14 @@ public class CredencialesService {
       throw invalida();
     }
     return new Cuenta(c.getUsuario(), temporal(c));
+  }
+
+  @Transactional(readOnly = true)
+  public Principal principalVigente(Long idUsuario) {
+    var c = credencial(idUsuario);
+    if (c == null || c.getValorHash() == null || c.getUsuario().getEstadoUsuario() != EstadoUsuario.ACTIVO
+        || c.getUsuario().getEmpleado().getFechaCese() != null || vencida(c, ahora())) throw invalida();
+    return principal(c);
   }
 
   @Transactional

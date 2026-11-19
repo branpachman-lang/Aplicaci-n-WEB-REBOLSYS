@@ -1,8 +1,10 @@
+import { ImagenProtegida } from '../../directives/imagen-protegida';
 import { Component, computed, inject, input, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MarcaHospedaje as Datos, MarcaService, rutaLogo } from '../../../core/services/marca-service';
 
 @Component({
+  imports: [ImagenProtegida],
   selector: 'app-marca-hospedaje',
   templateUrl: './marca-hospedaje.html',
   styleUrl: './marca-hospedaje.css',

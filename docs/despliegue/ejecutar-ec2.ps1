@@ -150,6 +150,17 @@ try {
     $clave.Dispose()
   }
   $env:SPRING_PROFILES_ACTIVE = 'prod'
+  if (-not $env:JWT_SECRET) {
+    $jwtBytes = New-Object byte[] 32
+    $jwtAleatorio = [Security.Cryptography.RandomNumberGenerator]::Create()
+    try {
+      $jwtAleatorio.GetBytes($jwtBytes)
+      $env:JWT_SECRET = [Convert]::ToBase64String($jwtBytes)
+    } finally {
+      $jwtAleatorio.Dispose()
+      [Array]::Clear($jwtBytes, 0, $jwtBytes.Length)
+    }
+  }
   $env:CORS_ALLOWED_ORIGINS = "http://${IpPublica}:4200,http://localhost:4200,http://127.0.0.1:4200"
   $env:FACTURACION_HABILITADA = 'false'
   # El proxy queda fuera del clon para que las actualizaciones lo conserven.

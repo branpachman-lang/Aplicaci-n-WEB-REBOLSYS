@@ -1,4 +1,4 @@
-package pe.com.rebolsysBackend.config;
+package pe.com.rebolsysBackend.security;
 
 import java.io.*;
 import java.lang.reflect.Type;
@@ -13,16 +13,15 @@ import org.springframework.web.servlet.mvc.method.annotation.*;
 import org.springframework.web.context.request.*;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.ObjectNode;
-import pe.com.rebolsysBackend.service.impl.SesionOperacionService;
 import pe.com.rebolsysBackend.dto.LimpiezaDTO.Borrador;
 import pe.com.rebolsysBackend.dto.LimpiezaDTO.TicketDetalle;
 import pe.com.rebolsysBackend.dto.SeguridadDTO.*;
-import pe.com.rebolsysBackend.service.impl.CredencialesService.Temporal;
+import pe.com.rebolsysBackend.security.CredencialesService.Temporal;
 import static pe.com.rebolsysBackend.service.impl.ReglasPropuesta.exigir;
 
 @ControllerAdvice
 @RequiredArgsConstructor
-public class SesionPruebaBodyAdvice extends RequestBodyAdviceAdapter implements ResponseBodyAdvice<Object> {
+public class OperacionUsuarioBodyAdvice extends RequestBodyAdviceAdapter implements ResponseBodyAdvice<Object> {
   private final SesionOperacionService sesion;
   private final ObjectMapper mapper;
   private static final Set<String> ACTOR=Set.of("AjusteStockDTO","ComprobanteCuentaDTO","EmisionElectronicaRequestDTO","GastoRequestDTO","ItemAsignacionDTO","ItemConservacionDTO","OperacionUsuarioDTO","PagoCuentaDTO","ProductoRequestDTO","ReservaComprobanteRegistroDTO","ReservaOcupantesGuardarDTO","ReservaPagoRegistroDTO","ReservaRegistroRequestDTO","VentaEditarDTO","VentaRequestDTO");

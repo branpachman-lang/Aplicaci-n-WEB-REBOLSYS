@@ -8,11 +8,11 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import pe.com.rebolsysBackend.config.Acceso;
+import pe.com.rebolsysBackend.security.Acceso;
 import pe.com.rebolsysBackend.dto.SistemaDTO.*;
 import pe.com.rebolsysBackend.dto.TipoHabitacionResponseDTO;
 import pe.com.rebolsysBackend.service.impl.HospedajeService;
-import pe.com.rebolsysBackend.service.impl.PoliticaSeguridadService;
+import pe.com.rebolsysBackend.security.PoliticaSeguridadService;
 import pe.com.rebolsysBackend.service.service.TipoHabitacionService;
 
 @RestController

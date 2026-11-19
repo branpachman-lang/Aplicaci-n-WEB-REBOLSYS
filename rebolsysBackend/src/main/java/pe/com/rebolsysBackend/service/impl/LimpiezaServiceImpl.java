@@ -1,5 +1,7 @@
 package pe.com.rebolsysBackend.service.impl;
 
+import pe.com.rebolsysBackend.security.SesionOperacionService;
+import pe.com.rebolsysBackend.security.AccesosService;
 import static java.util.stream.Collectors.*;
 import static pe.com.rebolsysBackend.enums.EstadoConservacion.BUENO;
 import static pe.com.rebolsysBackend.enums.EstadoInforme.*;

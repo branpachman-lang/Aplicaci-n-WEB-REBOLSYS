@@ -1,6 +1,6 @@
 package pe.com.rebolsysBackend.controller;
 
-import pe.com.rebolsysBackend.config.Acceso;
+import pe.com.rebolsysBackend.security.Acceso;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import java.time.*;
@@ -10,7 +10,7 @@ import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import pe.com.rebolsysBackend.dto.*;
 import pe.com.rebolsysBackend.service.service.*;
-import pe.com.rebolsysBackend.service.impl.SesionOperacionService;
+import pe.com.rebolsysBackend.security.SesionOperacionService;
 
 @RestController
 @io.swagger.v3.oas.annotations.tags.Tag(name = "Configuración de habitaciones")

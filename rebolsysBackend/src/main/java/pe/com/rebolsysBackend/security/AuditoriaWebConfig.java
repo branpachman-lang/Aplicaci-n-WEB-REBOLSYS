@@ -1,4 +1,4 @@
-package pe.com.rebolsysBackend.config;
+package pe.com.rebolsysBackend.security;
 
 import java.util.Map;
 import jakarta.servlet.http.*;
@@ -11,7 +11,7 @@ import pe.com.rebolsysBackend.service.impl.*;
 
 @Configuration
 @RequiredArgsConstructor
-public class SesionPruebaWebConfig implements WebMvcConfigurer {
+public class AuditoriaWebConfig implements WebMvcConfigurer {
   private final AuditoriaOperacionService auditoria;
   private static final Map<String,String> TABLAS=Map.ofEntries(Map.entry("habitaciones","HABITACION"),Map.entry("reservas","RESERVA"),Map.entry("ventas","VENTA"),Map.entry("gastos","FLUJO_CAJA"),Map.entry("productos","PRODUCTO"),Map.entry("items","ITEM"),Map.entry("categorias","CATEGORIA"),Map.entry("tipos-habitacion","TIPO_HABITACION"),Map.entry("tipos-item","TIPO_ITEM"),Map.entry("clientes","CLIENTE"),Map.entry("comprobantes","COMPROBANTE"));
   @Override public void addInterceptors(InterceptorRegistry registro){
@@ -48,7 +48,7 @@ public class SesionPruebaWebConfig implements WebMvcConfigurer {
         if(id==null&&req.getAttribute("rebolsys.registro") instanceof Long valor)id=valor;
         if(id==null)return;
         try{auditoria.registrar(actual,tabla,id,req.getMethod(),req.getRequestURI(),req.getRemoteAddr());}
-        catch(RuntimeException error){org.slf4j.LoggerFactory.getLogger(SesionPruebaWebConfig.class).error("No se pudo registrar la auditoría de {} {}",req.getMethod(),req.getRequestURI(),error);}
+        catch(RuntimeException error){org.slf4j.LoggerFactory.getLogger(AuditoriaWebConfig.class).error("No se pudo registrar la auditoría de {} {}",req.getMethod(),req.getRequestURI(),error);}
       }
     }).addPathPatterns("/api/v1/**");
   }

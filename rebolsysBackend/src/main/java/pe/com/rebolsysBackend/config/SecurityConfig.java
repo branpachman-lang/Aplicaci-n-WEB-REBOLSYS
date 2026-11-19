@@ -1,34 +1,39 @@
 package pe.com.rebolsysBackend.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.context.NullSecurityContextRepository;
 import org.springframework.web.cors.CorsConfigurationSource;
+import pe.com.rebolsysBackend.security.*;
 
 @Configuration
 public class SecurityConfig {
+  @Bean
+  org.springframework.security.authentication.AuthenticationManager authenticationManager(
+      CredencialesAuthenticationProvider proveedor) {
+    return new org.springframework.security.authentication.ProviderManager(proveedor);
+  }
+
   @Bean
   PasswordEncoder passwordEncoder() {
     return new BCryptPasswordEncoder(12);
   }
 
   @Bean
-  HttpSessionSecurityContextRepository sesiones() {
-    return new HttpSessionSecurityContextRepository();
-  }
-
-  @Bean
-  public SecurityFilterChain securityFilterChain(
-      HttpSecurity http, CorsConfigurationSource corsConfigurationSource, HttpSessionSecurityContextRepository sesiones,
+  SecurityFilterChain securityFilterChain(HttpSecurity http,
+      @org.springframework.beans.factory.annotation.Qualifier("corsConfigurationSource") CorsConfigurationSource cors,
+      JwtService jwt, UsuarioDetailsService usuarios, PoliticaSeguridadService politica,
+      RestAuthenticationEntryPoint autenticacion, RestAccessDeniedHandler acceso,
       @Value("${app.sesion-prueba.habilitada:false}") boolean prueba, Environment entorno) throws Exception {
     if (prueba && entorno.matchesProfiles("prod")) {
       throw new IllegalStateException("La sesión de prueba no está disponible en producción");
@@ -37,19 +42,21 @@ public class SecurityConfig {
         .httpBasic(AbstractHttpConfigurer::disable)
         .logout(AbstractHttpConfigurer::disable)
         .requestCache(AbstractHttpConfigurer::disable)
-        .cors(cors -> cors.configurationSource(corsConfigurationSource))
-        .securityContext(contexto -> contexto.securityContextRepository(sesiones))
-        .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
-        .exceptionHandling(errores -> errores.authenticationEntryPoint((req, res, e) -> res.sendError(401)));
-    if (prueba) http.csrf(AbstractHttpConfigurer::disable);
-    http.authorizeHttpRequests(auth -> {
-      auth.requestMatchers("/api/health", "/error", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-          .requestMatchers(HttpMethod.GET, "/api/v1/sesion/csrf").permitAll()
-          .requestMatchers(HttpMethod.POST, "/api/v1/sesion/iniciar").permitAll();
-      if (prueba) auth.requestMatchers("/api/v1/**").permitAll();
-      else auth.requestMatchers("/api/v1/**").authenticated();
-      auth.anyRequest().denyAll();
-    });
+        // La autenticación usa exclusivamente Bearer, nunca cookies.
+        .csrf(AbstractHttpConfigurer::disable)
+        .cors(config -> config.configurationSource(cors))
+        .securityContext(config -> config.securityContextRepository(new NullSecurityContextRepository()))
+        .sessionManagement(config -> config.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        .exceptionHandling(config -> config.authenticationEntryPoint(autenticacion).accessDeniedHandler(acceso))
+        .authorizeHttpRequests(auth -> {
+          auth.requestMatchers("/api/health", "/error", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+              .requestMatchers(HttpMethod.POST, "/api/v1/sesion/iniciar").permitAll();
+          if (prueba) auth.requestMatchers("/api/v1/**").permitAll();
+          else auth.requestMatchers("/api/v1/**").authenticated();
+          auth.anyRequest().denyAll();
+        })
+        .addFilterBefore(new JwtAuthenticationFilter(jwt, usuarios, politica, autenticacion),
+            UsernamePasswordAuthenticationFilter.class);
     return http.build();
   }
 }

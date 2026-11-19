@@ -35,7 +35,7 @@
       <section class="panel contenido">
         <h3>Logotipo institucional</h3>
         @if (vistaLogo() || rutaLogo(marca()); as logo) {
-          <img class="logo" [src]="logo" [alt]="vistaLogo() ? 'Vista previa del logo' : 'Logotipo actual del hospedaje'" />
+          <img class="logo" [imagenProtegida]="logo" [alt]="vistaLogo() ? 'Vista previa del logo' : 'Logotipo actual del hospedaje'" />
         }
         @if (marca()?.nombre) {
           <label class="field">Seleccionar imagen

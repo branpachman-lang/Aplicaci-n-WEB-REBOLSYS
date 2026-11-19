@@ -1,5 +1,6 @@
 package pe.com.rebolsysBackend.service.impl;
 
+import pe.com.rebolsysBackend.security.SesionOperacionService;
 import static pe.com.rebolsysBackend.service.impl.ReglasPropuesta.*;
 
 import java.math.*;

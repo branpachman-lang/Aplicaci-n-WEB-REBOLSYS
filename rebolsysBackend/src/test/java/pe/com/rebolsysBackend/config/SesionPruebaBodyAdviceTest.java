@@ -1,5 +1,6 @@
 package pe.com.rebolsysBackend.config;
 
+import pe.com.rebolsysBackend.security.OperacionUsuarioBodyAdvice;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -11,7 +12,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.bind.annotation.*;
 import pe.com.rebolsysBackend.dto.*;
 import pe.com.rebolsysBackend.exception.GlobalExceptionHandler;
-import pe.com.rebolsysBackend.service.impl.SesionOperacionService;
+import pe.com.rebolsysBackend.security.SesionOperacionService;
 import tools.jackson.databind.json.JsonMapper;
 
 class SesionPruebaBodyAdviceTest {
@@ -23,7 +24,7 @@ class SesionPruebaBodyAdviceTest {
   }
   @BeforeEach void preparar(){
     sesion=mock(SesionOperacionService.class);when(sesion.actual()).thenReturn(new SesionActualDTO(130L,"operacion_local","PRUEBA",101L,1L));
-    mvc=MockMvcBuilders.standaloneSetup(new Operaciones()).setControllerAdvice(new SesionPruebaBodyAdvice(sesion,JsonMapper.builder().build()),new GlobalExceptionHandler()).build();
+    mvc=MockMvcBuilders.standaloneSetup(new Operaciones()).setControllerAdvice(new OperacionUsuarioBodyAdvice(sesion,JsonMapper.builder().build()),new GlobalExceptionHandler()).build();
   }
   @Test void completarUsuarioAntesDeValidarUnaVenta()throws Exception{
     mvc.perform(post("/api/v1/ventas/confirmadas").contentType(MediaType.APPLICATION_JSON).content("{\"claveRegistro\":\"sesion-venta\",\"modalidadCobro\":\"SEPARADA\",\"detalles\":[{\"idProducto\":1,\"cantidad\":2}]}"))

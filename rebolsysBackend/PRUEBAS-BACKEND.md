@@ -90,3 +90,20 @@ postman collection run api/postman/siete-casos.postman_collection.json --no-repo
 El entorno debe tener Java 21 configurado en `JAVA_HOME`. Para arrancar de nuevo:
 `.\mvnw.cmd spring-boot:run`. La conexión se conserva en el archivo privado local;
 no se incluyen contraseñas en las colecciones ni en el contrato.
+
+## Seguridad JWT
+
+La migración se verificó con Java 21 y la suite completa: 80 pruebas aprobadas,
+sin fallos y 109 pruebas opcionales omitidas. Las pruebas Oracle no se ejecutaron.
+Angular aprobó 137 pruebas, con seis omitidas, y compiló con los tres avisos
+de presupuesto CSS preexistentes.
+
+La colección [seguridad-jwt](api/postman/seguridad-jwt.postman_collection.json)
+también se ejecutó por HTTP contra una instancia temporal con H2 y cuentas
+ficticias de Gerente, Recepcionista, Limpieza y Mantenimiento: 52 peticiones y
+68 aserciones aprobadas. Verificó cambio obligatorio, turno según rol, permisos,
+rechazo de firma inválida y revocación al cerrar. No se modificó Oracle.
+
+Consulta [API-JWT.md](API-JWT.md) para configurar la firma y la vigencia. Las
+pruebas de la colección cambian contraseñas: utiliza exclusivamente cuentas de
+prueba con clave temporal y valores privados locales.

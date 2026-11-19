@@ -1,4 +1,4 @@
-package pe.com.rebolsysBackend.service.impl;
+package pe.com.rebolsysBackend.security;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;

@@ -71,12 +71,14 @@ class GlobalExceptionHandlerTest {
   }
 
   @Test
-  void databaseErrorsKeepTheNameOfTheActualConstraint() throws Exception {
-    mvc.perform(get("/constraint"))
+  void databaseErrorsDoNotExposeSchemaOrConstraintNames() throws Exception {
+    var resultado = mvc.perform(get("/constraint"))
         .andExpect(status().isConflict())
         .andExpect(
             jsonPath("$.message")
-                .value("ORA-02290: check constraint (HOTELRB.RESERVA_FECHAS_CHK) violated"));
+                .value("Los datos entran en conflicto con un registro existente o relacionado. Revisa la operación."))
+        .andReturn();
+    assertThat(resultado.getResponse().getContentAsString()).doesNotContain("ORA-", "HOTELRB", "RESERVA_FECHAS_CHK", "INTERNAL_SQL_DETAIL");
   }
 
   @Test

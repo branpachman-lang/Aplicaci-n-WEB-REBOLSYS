@@ -7,7 +7,7 @@ import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
-import pe.com.rebolsysBackend.config.Acceso;
+import pe.com.rebolsysBackend.security.Acceso;
 import pe.com.rebolsysBackend.dto.LimpiezaDTO.InformeDetalle;
 import pe.com.rebolsysBackend.dto.ReportesDTO.*;
 import pe.com.rebolsysBackend.enums.EstadoInforme;

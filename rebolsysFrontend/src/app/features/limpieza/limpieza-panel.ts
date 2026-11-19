@@ -1,3 +1,4 @@
+import { ArchivoProtegido } from '../../shared/directives/archivo-protegido';
 import { Component, DestroyRef, computed, inject, signal } from "@angular/core";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { CurrencyPipe } from "@angular/common";
@@ -43,7 +44,7 @@ const ETIQUETAS: Record<string, string> = {
 };
 
 @Component({
-  imports: [FormsModule, CurrencyPipe, Icon, DialogFocus],
+  imports: [ArchivoProtegido, FormsModule, CurrencyPipe, Icon, DialogFocus],
   templateUrl: "./limpieza-panel.html",
   styleUrl: "./limpieza-panel.css",
 })

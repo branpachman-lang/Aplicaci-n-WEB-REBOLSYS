@@ -1,12 +1,13 @@
 package pe.com.rebolsysBackend.dto;
 
+import pe.com.rebolsysBackend.security.CredencialesService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
 import pe.com.rebolsysBackend.enums.EstadoUsuario;
-import pe.com.rebolsysBackend.service.impl.CredencialesService.Temporal;
+import pe.com.rebolsysBackend.security.CredencialesService.Temporal;
 
 public final class SeguridadDTO {
   private SeguridadDTO() {}

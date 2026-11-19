@@ -8,6 +8,11 @@
     {
       "key": "baseUrl",
       "value": "http://localhost:8080"
+    },
+    {
+      "key": "rebolsysJwt",
+      "value": "",
+      "description": "JWT de REBOLSYS, solo para el entorno local de Postman. No guardar valores reales en Git."
     }
   ],
   "item": [
@@ -983,6 +988,21 @@
           }
         }
       ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// rebolsys.jwt.bearer: limita la credencial a la API configurada.",
+          "const jwt = pm.variables.get(\"rebolsysJwt\");",
+          "const base = pm.variables.replaceIn(pm.variables.get(\"baseUrl\") || \"\").replace(/\\/$/, \"\");",
+          "const destino = pm.variables.replaceIn(pm.request.url.toString());",
+          "if (jwt && base && destino.startsWith(base + \"/api/v1/\")) pm.request.headers.upsert({key:\"Authorization\",value:\"Bearer \"+jwt});"
+        ]
+      }
     }
   ]
 }

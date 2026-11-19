@@ -1,6 +1,6 @@
 package pe.com.rebolsysBackend.controller;
 
-import pe.com.rebolsysBackend.config.Acceso;
+import pe.com.rebolsysBackend.security.Acceso;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;

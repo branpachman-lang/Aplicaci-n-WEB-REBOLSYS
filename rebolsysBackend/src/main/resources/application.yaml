@@ -1,11 +1,3 @@
-server:
-  servlet:
-    session:
-      timeout: 30m
-      cookie:
-        http-only: true
-        same-site: lax
-        secure: ${SESION_COOKIE_SEGURA:true}
 spring:
   servlet:
     multipart:
@@ -28,6 +20,10 @@ spring:
         physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
 
 app:
+  jwt:
+    secret: ${JWT_SECRET:}
+    duracion-maxima: ${JWT_DURACION_MAXIMA:8h}
+    inactividad-predeterminada: 30m
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200,http://127.0.0.1:4200}
 

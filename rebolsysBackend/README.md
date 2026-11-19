@@ -110,7 +110,7 @@ defecto `operacion_local`, y comprueba que esté activo para las escrituras.
 Completa el actor/turno de los DTO de operación y rechaza valores de otra sesión.
 Las operaciones HTTP exitosas se registran en AUDITORIA_GENERAL. Véase
 [API-SESION-OPERACION.md](API-SESION-OPERACION.md), incluido el flujo de confirmación
-y pago de ventas. La autenticación real permanece pendiente de la etapa de seguridad.
+y pago de ventas. La autenticación real utiliza JWT Bearer; consulta [la seguridad](API-SEGURIDAD.md).
 Los precios guardados en las líneas de una venta se mantienen al confirmarla y
 representan el importe final con impuesto incluido. Las cuentas internas conservan
 sus importes anteriores; la copia fiscal nueva desglosa base e impuesto por línea

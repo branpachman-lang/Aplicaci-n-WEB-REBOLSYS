@@ -1,4 +1,4 @@
-package pe.com.rebolsysBackend.service.impl;
+package pe.com.rebolsysBackend.security;
 
 import static pe.com.rebolsysBackend.service.impl.ReglasPropuesta.exigir;
 
@@ -11,7 +11,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
-import pe.com.rebolsysBackend.config.Acceso;
 import pe.com.rebolsysBackend.entity.*;
 import pe.com.rebolsysBackend.exception.RecursoNoEncontradoException;
 

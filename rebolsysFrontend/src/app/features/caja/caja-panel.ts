@@ -1,3 +1,4 @@
+import { ArchivoProtegido } from '../../shared/directives/archivo-protegido';
 import { generarClaveOperacion } from '../../core/utils/clave-operacion';
 import { CurrencyPipe } from '@angular/common';
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
@@ -12,7 +13,7 @@ import { DialogFocus } from '../../shared/directives/dialog-focus';
 import { ArqueoCaja, CajaApi, DatosMovimiento, MovimientoCaja, TurnoCaja } from './caja-api';
 
 @Component({
-  imports: [CurrencyPipe, FormsModule, DialogFocus],
+  imports: [ArchivoProtegido, CurrencyPipe, FormsModule, DialogFocus],
   templateUrl: './caja-panel.html',
   styleUrl: './caja-panel.css',
 })

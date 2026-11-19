@@ -17,7 +17,7 @@ import pe.com.rebolsysBackend.dto.HabitacionEstadoResponseDTO;
 import pe.com.rebolsysBackend.dto.HabitacionReservaResponseDTO;
 import pe.com.rebolsysBackend.dto.SesionActualDTO;
 import pe.com.rebolsysBackend.enums.EstadoHabitacion;
-import pe.com.rebolsysBackend.service.impl.SesionOperacionService;
+import pe.com.rebolsysBackend.security.SesionOperacionService;
 import pe.com.rebolsysBackend.service.service.HabitacionService;
 
 class HabitacionPrivacidadTest {

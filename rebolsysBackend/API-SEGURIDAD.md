@@ -1,6 +1,6 @@
 # Inicio de sesión y permisos
 
-El servidor autentica usuarios de REBOLSYS mediante las credenciales de Oracle y una sesión con cookie `HttpOnly`. La contraseña se guarda con BCrypt. La cookie se renueva al iniciar sesión y al cambiar la contraseña. La sesión vence después de 30 minutos de inactividad. Cinco intentos fallidos bloquean nuevos intentos durante 15 minutos. Las operaciones de escritura requieren el token CSRF de la sesión.
+El servidor autentica usuarios mediante JWT Bearer y credenciales guardadas con BCrypt. Las clases de seguridad están agrupadas en `security/`, tomando Pharma como referencia y conservando los permisos configurables de Oracle. El [contrato JWT](API-JWT.md) explica la firma, renovación, revocación y configuración de `JWT_SECRET`, obligatoria en producción. No requiere modificar el DDL.
 
 ## Preparar el gerente inicial
 
@@ -9,7 +9,7 @@ El servidor autentica usuarios de REBOLSYS mediante las credenciales de Oracle y
 3. Arrancar una instancia con `REBOLSYS_GERENTE_USUARIO` y `REBOLSYS_GERENTE_PASSWORD_TEMPORAL` en su entorno privado. La contraseña debe tener al menos 15 caracteres y ocupar como máximo 72 bytes. La preparación inicial asigna el rol protegido `GERENTE`. Los arranques posteriores conservan su contraseña.
 4. Retirar las variables de preparación después del primer arranque. Iniciar sesión en `/login` y elegir una contraseña nueva. Después aparece el menú **Seguridad**.
 
-El inicio de sesión real está activo por defecto. Los flujos locales antiguos pueden usar `SESION_PRUEBA_HABILITADA=true` en `dev`; en ese modo se omite la autenticación de los módulos operativos y se bloquea el módulo de seguridad. El perfil de producción rechaza esa configuración y usa una cookie segura. La aplicación Angular y la API se sirven con el mismo origen mediante el proxy.
+El inicio de sesión real está activo por defecto. Los flujos locales antiguos pueden usar `SESION_PRUEBA_HABILITADA=true` en `dev`; en ese modo se omite la autenticación de los módulos operativos y se bloquea el módulo de seguridad. Producción rechaza ese modo y exige `JWT_SECRET` en Base64 con al menos 32 bytes. Usa HTTPS en producción. Angular conserva el JWT en `sessionStorage` y lo envía únicamente a la API mediante `Authorization: Bearer <token>`.
 
 ## Probar en el equipo local
 
@@ -36,13 +36,16 @@ En Seguridad, el alta de empleados muestra los datos obligatorios pendientes y p
 
 | Método y ruta | Uso |
 | --- | --- |
-| `GET /api/v1/sesion/csrf` | Obtiene `token` y `cabecera`. Enviar esa cabecera y la cookie de la sesión en las escrituras. |
-| `POST /api/v1/sesion/iniciar` | Recibe `usuario` y `contrasena`. Devuelve `requiereCambio`, `gerente`, `roles`, `permisos` e `idTurno`. |
+| `POST /api/v1/sesion/iniciar` | Recibe `usuario` y `contrasena`. Devuelve `token`, `tipo`, `expiraEnSegundos` y `sesion`; esta última contiene `requiereCambio`, `gerente`, `roles`, `permisos` e `idTurno`. |
 | `GET /api/v1/sesion/actual` | Consulta el usuario, permisos vigentes y turno. |
-| `POST /api/v1/sesion/contrasena` | Recibe `actual` y `nueva`. Las demás sesiones quedan invalidadas. Obtener un nuevo token CSRF tras el cambio. |
-| `POST /api/v1/sesion/cerrar` | Cierra la sesión actual. |
+| `POST /api/v1/sesion/contrasena` | Recibe `actual` y `nueva`. Devuelve el mismo formato del inicio y revoca los tokens de la credencial anterior. |
+| `POST /api/v1/sesion/cerrar` | Revoca la cadena de JWT actual y responde 204. |
 
-Con `requiereCambio=true` solo se puede consultar o cerrar la sesión y cambiar la contraseña. Las rutas operativas requieren un permiso explícito. Se devuelve HTTP 401 cuando la sesión falta o perdió vigencia, y HTTP 403 cuando la operación está fuera de sus permisos.
+Con `requiereCambio=true` solo se puede consultar o cerrar el acceso y cambiar la contraseña. Las rutas operativas requieren un permiso explícito. Se devuelve HTTP 401 cuando falta un JWT válido, y HTTP 403 cuando la operación está fuera de sus permisos. Las cookies y los tokens enviados en URL no autentican; se retiró `/sesion/csrf`.
+
+La política de inactividad limita cada JWT. La actividad autenticada puede ampliar su vigencia mediante `X-Auth-Token`, conservando el plazo desde la última petición; Angular conserva la renovación de mayor vencimiento. La cadena tiene un límite absoluto de ocho horas, configurable con `JWT_DURACION_MAXIMA` hasta 24 horas. Reiniciar la API requiere volver a ingresar. La revocación actual está diseñada para una sola instancia. Las evidencias se obtienen con HTTP autenticado y se abren o descargan como Blob.
+
+La [colección JWT](api/postman/seguridad-jwt.postman_collection.json) prueba inicio, cambio de clave y revocación. Utiliza cuentas de prueba con clave temporal: la colección cambia su contraseña. En las colecciones operativas, configura la variable local `rebolsysJwt`; el script común adjunta Bearer cuando tiene valor.
 
 Gerencia y recepción recuperan su turno abierto al iniciar sesión. Si el usuario carece de turno abierto, se abre uno con monto base S/ 0.00. En el primer acceso con clave temporal, la apertura ocurre al establecer la contraseña definitiva. Cerrar sesión conserva el turno de caja.
 

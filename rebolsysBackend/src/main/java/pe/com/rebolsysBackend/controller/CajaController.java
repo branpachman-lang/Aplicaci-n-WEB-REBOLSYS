@@ -11,7 +11,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import pe.com.rebolsysBackend.config.Acceso;
+import pe.com.rebolsysBackend.security.Acceso;
 import pe.com.rebolsysBackend.dto.CajaDTO.*;
 import pe.com.rebolsysBackend.dto.PaginaResponseDTO;
 import pe.com.rebolsysBackend.service.impl.CajaService;

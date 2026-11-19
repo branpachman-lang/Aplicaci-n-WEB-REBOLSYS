@@ -1,23 +1,21 @@
 package pe.com.rebolsysBackend.controller;
 
-import jakarta.servlet.http.*;
+import io.swagger.v3.oas.annotations.Operation;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
-import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.*;
-import io.swagger.v3.oas.annotations.Operation;
+import pe.com.rebolsysBackend.dto.AutenticacionResponseDTO;
 import pe.com.rebolsysBackend.dto.SesionActualDTO;
-import pe.com.rebolsysBackend.service.impl.SesionOperacionService;
-import pe.com.rebolsysBackend.service.impl.CredencialesService;
-import pe.com.rebolsysBackend.service.impl.PoliticaSeguridadService;
-import pe.com.rebolsysBackend.config.Acceso;
+import pe.com.rebolsysBackend.security.*;
 
 @RestController
 @RequestMapping("/api/v1/sesion")
@@ -26,8 +24,10 @@ import pe.com.rebolsysBackend.config.Acceso;
 public class SesionOperacionController {
   private final SesionOperacionService sesion;
   private final CredencialesService credenciales;
-  private final HttpSessionSecurityContextRepository sesiones;
   private final PoliticaSeguridadService politica;
+  private final UsuarioDetailsService usuarios;
+  private final JwtService jwt;
+  private final org.springframework.security.authentication.AuthenticationManager authenticationManager;
   @Value("${app.sesion-prueba.habilitada:false}") private boolean prueba;
 
   public record Iniciar(@NotBlank @Size(max = 50) String usuario, @NotBlank @Size(max = 128) String contrasena) {
@@ -36,55 +36,56 @@ public class SesionOperacionController {
   public record Cambiar(@NotBlank @Size(max = 128) String actual, @NotBlank @Size(max = 128) String nueva) {
     @Override public String toString() { return "Solicitud de cambio de contraseña"; }
   }
-  public record Proteccion(String token, String cabecera) {}
-
-  @GetMapping("/csrf")
-  @Acceso(Acceso.PUBLICO)
-  public Proteccion csrf(CsrfToken token, HttpServletResponse res) {
-    res.setHeader("Cache-Control", "no-store");
-    return token == null ? new Proteccion(null, null) : new Proteccion(token.getToken(), token.getHeaderName());
-  }
 
   @PostMapping("/iniciar")
   @Acceso(Acceso.PUBLICO)
-  @Operation(operationId = "iniciarSesion")
-  public SesionActualDTO iniciar(@Valid @RequestBody Iniciar datos, HttpServletRequest req, HttpServletResponse res) {
+  @Operation(operationId = "iniciarSesion", summary = "Autenticar credenciales y emitir un JWT Bearer")
+  public AutenticacionResponseDTO iniciar(@Valid @RequestBody Iniciar datos,
+      HttpServletRequest request, HttpServletResponse response) {
     if (prueba) throw new AuthenticationCredentialsNotFoundException("Desactiva la sesión de pruebas para iniciar sesión");
-    autenticar(credenciales.iniciar(datos.usuario(), datos.contrasena()), req, res);
-    return sesion.actual();
+    var autenticacion = authenticationManager.authenticate(
+        UsernamePasswordAuthenticationToken.unauthenticated(datos.usuario(), datos.contrasena()));
+    return autenticar((CredencialesService.Principal) autenticacion.getPrincipal(), request, response);
   }
 
   @GetMapping("/actual")
-  @Operation(summary="Consultar el usuario, turno y permisos de la sesión")
-  public SesionActualDTO actual(){return sesion.actual();}
+  @Operation(summary = "Consultar el usuario, turno y permisos vigentes del JWT")
+  public SesionActualDTO actual() {
+    return sesion.actual();
+  }
 
   @PostMapping("/contrasena")
-  public SesionActualDTO cambiar(@Valid @RequestBody Cambiar datos, HttpServletRequest req, HttpServletResponse res) {
+  public AutenticacionResponseDTO cambiar(@Valid @RequestBody Cambiar datos,
+      HttpServletRequest request, HttpServletResponse response) {
     var autenticacion = SecurityContextHolder.getContext().getAuthentication();
     if (autenticacion == null || !(autenticacion.getPrincipal() instanceof CredencialesService.Principal principal)) {
       throw new AuthenticationCredentialsNotFoundException("Inicia sesión para continuar");
     }
-    autenticar(credenciales.cambiar(principal, datos.actual(), datos.nueva()), req, res);
-    req.removeAttribute(SesionOperacionService.ATRIBUTO);
-    return sesion.actual();
+    var nuevo = credenciales.cambiar(principal, datos.actual(), datos.nueva());
+    if (request.getAttribute(JwtService.ATRIBUTO) instanceof JwtService.Verificado token) jwt.revocar(token);
+    return autenticar(nuevo, request, response);
   }
 
   @PostMapping("/cerrar")
   @Acceso(Acceso.CIERRE)
   @ResponseStatus(HttpStatus.NO_CONTENT)
-  public void cerrar(HttpServletRequest req, HttpServletResponse res) {
-    if (req.getSession(false) != null) req.getSession(false).invalidate();
+  public void cerrar(HttpServletRequest request, HttpServletResponse response) {
+    if (request.getAttribute(JwtService.ATRIBUTO) instanceof JwtService.Verificado token) jwt.revocar(token);
+    if (request.getSession(false) != null) request.getSession(false).invalidate();
     SecurityContextHolder.clearContext();
-    res.setHeader("Cache-Control", "no-store");
+    response.setHeader("Cache-Control", "no-store");
   }
 
-  private void autenticar(CredencialesService.Principal principal, HttpServletRequest req, HttpServletResponse res) {
-    if (req.getSession(false) != null) req.getSession(false).invalidate();
+  private AutenticacionResponseDTO autenticar(CredencialesService.Principal principal,
+      HttpServletRequest request, HttpServletResponse response) {
+    var usuario = usuarios.cargar(principal.idUsuario());
     var contexto = SecurityContextHolder.createEmptyContext();
-    contexto.setAuthentication(UsernamePasswordAuthenticationToken.authenticated(principal, null, java.util.List.of()));
+    contexto.setAuthentication(UsernamePasswordAuthenticationToken.authenticated(
+        usuario.principal(), null, usuario.getAuthorities()));
     SecurityContextHolder.setContext(contexto);
-    sesiones.saveContext(contexto, req, res);
-    req.getSession().setMaxInactiveInterval(politica.minutosInactividad() * 60);
-    res.setHeader("Cache-Control", "no-store");
+    request.removeAttribute(SesionOperacionService.ATRIBUTO);
+    var token = jwt.emitir(usuario.principal(), politica.minutosInactividad());
+    response.setHeader("Cache-Control", "no-store");
+    return new AutenticacionResponseDTO(token.token(), "Bearer", token.expiraEnSegundos(), sesion.actual());
   }
 }

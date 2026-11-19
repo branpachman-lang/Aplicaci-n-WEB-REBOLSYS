@@ -1,5 +1,8 @@
 package pe.com.rebolsysBackend.controller;
 
+import pe.com.rebolsysBackend.security.GestionAccesosService;
+import pe.com.rebolsysBackend.security.CredencialesService;
+import pe.com.rebolsysBackend.security.AccesosService;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -8,7 +11,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
-import pe.com.rebolsysBackend.config.Acceso;
+import pe.com.rebolsysBackend.security.Acceso;
 import pe.com.rebolsysBackend.dto.SeguridadDTO.*;
 import pe.com.rebolsysBackend.service.impl.*;
 

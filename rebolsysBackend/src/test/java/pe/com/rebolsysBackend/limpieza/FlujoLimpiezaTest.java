@@ -31,7 +31,7 @@ import pe.com.rebolsysBackend.dto.SesionActualDTO;
 import pe.com.rebolsysBackend.entity.*;
 import pe.com.rebolsysBackend.enums.*;
 import pe.com.rebolsysBackend.service.impl.ReglasPropuesta;
-import pe.com.rebolsysBackend.service.impl.SesionOperacionService;
+import pe.com.rebolsysBackend.security.SesionOperacionService;
 import pe.com.rebolsysBackend.service.service.ItemService;
 import pe.com.rebolsysBackend.service.service.ProveedorFacturacionClient;
 import tools.jackson.databind.JsonNode;

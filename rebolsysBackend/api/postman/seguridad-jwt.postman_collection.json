@@ -1,0 +1,421 @@
+{
+  "info": {
+    "name": "REBOLSYS - Seguridad JWT y roles",
+    "description": "Usar cuentas de prueba con clave temporal. Esta colección cambia su contraseña y cierra el acceso. No usar cuentas de trabajo. Los datos de iteración permiten probar los cuatro roles.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "usuario",
+      "value": ""
+    },
+    {
+      "key": "contrasena",
+      "value": ""
+    },
+    {
+      "key": "nueva",
+      "value": ""
+    },
+    {
+      "key": "rol",
+      "value": "GERENTE"
+    },
+    {
+      "key": "esperaUsuarios",
+      "value": "200"
+    },
+    {
+      "key": "esperaReservas",
+      "value": "200"
+    },
+    {
+      "key": "esperaInformes",
+      "value": "200"
+    }
+  ],
+  "item": [
+    {
+      "name": "01 Iniciar con clave temporal",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/v1/sesion/iniciar",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"usuario\":\"{{usuario}}\",\"contrasena\":\"{{contrasena}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Inicio correcto\",()=>pm.response.to.have.status(200));",
+              "const r=pm.response.json(); pm.collectionVariables.set(\"tokenTemporal\",r.token); pm.test(\"JWT Bearer sin cookie\",()=>{pm.expect(r.tipo).to.eql(\"Bearer\");pm.expect(r.token.split(\".\")).to.have.length(3);pm.expect((pm.response.headers.get(\"Set-Cookie\")||\"\")).to.not.include(\"JSESSIONID\");pm.expect(r.sesion.requiereCambio).to.eql(true);});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 Temporal no administra cuentas",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/v1/seguridad/usuarios",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenTemporal}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Cambio obligatorio\",()=>pm.response.to.have.status(403));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 Cambiar clave y obtener JWT definitivo",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/v1/sesion/contrasena",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenTemporal}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"actual\":\"{{contrasena}}\",\"nueva\":\"{{nueva}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Clave actualizada\",()=>pm.response.to.have.status(200));const r=pm.response.json();pm.collectionVariables.set(\"token\",r.token);",
+              "pm.test(\"Roles y turno conservados\",()=>{pm.expect(r.sesion.requiereCambio).to.eql(false);const rol=pm.iterationData.get(\"rol\")||pm.variables.get(\"rol\");pm.expect(r.sesion.roles).to.include(rol);const turno=pm.iterationData.get(\"esperaTurno\");if(turno===true)pm.expect(r.sesion.idTurno).to.be.a(\"number\");if(turno===false)pm.expect(r.sesion.idTurno).to.eql(null);});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 Credencial anterior revocada",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/v1/sesion/actual",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenTemporal}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"JWT anterior rechazado\",()=>pm.response.to.have.status(401));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 Consultar acceso actual",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/v1/sesion/actual",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Acceso vigente\",()=>pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 Permiso de administrar usuarios",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/v1/seguridad/usuarios",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Permiso según rol\",()=>pm.response.to.have.status(Number(pm.iterationData.get(\"esperaUsuarios\")||pm.variables.get(\"esperaUsuarios\"))));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 Permiso de consultar reservas",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/v1/reservas",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Reservas según rol\",()=>pm.response.to.have.status(Number(pm.iterationData.get(\"esperaReservas\")||pm.variables.get(\"esperaReservas\"))));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 Permiso de consultar informes",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/v1/limpieza/informes",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Informes según rol\",()=>pm.response.to.have.status(Number(pm.iterationData.get(\"esperaInformes\")||pm.variables.get(\"esperaInformes\"))));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "09 Firma inválida rechazada",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/v1/reservas",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer firma-invalida"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Firma inválida\",()=>pm.response.to.have.status(401));pm.test(\"Error sin datos internos\",()=>{pm.expect(pm.response.json().status).to.eql(401);pm.expect(pm.response.text()).not.to.include(\"Exception\");});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "10 Token en URL no autentica",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/v1/sesion/actual?token=token-de-prueba-en-url",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"URL no autentica\",()=>pm.response.to.have.status(401));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "11 Cerrar acceso actual",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/v1/sesion/cerrar",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Cierre correcto\",()=>pm.response.to.have.status(204));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "12 JWT cerrado no puede reutilizarse",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/v1/sesion/actual",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Cierre revoca JWT\",()=>pm.response.to.have.status(401));pm.collectionVariables.unset(\"token\");pm.collectionVariables.unset(\"tokenTemporal\");"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "13 Contrato documentado con Bearer",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/v3/api-docs",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Contrato accesible\",()=>pm.response.to.have.status(200));pm.test(\"JWT documentado\",()=>{const s=pm.response.json();pm.expect(s.components.securitySchemes.bearerAuth.scheme).to.eql(\"bearer\");pm.expect(s.paths).not.to.have.property(\"/api/v1/sesion/csrf\");});"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

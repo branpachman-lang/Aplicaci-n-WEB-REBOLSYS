@@ -1,4 +1,4 @@
-package pe.com.rebolsysBackend.service.impl;
+package pe.com.rebolsysBackend.security;
 
 import static pe.com.rebolsysBackend.service.impl.ReglasPropuesta.*;
 

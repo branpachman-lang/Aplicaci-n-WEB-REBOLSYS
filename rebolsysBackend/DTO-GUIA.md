@@ -6,7 +6,7 @@ para cambiarlo construye una instancia nueva, en lugar de usar setters.
 
 ## Organización y limpieza
 
-- `dto/` contiene 71 archivos activos: 66 records y cinco contenedores de records
+- `dto/` contiene records activos y cinco contenedores de records
   por módulo (`CajaDTO`, `LimpiezaDTO`, `ReportesDTO`, `SeguridadDTO` y `SistemaDTO`).
 - El formato común de errores está en `exception/dto/ErrorResponseDTO`.
 - Se eliminaron 61 DTOs sin referencias en fuentes, pruebas ni archivos versionados.

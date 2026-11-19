@@ -1,7 +1,7 @@
 @if (nombre()) {
   <div class="marca">
     @if (logo(); as ruta) {
-      <img [src]="ruta" alt="Logo del hospedaje" width="48" height="48" />
+      <img [imagenProtegida]="ruta" alt="Logo del hospedaje" width="48" height="48" />
     }
     <div>
       <strong>{{ nombre() }}</strong>

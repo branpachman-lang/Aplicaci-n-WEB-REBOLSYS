@@ -32,7 +32,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({AuthenticationException.class, AccessDeniedException.class})
     public ResponseEntity<ErrorResponseDTO> handleSecurity(RuntimeException ex, HttpServletRequest request) {
         var estado = ex instanceof AuthenticationException ? HttpStatus.UNAUTHORIZED : HttpStatus.FORBIDDEN;
-        return ResponseEntity.status(estado).body(new ErrorResponseDTO(
+        return ResponseEntity.status(estado).header("Cache-Control", "no-store").body(new ErrorResponseDTO(
             LocalDateTime.now(), estado.value(), estado.getReasonPhrase(), ex.getMessage(), request.getRequestURI(), null));
     }
 
@@ -156,16 +156,8 @@ public class GlobalExceptionHandler {
         DataIntegrityViolationException ex,
         HttpServletRequest request
     ) {
-        // Oracle identifies the violated CHECK, UNIQUE, NOT NULL or foreign key.
-        String databaseMessage = ex.getMostSpecificCause().getMessage();
-        String message =
-            databaseMessage == null
-                ? "Se incumplió una restricción de la base de datos"
-                : databaseMessage
-                      .lines()
-                      .filter(line -> line.stripLeading().startsWith("ORA-"))
-                      .findFirst()
-                      .orElse("Se incumplió una restricción de la base de datos");
+        log.warn("Conflicto de integridad en {} {}", request.getMethod(), request.getRequestURI());
+        String message = "Los datos entran en conflicto con un registro existente o relacionado. Revisa la operación.";
         ErrorResponseDTO error = new ErrorResponseDTO(
             LocalDateTime.now(),
             HttpStatus.CONFLICT.value(),

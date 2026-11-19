@@ -1,4 +1,4 @@
-package pe.com.rebolsysBackend.service.impl;
+package pe.com.rebolsysBackend.security;
 
 import java.time.Duration;
 import org.springframework.beans.factory.annotation.Value;
@@ -18,7 +18,7 @@ public class PoliticaSeguridadService {
   private final int minutosPredeterminados;
 
   public PoliticaSeguridadService(SistemaRepository datos, AccesosService accesos,
-      @Value("${server.servlet.session.timeout:30m}") Duration inactividad) {
+      @Value("${app.jwt.inactividad-predeterminada:30m}") Duration inactividad) {
     this.datos = datos;
     this.accesos = accesos;
     this.minutosPredeterminados = (int) Math.clamp(inactividad.toMinutes(), 1, 1440);

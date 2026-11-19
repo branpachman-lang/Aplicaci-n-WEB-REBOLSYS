@@ -60,7 +60,7 @@
           @for (m of historial()?.contenido ?? []; track m.idFlujo) {
             <tr><td>{{ fecha(m.fechaHora) }}</td><td>{{ m.concepto }}</td><td>{{ m.tipo }}</td>
               <td [class.salida]="m.signo < 0">{{ m.signo === 1 ? '+' : '−' }} {{ m.monto | currency:'PEN':'S/ ' }}</td>
-              <td>@if (m.evidencia) { <a class="text-button" [href]="m.evidencia" download>Descargar</a> } @else { — }</td>
+              <td>@if (m.evidencia) { <a class="text-button" [href]="m.evidencia" [archivoProtegido]="m.evidencia" [descargarArchivo]="true">Descargar</a> } @else { — }</td>
             </tr>
           } @empty { <tr><td colspan="5" class="muted">{{ cargando() ? 'Cargando movimientos…' : 'Aún no hay movimientos en este turno.' }}</td></tr> }
         </tbody>

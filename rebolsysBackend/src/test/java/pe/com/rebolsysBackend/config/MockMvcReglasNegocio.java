@@ -1,5 +1,6 @@
 package pe.com.rebolsysBackend.config;
 
+import pe.com.rebolsysBackend.security.OperacionUsuarioBodyAdvice;
 import java.lang.annotation.*;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -8,5 +9,5 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @AutoConfigureMockMvc(addFilters = false)
-@MockitoBean(types = {AccesosWebConfig.class, SesionPruebaBodyAdvice.class})
+@MockitoBean(types = {AccesosWebConfig.class, OperacionUsuarioBodyAdvice.class})
 public @interface MockMvcReglasNegocio {}

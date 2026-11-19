@@ -19,7 +19,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.mock.web.MockHttpSession;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -34,8 +33,9 @@ import pe.com.rebolsysBackend.entity.id.SerieComprobanteId;
 import pe.com.rebolsysBackend.enums.EstadoComprobante;
 import pe.com.rebolsysBackend.enums.EstadoHabitacion;
 import pe.com.rebolsysBackend.enums.EstadoUsuario;
-import pe.com.rebolsysBackend.service.impl.AccesosService;
-import pe.com.rebolsysBackend.service.impl.CredencialesService;
+import pe.com.rebolsysBackend.security.AccesosService;
+import pe.com.rebolsysBackend.security.CredencialesService;
+import pe.com.rebolsysBackend.security.JwtService;
 import pe.com.rebolsysBackend.service.service.ProveedorFacturacionClient;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -59,9 +59,23 @@ class AccesoHttpTest {
   @Autowired TransactionTemplate tx;
   @Autowired CredencialesService credenciales;
   @Autowired AccesosService accesos;
+  @Autowired JwtService jwt;
   @Autowired RequestMappingHandlerMapping requestMappingHandlerMapping;
   @MockitoBean(name = "apisPeruRestClient") RestClient consultaDocumentos;
   @MockitoBean ProveedorFacturacionClient facturacion;
+
+  @Test
+  void rechazaCookiesTokensEnUrlYFirmasInvalidas() throws Exception {
+    mvc.perform(get(API + "/reservas").cookie(new jakarta.servlet.http.Cookie("JSESSIONID", "sesion-anterior")))
+        .andExpect(status().isUnauthorized()).andExpect(header().string("WWW-Authenticate", "Bearer"))
+        .andExpect(jsonPath("$.status").value(401));
+    mvc.perform(get(API + "/reservas").param("token", "no-autentica"))
+        .andExpect(status().isUnauthorized());
+    var respuesta = mvc.perform(get(API + "/reservas").header("Authorization", "Bearer firma-alterada"))
+        .andExpect(status().isUnauthorized()).andReturn();
+    assertThat(respuesta.getResponse().getContentAsString()).doesNotContain("firma-alterada", "Exception", "valorHash");
+    assertThat(respuesta.getRequest().getSession(false)).isNull();
+  }
 
   @Test
   void cadaRutaOperativaTieneReglaExplicita() throws Exception {
@@ -70,40 +84,39 @@ class AccesoHttpTest {
         .filter(e -> AccesosService.regla(e.getValue()).length == 0).map(Map.Entry::getKey).toList();
     assertThat(sinRegla).isEmpty();
     mvc.perform(get("/v3/api-docs")).andExpect(status().isOk())
-        .andExpect(jsonPath("$.paths['/api/v1/seguridad/usuarios'].post.security[0].sesion").isArray());
+        .andExpect(jsonPath("$.paths['/api/v1/seguridad/usuarios'].post.security[0].bearerAuth").isArray());
   }
 
   @Test
   void autenticaConTemporalLimitaFuncionesYRevocaAccesos() throws Exception {
     var tipo = prepararGerente();
     mvc.perform(get(API + "/reservas")).andExpect(status().isUnauthorized());
-    mvc.perform(post(API + "/sesion/iniciar").contentType(MediaType.APPLICATION_JSON)
-        .content(json.writeValueAsBytes(Map.of("usuario", "gerencia", "contrasena", CLAVE_GERENTE))))
-        .andExpect(status().isForbidden());
-    var temporalGerente = sesion(peticion(post(API + "/sesion/iniciar"), null,
+    var temporalGerente = token(peticion(post(API + "/sesion/iniciar"), null,
         Map.of("usuario", "gerencia", "contrasena", CLAVE_GERENTE))
-        .andExpect(status().isOk()).andExpect(jsonPath("$.requiereCambio").value(true))
-        .andExpect(jsonPath("$.idTurno").isEmpty()));
-    mvc.perform(get(API + "/seguridad/usuarios").session(temporalGerente)).andExpect(status().isForbidden());
+        .andExpect(status().isOk()).andExpect(jsonPath("$.sesion.requiereCambio").value(true))
+        .andExpect(jsonPath("$.sesion.idTurno").isEmpty()));
+    mvc.perform(get(API + "/seguridad/usuarios").header("Authorization", "Bearer " + temporalGerente)).andExpect(status().isForbidden());
     var activacionGerente = peticion(post(API + "/sesion/contrasena"), temporalGerente,
         Map.of("actual", CLAVE_GERENTE, "nueva", "Gerente permanente de prueba"))
-        .andExpect(status().isOk()).andExpect(jsonPath("$.gerente").value(true))
-        .andExpect(jsonPath("$.idTurno").isNumber());
-    int turnoGerente = cuerpo(activacionGerente).path("idTurno").asInt();
-    var gerente = sesion(peticion(post(API + "/sesion/iniciar"), null,
+        .andExpect(status().isOk()).andExpect(jsonPath("$.sesion.gerente").value(true))
+        .andExpect(jsonPath("$.sesion.idTurno").isNumber());
+    int turnoGerente = cuerpo(activacionGerente).path("sesion").path("idTurno").asInt();
+    mvc.perform(get(API + "/sesion/actual").header("Authorization", "Bearer " + temporalGerente))
+        .andExpect(status().isUnauthorized());
+    var gerente = token(peticion(post(API + "/sesion/iniciar"), null,
         Map.of("usuario", "gerencia", "contrasena", "Gerente permanente de prueba"))
-        .andExpect(status().isOk()).andExpect(jsonPath("$.idTurno").value(turnoGerente)));
-    var empleadoGerente = cuerpo(mvc.perform(get(API + "/seguridad/empleados").session(gerente))
+        .andExpect(status().isOk()).andExpect(jsonPath("$.sesion.idTurno").value(turnoGerente)));
+    var empleadoGerente = cuerpo(mvc.perform(get(API + "/seguridad/empleados").header("Authorization", "Bearer " + gerente))
         .andExpect(status().isOk()).andExpect(jsonPath("$[0].protegido").value(true))).get(0).path("idEmpleado").asLong();
     peticion(put(API + "/seguridad/empleados/" + empleadoGerente + "/estado"), gerente, Map.of("activo", false))
         .andExpect(status().isConflict());
-    mvc.perform(get(API + "/recepcion/catalogos").session(gerente)).andExpect(status().isOk())
+    mvc.perform(get(API + "/recepcion/catalogos").header("Authorization", "Bearer " + gerente)).andExpect(status().isOk())
         .andExpect(jsonPath("$.turnosAbiertos[0].idTurno").value(turnoGerente));
-    mvc.perform(get(API + "/limpieza/inicio").session(gerente))
+    mvc.perform(get(API + "/limpieza/inicio").header("Authorization", "Bearer " + gerente))
         .andExpect(status().isOk()).andExpect(jsonPath("$.alcance").value("GENERAL"))
         .andExpect(jsonPath("$.idTurno").isEmpty());
-    mvc.perform(get(API + "/limpieza/informes").session(gerente)).andExpect(status().isOk());
-    mvc.perform(get(API + "/limpieza/tickets").session(gerente)).andExpect(status().isOk());
+    mvc.perform(get(API + "/limpieza/informes").header("Authorization", "Bearer " + gerente)).andExpect(status().isOk());
+    mvc.perform(get(API + "/limpieza/tickets").header("Authorization", "Bearer " + gerente)).andExpect(status().isOk());
 
     long habitacion = tx.execute(s -> {
       var tipoHabitacion = new TipoHabitacion();
@@ -120,14 +133,14 @@ class AccesoHttpTest {
       return cuarto.getIdHabitacion();
     });
     String cuarto = API + "/limpieza/habitaciones/" + habitacion;
-    mvc.perform(get(cuarto).session(gerente)).andExpect(status().isOk())
+    mvc.perform(get(cuarto).header("Authorization", "Bearer " + gerente)).andExpect(status().isOk())
         .andExpect(jsonPath("$.habitacion.puedeIniciarLimpieza").value(true));
     long informe = cuerpo(peticion(post(cuarto + "/iniciar"), gerente, null)
         .andExpect(status().isOk()).andExpect(jsonPath("$.habitacion.estado").value("EN_LIMPIEZA")))
         .path("idInformeRevision").asLong();
     peticion(post(API + "/limpieza/borradores/" + informe + "/enviar"), gerente, Map.of("items", List.of()))
         .andExpect(status().isOk()).andExpect(jsonPath("$.informe.estado").value("POR_APROBAR"));
-    mvc.perform(get(cuarto).session(gerente)).andExpect(status().isOk())
+    mvc.perform(get(cuarto).header("Authorization", "Bearer " + gerente)).andExpect(status().isOk())
         .andExpect(jsonPath("$.estadoInforme").value("POR_APROBAR"));
     String aprobarInforme = API + "/limpieza/informes/" + informe + "/aprobar";
     peticion(post(aprobarInforme), gerente, null).andExpect(status().isForbidden());
@@ -174,23 +187,23 @@ class AccesoHttpTest {
         Map.of("roles", List.of(roles.get("ROL_ANTERIOR")), "permisos", List.of()))
         .andExpect(status().isConflict());
 
-    var primera = sesion(peticion(post(API + "/sesion/iniciar"), null, Map.of("usuario", "OPERADORA@EXAMPLE.TEST", "contrasena", clave))
-        .andExpect(status().isOk()).andExpect(jsonPath("$.permisos").isEmpty()));
-    mvc.perform(get(API + "/reservas").session(primera)).andExpect(status().isForbidden());
+    var primera = token(peticion(post(API + "/sesion/iniciar"), null, Map.of("usuario", "OPERADORA@EXAMPLE.TEST", "contrasena", clave))
+        .andExpect(status().isOk()).andExpect(jsonPath("$.sesion.permisos").isEmpty()));
+    mvc.perform(get(API + "/reservas").header("Authorization", "Bearer " + primera)).andExpect(status().isForbidden());
     var activacionRecepcion = peticion(post(API + "/sesion/contrasena"), primera,
         Map.of("actual", clave, "nueva", "Clave elegida por operadora"))
-        .andExpect(status().isOk()).andExpect(jsonPath("$.requiereCambio").value(false))
-        .andExpect(jsonPath("$.permisos").isArray()).andExpect(jsonPath("$.idTurno").isNumber());
-    int turnoRecepcion = cuerpo(activacionRecepcion).path("idTurno").asInt();
+        .andExpect(status().isOk()).andExpect(jsonPath("$.sesion.requiereCambio").value(false))
+        .andExpect(jsonPath("$.sesion.permisos").isArray()).andExpect(jsonPath("$.sesion.idTurno").isNumber());
+    int turnoRecepcion = cuerpo(activacionRecepcion).path("sesion").path("idTurno").asInt();
     assertThat(turnoRecepcion).isNotEqualTo(turnoGerente);
-    var operadora = sesion(peticion(post(API + "/sesion/iniciar"), null,
+    var operadora = token(peticion(post(API + "/sesion/iniciar"), null,
         Map.of("usuario", "operadora@example.test", "contrasena", "Clave elegida por operadora"))
-        .andExpect(status().isOk()).andExpect(jsonPath("$.idTurno").value(turnoRecepcion)));
+        .andExpect(status().isOk()).andExpect(jsonPath("$.sesion.idTurno").value(turnoRecepcion)));
     tx.executeWithoutResult(s -> {
       accesos.permisos(roles.get("ROL_ANTERIOR"), java.util.Set.of("PRODUCTOS:VER"));
       accesos.vincular(id, roles.get("ROL_ANTERIOR"));
     });
-    mvc.perform(get(API + "/productos").session(operadora)).andExpect(status().isForbidden());
+    mvc.perform(get(API + "/productos").header("Authorization", "Bearer " + operadora)).andExpect(status().isForbidden());
     long mantenimiento = roles.get("MANTENIMIENTO");
     peticion(put(API + "/seguridad/roles/" + mantenimiento), gerente,
         Map.of("permisos", List.of("LIMPIEZA:APROBAR_INFORME"))).andExpect(status().isOk());
@@ -200,10 +213,10 @@ class AccesoHttpTest {
     peticion(post(aprobarInforme), operadora, null).andExpect(status().isOk())
         .andExpect(jsonPath("$.informe.estado").value("APROBADO"));
     peticion(post(cuarto + "/iniciar"), operadora, null).andExpect(status().isConflict());
-    mvc.perform(get(API + "/reservas").session(operadora)).andExpect(status().isOk());
-    mvc.perform(get(API + "/habitaciones/configuracion").session(operadora)).andExpect(status().isOk());
-    mvc.perform(get(API + "/productos").session(operadora)).andExpect(status().isForbidden());
-    mvc.perform(get(API + "/seguridad/usuarios").session(operadora)).andExpect(status().isForbidden());
+    mvc.perform(get(API + "/reservas").header("Authorization", "Bearer " + operadora)).andExpect(status().isOk());
+    mvc.perform(get(API + "/habitaciones/configuracion").header("Authorization", "Bearer " + operadora)).andExpect(status().isOk());
+    mvc.perform(get(API + "/productos").header("Authorization", "Bearer " + operadora)).andExpect(status().isForbidden());
+    mvc.perform(get(API + "/seguridad/usuarios").header("Authorization", "Bearer " + operadora)).andExpect(status().isForbidden());
     peticion(post(API + "/reservas"), operadora, Map.of()).andExpect(status().isForbidden());
     peticion(put(API + "/habitaciones/1"), operadora, Map.of()).andExpect(status().isForbidden());
     peticion(delete(API + "/habitaciones/1"), operadora, null).andExpect(status().isForbidden());
@@ -216,33 +229,35 @@ class AccesoHttpTest {
         .andExpect(status().isConflict());
     peticion(put(rutaUsuario), gerente, Map.of("usuario", "recepcion.nueva", "accesos", accesos))
         .andExpect(status().isOk()).andExpect(jsonPath("$.usuario").value("recepcion.nueva"));
-    mvc.perform(get(API + "/seguridad/roles").session(gerente))
+    mvc.perform(get(API + "/seguridad/roles").header("Authorization", "Bearer " + gerente))
         .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(4))
         .andExpect(jsonPath("$[0].nombre").value("GERENTE"))
         .andExpect(jsonPath("$[1].nombre").value("LIMPIEZA"))
         .andExpect(jsonPath("$[2].nombre").value("MANTENIMIENTO"))
         .andExpect(jsonPath("$[3].nombre").value("RECEPCIONISTA"));
-    mvc.perform(get(API + "/reservas").session(operadora)).andExpect(status().isForbidden());
+    mvc.perform(get(API + "/reservas").header("Authorization", "Bearer " + operadora)).andExpect(status().isForbidden());
     var temporalNueva = cuerpo(peticion(post(rutaUsuario + "/credencial-temporal"), gerente, null)
         .andExpect(status().isOk())).path("contrasenaTemporal").asText();
-    mvc.perform(get(API + "/habitaciones/configuracion").session(operadora)).andExpect(status().isUnauthorized());
-    var sesionRenombrada = sesion(peticion(post(API + "/sesion/iniciar"), null,
+    mvc.perform(get(API + "/habitaciones/configuracion").header("Authorization", "Bearer " + operadora)).andExpect(status().isUnauthorized());
+    var sesionRenombrada = token(peticion(post(API + "/sesion/iniciar"), null,
         Map.of("usuario", "recepcion.nueva", "contrasena", temporalNueva)).andExpect(status().isOk()));
     peticion(put(rutaEmpleado + "/estado"), gerente, Map.of("activo", false)).andExpect(status().isOk())
         .andExpect(jsonPath("$.fechaCese").isNotEmpty()).andExpect(jsonPath("$.tieneUsuario").value(true));
-    mvc.perform(get(API + "/sesion/actual").session(sesionRenombrada)).andExpect(status().isUnauthorized());
+    mvc.perform(get(API + "/sesion/actual").header("Authorization", "Bearer " + sesionRenombrada)).andExpect(status().isUnauthorized());
     peticion(put(rutaUsuario + "/estado"), gerente, Map.of("estado", "ACTIVO")).andExpect(status().isConflict());
     peticion(put(rutaEmpleado + "/estado"), gerente, Map.of("activo", true)).andExpect(status().isOk())
         .andExpect(jsonPath("$.fechaCese").isEmpty());
     peticion(put(rutaUsuario + "/estado"), gerente, Map.of("estado", "ACTIVO")).andExpect(status().isOk());
     peticion(post(API + "/sesion/cerrar"), gerente, null).andExpect(status().isNoContent());
+    mvc.perform(get(API + "/sesion/actual").header("Authorization", "Bearer " + gerente))
+        .andExpect(status().isUnauthorized());
   }
 
-  private void probarConfiguracionYReportes(MockHttpSession gerente, MockHttpSession operadora, long informe) throws Exception {
+  private void probarConfiguracionYReportes(String gerente, String operadora, long informe) throws Exception {
     String sistema = API + "/configuraciones/sistema";
     String reportes = API + "/reportes";
-    mvc.perform(get(sistema + "/hospedaje").session(operadora)).andExpect(status().isForbidden());
-    mvc.perform(get(reportes + "/financiero").session(operadora)).andExpect(status().isForbidden());
+    mvc.perform(get(sistema + "/hospedaje").header("Authorization", "Bearer " + operadora)).andExpect(status().isForbidden());
+    mvc.perform(get(reportes + "/financiero").header("Authorization", "Bearer " + operadora)).andExpect(status().isForbidden());
 
     var hospedaje = Map.of("nombre", "Hospedaje de prueba", "ruc", "20999999999", "direccion", "Huaraz");
     peticion(put(sistema + "/hospedaje"), gerente, hospedaje)
@@ -252,38 +267,39 @@ class AccesoHttpTest {
     var foto = new MockMultipartFile("archivo", "logo.png", "image/png", bytes.toByteArray());
     String rutaLogo = cuerpo(peticion(multipart(org.springframework.http.HttpMethod.PUT, sistema + "/hospedaje/logo")
         .file(foto), gerente, null).andExpect(status().isOk())).path("logoRuta").asText();
-    mvc.perform(get(rutaLogo).session(gerente)).andExpect(status().isOk())
+    mvc.perform(get(rutaLogo).header("Authorization", "Bearer " + gerente)).andExpect(status().isOk())
         .andExpect(content().bytes(bytes.toByteArray()));
 
-    long tipo = cuerpo(mvc.perform(get(sistema + "/comerciales").session(gerente)).andExpect(status().isOk()))
+    long tipo = cuerpo(mvc.perform(get(sistema + "/comerciales").header("Authorization", "Bearer " + gerente)).andExpect(status().isOk()))
         .get(0).path("idTipoHabitacion").asLong();
     peticion(put(sistema + "/comerciales/" + tipo), gerente,
         Map.of("capacidadMax", 2, "precioBase", 75))
         .andExpect(status().isOk()).andExpect(jsonPath("$.capacidadMax").value(2))
         .andExpect(jsonPath("$.precioBase").value(75));
 
-    mvc.perform(get(reportes + "/financiero").session(gerente)).andExpect(status().isOk())
+    mvc.perform(get(reportes + "/financiero").header("Authorization", "Bearer " + gerente)).andExpect(status().isOk())
         .andExpect(jsonPath("$.cobrosVentas").value(115.50)).andExpect(jsonPath("$.ingresosManuales").value(10))
         .andExpect(jsonPath("$.egresos").value(20)).andExpect(jsonPath("$.neto").value(105.50));
     mvc.perform(get(reportes + "/financiero").param("desde", "2025-01-02").param("hasta", "2025-01-01")
-        .session(gerente)).andExpect(status().isConflict());
-    mvc.perform(get(reportes + "/cierres-caja").param("usuario", "gerencia").session(gerente))
+        .header("Authorization", "Bearer " + gerente)).andExpect(status().isConflict());
+    mvc.perform(get(reportes + "/cierres-caja").param("usuario", "gerencia").header("Authorization", "Bearer " + gerente))
         .andExpect(status().isOk()).andExpect(jsonPath("$.filas[0].esperado").value(130.50))
         .andExpect(jsonPath("$.filas[0].diferencia").value(-1));
     for (String reporte : List.of("incidencias", "inventario/productos", "inventario/mobiliario")) {
-      mvc.perform(get(reportes + "/" + reporte).session(gerente)).andExpect(status().isOk())
+      mvc.perform(get(reportes + "/" + reporte).header("Authorization", "Bearer " + gerente)).andExpect(status().isOk())
           .andExpect(jsonPath("$.filas").isArray());
     }
-    mvc.perform(get(reportes + "/incidencias/" + informe).session(gerente)).andExpect(status().isOk())
+    mvc.perform(get(reportes + "/incidencias/" + informe).header("Authorization", "Bearer " + gerente)).andExpect(status().isOk())
         .andExpect(jsonPath("$.informe.idInformeRevision").value(informe));
 
     peticion(put(sistema + "/seguridad"), gerente, Map.of("minutosInactividad", 7, "intentosFallidos", 6))
         .andExpect(status().isBadRequest());
     peticion(put(sistema + "/seguridad"), gerente, Map.of("minutosInactividad", 7, "intentosFallidos", 2))
         .andExpect(status().isOk());
-    var nuevaSesion = sesion(peticion(post(API + "/sesion/iniciar"), null,
+    var nuevaSesion = token(peticion(post(API + "/sesion/iniciar"), null,
         Map.of("usuario", "gerencia", "contrasena", "Gerente permanente de prueba")).andExpect(status().isOk()));
-    assertThat(nuevaSesion.getMaxInactiveInterval()).isEqualTo(420);
+    var acceso = jwt.verificar(nuevaSesion);
+    assertThat(java.time.Duration.between(acceso.inicio(), acceso.expira()).toSeconds()).isEqualTo(420);
     for (int i = 0; i < 2; i++) {
       peticion(post(API + "/sesion/iniciar"), null,
           Map.of("usuario", "gerencia", "contrasena", "Contraseña incorrecta"))
@@ -293,15 +309,15 @@ class AccesoHttpTest {
         Map.of("usuario", "gerencia", "contrasena", "Gerente permanente de prueba")).andExpect(status().isUnauthorized());
   }
 
-  private void probarCaja(MockHttpSession gerente, MockHttpSession operadora, long idTurno) throws Exception {
+  private void probarCaja(String gerente, String operadora, long idTurno) throws Exception {
     var catalogo = tx.execute(s -> prepararMovimientosCaja(idTurno));
     String ruta = API + "/caja/turnos/" + idTurno;
-    mvc.perform(get(ruta).session(operadora)).andExpect(status().isNotFound());
+    mvc.perform(get(ruta).header("Authorization", "Bearer " + operadora)).andExpect(status().isNotFound());
     peticion(post(ruta + "/cierre"), operadora, Map.of()).andExpect(status().isForbidden());
     peticion(post(API + "/gastos"), operadora, Map.of("idUsuario", catalogo.get("usuario"), "idTurno", idTurno,
         "idTipoMovimiento", catalogo.get("gasto"), "concepto", "Gasto ajeno", "monto", 10))
         .andExpect(status().isConflict());
-    var inicial = cuerpo(mvc.perform(get(API + "/caja/actual").session(gerente)).andExpect(status().isOk())
+    var inicial = cuerpo(mvc.perform(get(API + "/caja/actual").header("Authorization", "Bearer " + gerente)).andExpect(status().isOk())
         .andExpect(jsonPath("$.arqueos[0].montoCalculado").value(140.50))
         .andExpect(jsonPath("$.arqueos[1].montoCalculado").value(25)));
 
@@ -312,20 +328,20 @@ class AccesoHttpTest {
     var ingreso = cuerpo(peticion(multipart(ruta + "/movimientos").file(datosIngreso).file(archivo), gerente, null)
         .andExpect(status().isCreated()).andExpect(jsonPath("$.signo").value(1)));
     var evidencia = ingreso.path("evidencia").asText();
-    mvc.perform(get(evidencia).session(gerente)).andExpect(status().isOk()).andExpect(content().bytes(foto.toByteArray()));
-    mvc.perform(get(evidencia).session(operadora)).andExpect(status().isNotFound());
+    mvc.perform(get(evidencia).header("Authorization", "Bearer " + gerente)).andExpect(status().isOk()).andExpect(content().bytes(foto.toByteArray()));
+    mvc.perform(get(evidencia).header("Authorization", "Bearer " + operadora)).andExpect(status().isNotFound());
     peticion(multipart(ruta + "/movimientos").file(datosIngreso).file(archivo), gerente, null)
         .andExpect(status().isCreated()).andExpect(jsonPath("$.idFlujo").value(ingreso.path("idFlujo").asInt()));
     peticion(multipart(ruta + "/movimientos").file(datosMovimiento(catalogo.get("gasto"), "Gasto de prueba", "20.00")), gerente, null)
         .andExpect(status().isCreated()).andExpect(jsonPath("$.signo").value(-1));
 
-    mvc.perform(get(ruta + "/movimientos").session(gerente)).andExpect(status().isOk())
+    mvc.perform(get(ruta + "/movimientos").header("Authorization", "Bearer " + gerente)).andExpect(status().isOk())
         .andExpect(jsonPath("$.totalElementos").value(3));
     var arqueos = List.of(Map.of("idFormaPago", catalogo.get("efectivo"), "montoDeclarado", new BigDecimal("129.50")),
         Map.of("idFormaPago", catalogo.get("yape"), "montoDeclarado", 25));
     peticion(post(ruta + "/cierre"), gerente, Map.of("revision", inicial.path("revision").asText(), "arqueos", arqueos))
         .andExpect(status().isConflict());
-    var actual = cuerpo(mvc.perform(get(ruta).session(gerente)).andExpect(status().isOk())
+    var actual = cuerpo(mvc.perform(get(ruta).header("Authorization", "Bearer " + gerente)).andExpect(status().isOk())
         .andExpect(jsonPath("$.abierto").value(true)).andExpect(jsonPath("$.arqueos[0].montoCalculado").value(130.50)));
     String revision = actual.path("revision").asText();
     var cierre = Map.of("revision", revision, "arqueos", arqueos);
@@ -336,7 +352,7 @@ class AccesoHttpTest {
     peticion(post(ruta + "/cierre"), gerente, cierre).andExpect(status().isConflict());
     peticion(multipart(ruta + "/movimientos").file(datosMovimiento(catalogo.get("ingreso"), "Otro ingreso", "10.00")), gerente, null)
         .andExpect(status().isConflict());
-    mvc.perform(get(API + "/caja/actual").session(gerente)).andExpect(status().isOk())
+    mvc.perform(get(API + "/caja/actual").header("Authorization", "Bearer " + gerente)).andExpect(status().isOk())
         .andExpect(jsonPath("$.idTurno").value(idTurno)).andExpect(jsonPath("$.arqueos.length()").value(2));
   }
 
@@ -407,18 +423,16 @@ class AccesoHttpTest {
     return id;
   }
 
-  private ResultActions peticion(AbstractMockHttpServletRequestBuilder<?> req, MockHttpSession sesion, Object datos) throws Exception {
-    var token = get(API + "/sesion/csrf");
-    if (sesion != null) token.session(sesion);
-    var respuesta = mvc.perform(token).andExpect(status().isOk());
-    var proteccion = cuerpo(respuesta);
-    req.session(sesion(respuesta)).header(proteccion.path("cabecera").asText(), proteccion.path("token").asText());
+  private ResultActions peticion(AbstractMockHttpServletRequestBuilder<?> req, String token, Object datos) throws Exception {
+    if (token != null) req.header("Authorization", "Bearer " + token);
     if (datos != null) req.contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsBytes(datos));
     return mvc.perform(req);
   }
 
-  private MockHttpSession sesion(ResultActions resultado) {
-    return (MockHttpSession) resultado.andReturn().getRequest().getSession(false);
+  private String token(ResultActions resultado) {
+    assertThat(resultado.andReturn().getRequest().getSession(false)).isNull();
+    assertThat(resultado.andReturn().getResponse().getCookie("JSESSIONID")).isNull();
+    return cuerpo(resultado).path("token").asString();
   }
 
   private JsonNode cuerpo(ResultActions resultado) {

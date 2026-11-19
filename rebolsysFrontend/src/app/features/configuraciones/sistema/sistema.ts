@@ -1,3 +1,4 @@
+import { ImagenProtegida } from '../../../shared/directives/imagen-protegida';
 import { HttpClient } from '@angular/common/http';
 import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -13,7 +14,7 @@ type Tipo = { idTipoHabitacion: number; nombreTipo: string; capacidadMax: number
 type Seccion = 'hospedaje' | 'seguridad' | 'comerciales';
 
 @Component({
-  imports: [ReactiveFormsModule, CurrencyPipe],
+  imports: [ImagenProtegida, ReactiveFormsModule, CurrencyPipe],
   templateUrl: './sistema.html',
   styleUrl: './sistema.css',
 })

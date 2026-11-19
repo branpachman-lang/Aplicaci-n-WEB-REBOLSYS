@@ -4,7 +4,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import pe.com.rebolsysBackend.service.impl.CredencialesService;
+import pe.com.rebolsysBackend.security.CredencialesService;
 
 @Configuration
 public class GerenteInicialConfig {
