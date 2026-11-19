@@ -4873,7 +4873,7 @@
         "tags": [
           "Limpieza y mantenimiento"
         ],
-        "summary": "Ver mobiliario y último informe visible de una habitación",
+        "summary": "Ver mobiliario y último informe aprobado de una habitación",
         "operationId": "habitacion",
         "parameters": [
           {
@@ -4904,7 +4904,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "description": "En EN_LIMPIEZA devuelve SIN_REGISTRAR, SIN_INFORME y SIN_TICKET, incluso después del envío. Las banderas de acciones consideran los permisos del usuario."
       }
     },
     "/api/v1/limpieza/evidencias/{nombre}": {
@@ -5251,7 +5252,8 @@
                 "DISPONIBLE",
                 "OCUPADO",
                 "MANTENIMIENTO",
-                "LIMPIEZA"
+                "POR_LIMPIAR",
+                "EN_LIMPIEZA"
               ]
             }
           },
@@ -7027,7 +7029,8 @@
               "DISPONIBLE",
               "OCUPADO",
               "MANTENIMIENTO",
-              "LIMPIEZA"
+              "POR_LIMPIAR",
+              "EN_LIMPIEZA"
             ]
           },
           "capacidadPersonas": {
@@ -7079,7 +7082,8 @@
               "DISPONIBLE",
               "OCUPADO",
               "MANTENIMIENTO",
-              "LIMPIEZA"
+              "POR_LIMPIAR",
+              "EN_LIMPIEZA"
             ]
           },
           "capacidadPersonas": {
@@ -8828,7 +8832,8 @@
               "DISPONIBLE",
               "OCUPADO",
               "MANTENIMIENTO",
-              "LIMPIEZA"
+              "POR_LIMPIAR",
+              "EN_LIMPIEZA"
             ]
           }
         }
@@ -9532,7 +9537,8 @@
               "DISPONIBLE",
               "OCUPADO",
               "MANTENIMIENTO",
-              "LIMPIEZA"
+              "POR_LIMPIAR",
+              "EN_LIMPIEZA"
             ]
           },
           "ocupadaActualmente": {
@@ -9703,7 +9709,8 @@
                 "DISPONIBLE",
                 "OCUPADO",
                 "MANTENIMIENTO",
-                "LIMPIEZA"
+                "POR_LIMPIAR",
+                "EN_LIMPIEZA"
               ]
             }
           },

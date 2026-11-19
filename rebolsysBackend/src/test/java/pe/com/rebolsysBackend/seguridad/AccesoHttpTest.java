@@ -152,7 +152,7 @@ class AccesoHttpTest {
     peticion(post(API + "/limpieza/borradores/" + informe + "/enviar"), gerente, Map.of("items", List.of()))
         .andExpect(status().isOk()).andExpect(jsonPath("$.informe.estado").value("POR_APROBAR"));
     mvc.perform(get(cuarto).header("Authorization", "Bearer " + gerente)).andExpect(status().isOk())
-        .andExpect(jsonPath("$.estadoInforme").value("POR_APROBAR"));
+        .andExpect(jsonPath("$.estadoInforme").value("SIN_INFORME"));
     String aprobarInforme = API + "/limpieza/informes/" + informe + "/aprobar";
     peticion(post(aprobarInforme), gerente, null).andExpect(status().isForbidden());
 

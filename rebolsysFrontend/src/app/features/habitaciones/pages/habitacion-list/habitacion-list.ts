@@ -86,7 +86,7 @@ export class HabitacionList {
   bloqueadas = computed(
     () =>
       this.rooms().filter((r) =>
-        ["MANTENIMIENTO", "LIMPIEZA"].includes(r.estado),
+        ["MANTENIMIENTO", "POR_LIMPIAR", "EN_LIMPIEZA"].includes(r.estado),
       ).length,
   );
   constructor() {
@@ -142,7 +142,8 @@ export class HabitacionList {
           DISPONIBLE: "Disponible",
           OCUPADO: "Ocupado",
           MANTENIMIENTO: "Mantenimiento",
-          LIMPIEZA: "Limpieza",
+          POR_LIMPIAR: "Por limpiar",
+          EN_LIMPIEZA: "En limpieza",
         } as Record<string, string>
       )[s] || s
     );

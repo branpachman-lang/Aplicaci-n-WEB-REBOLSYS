@@ -14,7 +14,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.security.access.AccessDeniedException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pe.com.rebolsysBackend.dto.LimpiezaDTO.*;
@@ -31,6 +32,7 @@ import pe.com.rebolsysBackend.service.service.LimpiezaService;
 @Transactional(readOnly = true)
 public class LimpiezaServiceImpl implements LimpiezaService {
   private static final Set<EstadoInforme> ACTIVOS = EnumSet.of(BORRADOR, POR_APROBAR);
+  private static final Logger LOG = LoggerFactory.getLogger(LimpiezaServiceImpl.class);
   private static final String SIN_REGISTRAR = "SIN_REGISTRAR";
 
   private final HabitacionRepository habitaciones;
@@ -93,10 +95,14 @@ public class LimpiezaServiceImpl implements LimpiezaService {
     var h = bloquearHabitacion(id);
     var activo = activo(id).orElse(null);
     var resumen = resumenHabitacion(h, activo, ultimaSalida(id), actual);
-    boolean ocultar = activo != null && activo.getEstadoInforme() == BORRADOR;
+    boolean ocultar = h.getEstadoHabitacion() == EstadoHabitacion.EN_LIMPIEZA || activo != null;
+    if ((h.getEstadoHabitacion() == EstadoHabitacion.EN_LIMPIEZA) != (activo != null)) {
+      LOG.warn("Estado de limpieza inconsistente en habitación {}: estado={}, informeActivo={}",
+          id, h.getEstadoHabitacion(), activo == null ? null : activo.getIdInformeRevision());
+    }
     var items = itemsHabitacion(id, ocultar);
     var ultimo = ocultar ? null : informes
-        .findFirstByHabitacionIdHabitacionAndEstadoInformeNotOrderByFechaHoraDescIdInformeRevisionDesc(id, BORRADOR)
+        .findFirstByHabitacionIdHabitacionAndEstadoInformeOrderByFechaHoraDescIdInformeRevisionDesc(id, APROBADO)
         .map(this::detalleInforme).orElse(null);
     var asociados = ultimo == null ? List.<TicketResumen>of() : ultimo.tickets();
     boolean verInforme = actual.tiene("LIMPIEZA:VER_INFORMES");
@@ -116,15 +122,18 @@ public class LimpiezaServiceImpl implements LimpiezaService {
   @Transactional
   public Borrador iniciar(Long idHabitacion) {
     var actual = sesion.actual();
+    exigirAccion("INICIAR");
     var usuario = usuarioActual();
     var h = bloquearHabitacion(idHabitacion);
-    exigir(h.getEstadoHabitacion() == EstadoHabitacion.LIMPIEZA ||
+    var existente = activo(idHabitacion);
+    exigir(h.getEstadoHabitacion() == EstadoHabitacion.POR_LIMPIAR ||
+        (h.getEstadoHabitacion() == EstadoHabitacion.EN_LIMPIEZA && existente.isPresent()) ||
         (actual.gerente() && h.getEstadoHabitacion() == EstadoHabitacion.DISPONIBLE),
         "La habitación debe estar por limpiar o disponible para una revisión de gerencia");
     var estancia = ultimaSalida(idHabitacion);
     exigir(estancia == null || estancia.getEstadoDetalle() != EstadoReserva.EN_CURSO,
         "No se puede iniciar una revisión durante una estancia en curso");
-    var informe = activo(idHabitacion).orElseGet(() -> {
+    var informe = existente.orElseGet(() -> {
       var borrador = new InformeRevision();
       borrador.setHabitacion(h);
       borrador.setUsuario(usuario);
@@ -137,7 +146,7 @@ public class LimpiezaServiceImpl implements LimpiezaService {
     exigir(informe.getEstadoInforme() == BORRADOR, "La habitación ya tiene un informe por aprobar");
     exigir(informe.getUsuario().getIdUsuario().equals(usuario.getIdUsuario()),
         "Otro usuario inició la limpieza de la habitación");
-    h.setEstadoHabitacion(EstadoHabitacion.LIMPIEZA);
+    h.setEstadoHabitacion(EstadoHabitacion.EN_LIMPIEZA);
     var items = mobiliario.actualesHabitacion(idHabitacion).stream().map(d -> itemHabitacion(d, null)).toList();
     return new Borrador(informe.getIdInformeRevision(), resumenHabitacion(h, informe, estancia, actual),
         items);
@@ -146,15 +155,18 @@ public class LimpiezaServiceImpl implements LimpiezaService {
   @Override
   @Transactional
   public void cancelarBorrador(Long idInforme) {
+    exigirAccion("CANCELAR_BORRADOR");
     var usuario = usuarioActual();
     var informe = bloquearInforme(idInforme);
     validarBorrador(informe, usuario);
+    informe.getHabitacion().setEstadoHabitacion(EstadoHabitacion.POR_LIMPIAR);
     informes.delete(informe);
   }
 
   @Override
   @Transactional
   public InformeDetalle enviar(Long idInforme, EnviarInforme datos) {
+    exigirAccion("ENVIAR_INFORME");
     reglas.validar(datos);
     var usuario = usuarioActual();
     var informe = bloquearInforme(idInforme);
@@ -204,7 +216,7 @@ public class LimpiezaServiceImpl implements LimpiezaService {
   @Override
   @Transactional
   public InformeDetalle editarInforme(Long id, EditarInforme datos) {
-    sesion.actual();
+    exigirAccion("EDITAR_INFORME");
     reglas.validar(datos);
     var informe = bloquearInforme(id);
     validarPendiente(informe);
@@ -227,21 +239,23 @@ public class LimpiezaServiceImpl implements LimpiezaService {
   @Override
   @Transactional
   public void eliminarInforme(Long id) {
+    exigirAccion("ELIMINAR_INFORME");
     var usuario = usuarioActual();
     var informe = bloquearInforme(id);
     validarPendiente(informe);
     var asociados = tickets.findByDetalleInformeInformeRevisionIdInformeRevisionInOrderByIdTicket(List.of(id));
-    if (!asociados.isEmpty()) exigirMantenimiento("ELIMINAR_TICKET");
+    if (!asociados.isEmpty()) exigirAccion("ELIMINAR_TICKET");
     asociados.forEach(ticket -> revertirTicket(ticket, usuario));
     tickets.deleteAll(asociados);
     tickets.flush();
+    informe.getHabitacion().setEstadoHabitacion(EstadoHabitacion.POR_LIMPIAR);
     informes.delete(informe);
   }
 
   @Override
   @Transactional
   public InformeDetalle aprobar(Long id) {
-    exigirMantenimiento("APROBAR_INFORME");
+    exigirAccion("APROBAR_INFORME");
     var usuario = usuarioActual();
     var informe = bloquearInforme(id);
     if (informe.getEstadoInforme() == APROBADO) return detalleInforme(informe);
@@ -282,7 +296,7 @@ public class LimpiezaServiceImpl implements LimpiezaService {
   @Override
   @Transactional
   public TicketDetalle crearTicket(Long idInforme, Long idDetalle, CrearTicket datos) {
-    exigirMantenimiento("CREAR_TICKET");
+    exigirAccion("CREAR_TICKET");
     reglas.validar(datos);
     var usuario = usuarioActual();
     var informe = bloquearInforme(idInforme);
@@ -311,7 +325,7 @@ public class LimpiezaServiceImpl implements LimpiezaService {
   @Override
   @Transactional
   public TicketDetalle editarTicket(Long id, DatosTicket datos) {
-    exigirMantenimiento("EDITAR_TICKET");
+    exigirAccion("EDITAR_TICKET");
     reglas.validar(datos);
     var ticket = bloquearTicket(id);
     guardarAccion(ticket, datos);
@@ -321,7 +335,7 @@ public class LimpiezaServiceImpl implements LimpiezaService {
   @Override
   @Transactional
   public void eliminarTicket(Long id) {
-    exigirMantenimiento("ELIMINAR_TICKET");
+    exigirAccion("ELIMINAR_TICKET");
     var usuario = usuarioActual();
     var ticket = bloquearTicket(id);
     revertirTicket(ticket, usuario);
@@ -334,12 +348,8 @@ public class LimpiezaServiceImpl implements LimpiezaService {
         "Eliminación de ticket TKT-" + ticket.getIdTicket(), "eliminar-ticket:" + ticket.getIdTicket());
   }
 
-  private void exigirMantenimiento(String accion) {
-    var actual = sesion.actual();
-    if (!actual.tiene("LIMPIEZA:" + accion)
-        || !actual.roles().contains(AccesosService.MANTENIMIENTO)) {
-      throw new AccessDeniedException("Esta acción requiere el rol de mantenimiento y el permiso correspondiente");
-    }
+  private void exigirAccion(String accion) {
+    PoliticaAccionesLimpieza.exigirPermiso(sesion.actual(), accion);
   }
 
   private void cambiarConservacion(Item item, EstadoConservacion estado, Usuario usuario,
@@ -414,15 +424,16 @@ public class LimpiezaServiceImpl implements LimpiezaService {
   }
 
   private void validarBorrador(InformeRevision informe, Usuario usuario) {
+    exigir(informe.getHabitacion().getEstadoHabitacion() == EstadoHabitacion.EN_LIMPIEZA,
+        "La habitación debe estar en limpieza");
     exigir(informe.getEstadoInforme() == BORRADOR, "El informe ya fue enviado");
     exigir(informe.getUsuario().getIdUsuario().equals(usuario.getIdUsuario()),
         "Solo el responsable de la limpieza puede completar o cancelar su borrador");
   }
 
   private void validarPendiente(InformeRevision informe) {
-    exigir(informe.getEstadoInforme() == POR_APROBAR, "El informe debe estar por aprobar");
-    exigir(informe.getHabitacion().getEstadoHabitacion() == EstadoHabitacion.LIMPIEZA,
-        "La habitación debe estar en limpieza");
+    exigir(PoliticaAccionesLimpieza.pendiente(informe),
+        "El informe debe estar por aprobar y la habitación en limpieza");
   }
 
   private Optional<InformeRevision> activo(Long id) {
@@ -438,16 +449,12 @@ public class LimpiezaServiceImpl implements LimpiezaService {
   }
 
   private HabitacionResumen resumenHabitacion(Habitacion h, InformeRevision activo, DetalleReserva estancia, SesionActualDTO actual) {
-    var estado = switch (h.getEstadoHabitacion()) {
-      case DISPONIBLE -> EstadoHabitacionLimpieza.DISPONIBLE;
-      case OCUPADO -> EstadoHabitacionLimpieza.OCUPADO;
-      case MANTENIMIENTO -> EstadoHabitacionLimpieza.MANTENIMIENTO;
-      case LIMPIEZA -> activo == null ? EstadoHabitacionLimpieza.POR_LIMPIAR : EstadoHabitacionLimpieza.EN_LIMPIEZA;
-    };
+    var estado = EstadoHabitacionLimpieza.valueOf(h.getEstadoHabitacion().name());
     var tipo = h.getTipoHabitacion();
-    boolean retomar = activo != null && activo.getEstadoInforme() == BORRADOR
-        && activo.getUsuario().getIdUsuario().equals(actual.idUsuario());
-    boolean puedeIniciar = (estancia == null || estancia.getEstadoDetalle() != EstadoReserva.EN_CURSO)
+    boolean retomar = PoliticaAccionesLimpieza.permite(actual, "INICIAR")
+        && PoliticaAccionesLimpieza.borradorPropio(activo, actual);
+    boolean puedeIniciar = PoliticaAccionesLimpieza.permite(actual, "INICIAR") && activo == null
+        && (estancia == null || estancia.getEstadoDetalle() != EstadoReserva.EN_CURSO)
         && (estado == EstadoHabitacionLimpieza.POR_LIMPIAR ||
             (actual.gerente() && estado == EstadoHabitacionLimpieza.DISPONIBLE));
     return new HabitacionResumen(h.getIdHabitacion(), h.getNumeroCuarto(), tipo.getIdTipoHabitacion(),
@@ -487,7 +494,8 @@ public class LimpiezaServiceImpl implements LimpiezaService {
       return new DetalleItem(d.getIdDetalleInforme(), item.getIdItem(),
           item.getNombreItem(), d.getEstadoEncontrado(), resuelto(ticket) ? BUENO : d.getEstadoEncontrado(),
           d.getObservaciones(), evidencia(d.getEvidenciaRuta(), d.getEvidenciaSha256()),
-          ticket == null ? null : ticket.getIdTicket(), resumen.puedeEditar() && ticket == null && pendiente(d, null));
+          ticket == null ? null : ticket.getIdTicket(), PoliticaAccionesLimpieza.pendiente(informe) && ticket == null && pendiente(d, null)
+              && PoliticaAccionesLimpieza.permite(sesion.actual(), "CREAR_TICKET"));
     }).toList();
     var estancia = informe.getDetalleReserva();
     return new InformeDetalle(resumen, estancia == null ? null : estancia.getIdDetalleReserva(), informe.getObservaciones(),
@@ -496,7 +504,8 @@ public class LimpiezaServiceImpl implements LimpiezaService {
 
   private InformeResumen resumenInforme(InformeRevision informe, List<DetalleInforme> lineas,
       Map<Long, TicketMantenimiento> asociados) {
-    boolean editable = informe.getEstadoInforme() == POR_APROBAR;
+    boolean editable = PoliticaAccionesLimpieza.pendiente(informe);
+    var actual = sesion.actual();
     long pendientes = lineas.stream().filter(d -> pendiente(d, asociados.get(d.getIdDetalleInforme()))).count();
     boolean incidencias = lineas.stream().anyMatch(d -> d.getEstadoEncontrado() != BUENO);
     boolean tieneTickets = lineas.stream().anyMatch(d -> asociados.containsKey(d.getIdDetalleInforme()));
@@ -504,7 +513,10 @@ public class LimpiezaServiceImpl implements LimpiezaService {
     var habitacion = informe.getHabitacion();
     return new InformeResumen(id, "INF-" + id, habitacion.getIdHabitacion(), habitacion.getNumeroCuarto(),
         informe.getFechaHora(), informe.getEstadoInforme(), responsable(informe.getUsuario()), incidencias, pendientes,
-        tieneTickets, editable && pendientes == 0, editable && !lineas.isEmpty(), editable);
+        tieneTickets, editable && pendientes == 0 && PoliticaAccionesLimpieza.permite(actual, "APROBAR_INFORME"),
+        editable && !lineas.isEmpty() && PoliticaAccionesLimpieza.permite(actual, "EDITAR_INFORME"),
+        editable && PoliticaAccionesLimpieza.permite(actual, "ELIMINAR_INFORME")
+            && (!tieneTickets || PoliticaAccionesLimpieza.permite(actual, "ELIMINAR_TICKET")));
   }
 
   private boolean pendiente(DetalleInforme linea, TicketMantenimiento ticket) {
@@ -520,11 +532,14 @@ public class LimpiezaServiceImpl implements LimpiezaService {
     var informe = detalle.getInformeRevision();
     var habitacion = informe.getHabitacion();
     var item = detalle.getItem();
-    boolean editable = informe.getEstadoInforme() == POR_APROBAR;
+    boolean editable = PoliticaAccionesLimpieza.pendiente(informe);
+    var actual = sesion.actual();
     var id = ticket.getIdTicket();
     return new TicketResumen(id, "TKT-" + id, informe.getIdInformeRevision(), detalle.getIdDetalleInforme(),
         habitacion.getIdHabitacion(), habitacion.getNumeroCuarto(), item.getIdItem(), item.getNombreItem(),
-        ticket.getTipoAccion(), ticket.getEstadoTicket(), ticket.getFechaGeneracion(), editable, editable);
+        ticket.getTipoAccion(), ticket.getEstadoTicket(), ticket.getFechaGeneracion(),
+        editable && PoliticaAccionesLimpieza.permite(actual, "EDITAR_TICKET"),
+        editable && PoliticaAccionesLimpieza.permite(actual, "ELIMINAR_TICKET"));
   }
 
   private TicketDetalle detalleTicket(TicketMantenimiento ticket) {

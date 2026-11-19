@@ -363,7 +363,7 @@ class PropuestaOracleTest {
     cuentasReserva.pagar(r.idReserva(), pago("liquidar-estados", "80.00", null));
     reservas.cambiarEstado(id, "salida", new OperacionUsuarioDTO(usuario));
     assertThat(em.find(Habitacion.class, habitacion).getEstadoHabitacion())
-        .isEqualTo(EstadoHabitacion.LIMPIEZA);
+        .isEqualTo(EstadoHabitacion.POR_LIMPIAR);
     assertThat(
             em.createQuery("select count(d) from DetalleReserva d", Long.class).getSingleResult())
         .isEqualTo(antes + 1);
@@ -766,7 +766,7 @@ class PropuestaOracleTest {
     assertThat(separado.numeroReserva()).isEqualTo("R" + id);
     reservas.cambiarEstado(detalle, "salida", new OperacionUsuarioDTO(usuario));
     assertThat(em.find(Habitacion.class, habitacion).getEstadoHabitacion())
-        .isEqualTo(EstadoHabitacion.LIMPIEZA);
+        .isEqualTo(EstadoHabitacion.POR_LIMPIAR);
   }
 
   @Test
@@ -1383,8 +1383,8 @@ class PropuestaOracleTest {
   void cambiarEstadoNoSobrescribeConfiguracionNiPermiteOcuparSinIngreso() throws Exception {
     var anterior = habitaciones.read(habitacion);
     mvc.perform(patch("/api/v1/habitaciones/" + habitacion + "/estado")
-        .contentType(MediaType.APPLICATION_JSON).content("{\"estadoHabitacion\":\"LIMPIEZA\"}"))
-        .andExpect(status().isOk()).andExpect(jsonPath("$.estadoHabitacion").value("LIMPIEZA"));
+        .contentType(MediaType.APPLICATION_JSON).content("{\"estadoHabitacion\":\"POR_LIMPIAR\"}"))
+        .andExpect(status().isOk()).andExpect(jsonPath("$.estadoHabitacion").value("POR_LIMPIAR"));
     var actual = habitaciones.read(habitacion);
     assertThat(actual.numeroCuarto()).isEqualTo(anterior.numeroCuarto());
     assertThat(actual.capacidadPersonas()).isEqualTo(anterior.capacidadPersonas());

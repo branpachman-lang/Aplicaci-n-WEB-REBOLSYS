@@ -114,7 +114,7 @@ class FlujoLimpiezaTest {
       cuarto.setNumeroCuarto("301");
       cuarto.setCapacidadPersonas(2);
       cuarto.setPlazasCama(2);
-      cuarto.setEstadoHabitacion(EstadoHabitacion.LIMPIEZA);
+      cuarto.setEstadoHabitacion(EstadoHabitacion.POR_LIMPIAR);
       em.persist(cuarto);
       registrarSalida(cuarto, perfil, usuario);
       var tipoItem = new TipoItem(null, "Muebles");
@@ -155,6 +155,7 @@ class FlujoLimpiezaTest {
     mvc.perform(post(cuarto + "/iniciar"))
         .andExpect(status().isOk()).andExpect(jsonPath("$.idInformeRevision").value(id))
         .andExpect(jsonPath("$.items[0].estado").doesNotExist());
+    assertEstadoPersistido(EstadoHabitacion.EN_LIMPIEZA);
     String enviar = API + "/borradores/" + id + "/enviar";
     String informe = API + "/informes/" + id;
     mvc.perform(get(cuarto)).andExpect(status().isOk())
@@ -185,6 +186,21 @@ class FlujoLimpiezaTest {
         .content(json.writeValueAsBytes(reporte))).andExpect(status().isOk())
         .andExpect(jsonPath("$.informe.estado").value("POR_APROBAR"))
         .andExpect(jsonPath("$.informe.puedeAprobar").value(false)));
+    assertEstadoPersistido(EstadoHabitacion.EN_LIMPIEZA);
+    tx.executeWithoutResult(t -> em.find(Habitacion.class, habitacion).setEstadoHabitacion(EstadoHabitacion.DISPONIBLE));
+    mvc.perform(get(cuarto)).andExpect(status().isOk())
+        .andExpect(jsonPath("$.habitacion.estado").value("DISPONIBLE"))
+        .andExpect(jsonPath("$.habitacion.puedeIniciarLimpieza").value(false))
+        .andExpect(jsonPath("$.items[0].estado").value("SIN_REGISTRAR"))
+        .andExpect(jsonPath("$.ultimoInforme").isEmpty())
+        .andExpect(jsonPath("$.tickets").isEmpty());
+    tx.executeWithoutResult(t -> em.find(Habitacion.class, habitacion).setEstadoHabitacion(EstadoHabitacion.EN_LIMPIEZA));
+    mvc.perform(get(cuarto)).andExpect(status().isOk())
+        .andExpect(jsonPath("$.items[0].estado").value("SIN_REGISTRAR"))
+        .andExpect(jsonPath("$.estadoInforme").value("SIN_INFORME"))
+        .andExpect(jsonPath("$.ultimoInforme").isEmpty())
+        .andExpect(jsonPath("$.estadoTickets").value("SIN_TICKET"))
+        .andExpect(jsonPath("$.tickets").isEmpty());
     mvc.perform(post(informe + "/aprobar")).andExpect(status().isConflict());
     mvc.perform(get(API + "/informes").param("nombre", "inf-" + id).param("estado", "POR_APROBAR")
         .param("fechaEmision", enviado.path("informe").path("fechaEnvio").asText().substring(0, 10)))
@@ -192,11 +208,24 @@ class FlujoLimpiezaTest {
     long detalle = enviado.path("items").get(0).path("idDetalleInforme").asLong();
     String nuevoTicket = informe + "/items/" + detalle + "/ticket";
     var permisosAtencion = List.of("LIMPIEZA:APROBAR_INFORME", "LIMPIEZA:CREAR_TICKET", "LIMPIEZA:EDITAR_TICKET",
-        "LIMPIEZA:ELIMINAR_TICKET", "LIMPIEZA:CARGAR_EVIDENCIA", "LIMPIEZA:ELIMINAR_INFORME");
+        "LIMPIEZA:ELIMINAR_TICKET", "LIMPIEZA:CARGAR_EVIDENCIA", "LIMPIEZA:ELIMINAR_INFORME",
+        "LIMPIEZA:VER_INFORMES", "LIMPIEZA:VER_TICKETS", "LIMPIEZA:VER_HABITACIONES");
     var personalLimpieza = new SesionActualDTO(usuarioId, "prueba_limpieza", "ACTIVA", null, null,
         false, false, List.of("LIMPIEZA"), permisosAtencion);
     var personalMantenimiento = new SesionActualDTO(usuarioId, "prueba_mantenimiento", "ACTIVA", null, null,
         false, false, List.of("MANTENIMIENTO"), permisosAtencion);
+    mvc.perform(get(informe).requestAttr(SesionOperacionService.ATRIBUTO, personalLimpieza))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.items[0].puedeCrearTicket").value(false))
+        .andExpect(jsonPath("$.informe.puedeEditar").value(false));
+    mvc.perform(get(informe).requestAttr(SesionOperacionService.ATRIBUTO, personalMantenimiento))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.items[0].puedeCrearTicket").value(true))
+        .andExpect(jsonPath("$.informe.puedeEditar").value(false));
+    mvc.perform(get(cuarto).requestAttr(SesionOperacionService.ATRIBUTO, personalLimpieza))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.habitacion.puedeIniciarLimpieza").value(false))
+        .andExpect(jsonPath("$.habitacion.puedeRetomarBorrador").value(false));
     var fotoAtencion = respuesta(mvc.perform(multipart(API + "/evidencias")
         .file(new MockMultipartFile("archivo", "reparacion.png", "image/png", bytes.toByteArray()))
         .with(actor(personalMantenimiento))).andExpect(status().isCreated()));
@@ -208,10 +237,25 @@ class FlujoLimpiezaTest {
         .with(actor(personalMantenimiento)).contentType(MediaType.APPLICATION_JSON)
         .content(json.writeValueAsBytes(reparacion))).andExpect(status().isCreated()))
         .path("ticket").path("idTicket").asLong();
+    mvc.perform(get(informe).requestAttr(SesionOperacionService.ATRIBUTO, personalLimpieza))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.informe.puedeAprobar").value(false))
+        .andExpect(jsonPath("$.informe.puedeEliminar").value(false))
+        .andExpect(jsonPath("$.tickets[0].puedeEditar").value(false))
+        .andExpect(jsonPath("$.tickets[0].puedeEliminar").value(false));
+    mvc.perform(get(informe).requestAttr(SesionOperacionService.ATRIBUTO, personalMantenimiento))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.informe.puedeAprobar").value(true))
+        .andExpect(jsonPath("$.informe.puedeEliminar").value(true))
+        .andExpect(jsonPath("$.tickets[0].puedeEditar").value(true))
+        .andExpect(jsonPath("$.tickets[0].puedeEliminar").value(true));
     assertThat(items.obtener(item).estadoActualItem()).isEqualTo(EstadoConservacion.BUENO);
     mvc.perform(get(cuarto)).andExpect(status().isOk())
-        .andExpect(jsonPath("$.estadoTickets").value("CON_TICKETS"))
-        .andExpect(jsonPath("$.tickets[0].idTicket").value(primerTicket));
+        .andExpect(jsonPath("$.items[0].estado").value("SIN_REGISTRAR"))
+        .andExpect(jsonPath("$.estadoInforme").value("SIN_INFORME"))
+        .andExpect(jsonPath("$.ultimoInforme").isEmpty())
+        .andExpect(jsonPath("$.estadoTickets").value("SIN_TICKET"))
+        .andExpect(jsonPath("$.tickets").isEmpty());
     mvc.perform(get(informe)).andExpect(status().isOk())
         .andExpect(jsonPath("$.informe.tieneIncidencias").value(true))
         .andExpect(jsonPath("$.informe.puedeAprobar").value(true))
@@ -253,6 +297,7 @@ class FlujoLimpiezaTest {
         .andExpect(jsonPath("$.items[0].estado").value("BUENO"))
         .andExpect(jsonPath("$.ultimoInforme.informe.idInformeRevision").value(id))
         .andExpect(jsonPath("$.tickets[0].idTicket").value(idTicket));
+    assertEstadoPersistido(EstadoHabitacion.DISPONIBLE);
     mvc.perform(delete(informe)).andExpect(status().isConflict());
     mvc.perform(delete(ticket)).andExpect(status().isConflict());
     mvc.perform(put(ticket).contentType(MediaType.APPLICATION_JSON).content(reposicion))
@@ -266,8 +311,18 @@ class FlujoLimpiezaTest {
         """, AccionAuditoria.class).setParameter("id", idTicket).getResultList());
     assertThat(auditoria).containsExactly(AccionAuditoria.INSERT, AccionAuditoria.UPDATE);
 
+    for (String estado : List.of("POR_LIMPIAR", "MANTENIMIENTO")) {
+      mvc.perform(patch(estadoFisico).contentType(MediaType.APPLICATION_JSON)
+          .content(json.writeValueAsBytes(Map.of("estadoHabitacion", estado)))).andExpect(status().isOk());
+      mvc.perform(get(cuarto)).andExpect(status().isOk())
+          .andExpect(jsonPath("$.items[0].estado").value("BUENO"))
+          .andExpect(jsonPath("$.ultimoInforme.informe.idInformeRevision").value(id));
+    }
+    mvc.perform(patch(estadoFisico).contentType(MediaType.APPLICATION_JSON)
+        .content("{\"estadoHabitacion\":\"EN_LIMPIEZA\"}")).andExpect(status().isConflict());
     verificarEliminacionYAprobacionSinIncidencias(cuarto, estadoFisico, foto);
     verificarHistorialTrasRetiro(informe);
+    verificarInicioConcurrente();
   }
 
   private void verificarHistorialTrasRetiro(String informe) throws Exception {
@@ -320,7 +375,7 @@ class FlujoLimpiezaTest {
   private void verificarEliminacionYAprobacionSinIncidencias(String cuarto, String estadoFisico, JsonNode foto)
       throws Exception {
     mvc.perform(patch(estadoFisico).contentType(MediaType.APPLICATION_JSON)
-        .content("{\"estadoHabitacion\":\"LIMPIEZA\"}")).andExpect(status().isOk());
+        .content("{\"estadoHabitacion\":\"POR_LIMPIAR\"}")).andExpect(status().isOk());
     var borrador = respuesta(mvc.perform(post(cuarto + "/iniciar")).andExpect(status().isOk()));
     long id = borrador.path("idInformeRevision").asLong();
     long asignacionActual = borrador.path("items").get(0).path("idItem").asLong();
@@ -339,6 +394,11 @@ class FlujoLimpiezaTest {
     mvc.perform(get(cuarto)).andExpect(status().isOk())
         .andExpect(jsonPath("$.habitacion.estado").value("POR_LIMPIAR"));
 
+    assertEstadoPersistido(EstadoHabitacion.POR_LIMPIAR);
+    var cancelable = respuesta(mvc.perform(post(cuarto + "/iniciar")).andExpect(status().isOk()));
+    mvc.perform(delete(API + "/borradores/" + cancelable.path("idInformeRevision").asLong()))
+        .andExpect(status().isNoContent());
+    assertEstadoPersistido(EstadoHabitacion.POR_LIMPIAR);
     var siguiente = respuesta(mvc.perform(post(cuarto + "/iniciar")).andExpect(status().isOk()));
     long nuevoId = siguiente.path("idInformeRevision").asLong();
     var sinIncidencia = List.of(Map.of("idItem", asignacionActual, "estadoEncontrado", "BUENO"));
@@ -346,6 +406,48 @@ class FlujoLimpiezaTest {
         .content(json.writeValueAsBytes(Map.of("items", sinIncidencia))))
         .andExpect(status().isOk()).andExpect(jsonPath("$.informe.puedeAprobar").value(true));
     mvc.perform(post(API + "/informes/" + nuevoId + "/aprobar")).andExpect(status().isOk());
+  }
+
+  private void verificarInicioConcurrente() throws Exception {
+    Long segundoUsuario = tx.execute(s -> {
+      var tipoDoc = em.createQuery("select t from TipoDocumento t", TipoDocumento.class).getResultList().get(0);
+      var perfil = new Perfil(null, tipoDoc, "10000001", null, null); em.persist(perfil);
+      var persona = new PersonaNatural(null, perfil, "Segundo", "Operador", null); em.persist(persona);
+      var empleado = new Empleado(null, persona, LocalDate.of(2025, 1, 1), null); em.persist(empleado);
+      var usuario = new Usuario(null, empleado, "segundo_limpieza", EstadoUsuario.ACTIVO); em.persist(usuario);
+      return usuario.getIdUsuario();
+    });
+    Long cuarto = tx.execute(s -> {
+      var h = new Habitacion();
+      h.setTipoHabitacion(em.find(Habitacion.class, habitacion).getTipoHabitacion());
+      h.setNumeroCuarto("303"); h.setCapacidadPersonas(1); h.setPlazasCama(1);
+      h.setEstadoHabitacion(EstadoHabitacion.POR_LIMPIAR); em.persist(h);
+      return h.getIdHabitacion();
+    });
+    var barrera = new java.util.concurrent.CyclicBarrier(2);
+    try (var ejecutor = java.util.concurrent.Executors.newFixedThreadPool(2)) {
+      var tareas = List.of(usuarioId, segundoUsuario).stream().map(id -> ejecutor.submit(() -> {
+        barrera.await(10, java.util.concurrent.TimeUnit.SECONDS);
+        var actual = new SesionActualDTO(id, "operador", "ACTIVA", null, null, false, false,
+            List.of("LIMPIEZA"), List.of("LIMPIEZA:INICIAR"));
+        return mvc.perform(post(API + "/habitaciones/" + cuarto + "/iniciar")
+            .requestAttr(SesionOperacionService.ATRIBUTO, actual)).andReturn().getResponse().getStatus();
+      })).toList();
+      assertThat(List.of(tareas.get(0).get(20, java.util.concurrent.TimeUnit.SECONDS),
+          tareas.get(1).get(20, java.util.concurrent.TimeUnit.SECONDS)))
+          .containsExactlyInAnyOrder(200, 409);
+    }
+    Long activos = tx.execute(s -> em.createQuery(
+        "select count(i) from InformeRevision i where i.habitacion.idHabitacion = :id", Long.class)
+        .setParameter("id", cuarto).getSingleResult());
+    assertThat(activos).isEqualTo(1);
+  }
+
+  private void assertEstadoPersistido(EstadoHabitacion estado) {
+    String persistido = tx.execute(s -> (String) em.createNativeQuery(
+        "select estadoHabitacion from habitacion where idHabitacion = :id", String.class)
+        .setParameter("id", habitacion).getSingleResult());
+    assertThat(persistido).isEqualTo(estado.name());
   }
 
   private JsonNode respuesta(ResultActions respuesta) throws Exception {

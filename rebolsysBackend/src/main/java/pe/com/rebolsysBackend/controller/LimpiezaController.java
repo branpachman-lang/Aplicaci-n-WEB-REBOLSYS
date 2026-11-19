@@ -42,7 +42,8 @@ public class LimpiezaController {
 
   @PreAuthorize("hasRole('GERENTE') or hasAuthority('LIMPIEZA:VER_HABITACIONES')")
   @GetMapping("/habitaciones/{id}")
-  @Operation(summary = "Ver mobiliario y último informe visible de una habitación")
+  @Operation(summary = "Ver mobiliario y último informe aprobado de una habitación",
+      description = "En EN_LIMPIEZA devuelve SIN_REGISTRAR, SIN_INFORME y SIN_TICKET, incluso después del envío. Las banderas de acciones consideran los permisos del usuario.")
   public HabitacionDetalle habitacion(@PathVariable @Positive Long id) {
     return servicio.habitacion(id);
   }

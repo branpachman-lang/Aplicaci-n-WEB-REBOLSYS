@@ -4,5 +4,6 @@ public enum EstadoHabitacion {
     DISPONIBLE,
     OCUPADO,
     MANTENIMIENTO,
-    LIMPIEZA,
+    POR_LIMPIAR,
+    EN_LIMPIEZA,
 }
