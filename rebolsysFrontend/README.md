@@ -19,6 +19,31 @@ npm run build
 
 La aplicación compilada queda en `dist/rebolsys-frontend/browser`. El servidor web debe redirigir las rutas Angular a `index.html` y reenviar `/api` al backend.
 
+## Pruebas desde Vercel
+
+Importar el repositorio unificado con `rebolsysFrontend` como Root Directory y
+seleccionar la rama que contiene los cambios a desplegar. `vercel.json` define
+Angular, `npm ci`, `npm run build`, la carpeta de salida y las rutas de la aplicación.
+Retirar los valores personalizados del panel si todavía usan `ng run build` o `dist`.
+`package.json` fija Node.js 24.x para la compilación.
+
+La primera regla reenvía `/api/*` al backend público, conservando `/api` en el destino;
+la segunda permite abrir directamente rutas Angular como `/reservas`. Se conserva
+`environment.apiUrl = '/api/v1'`: el navegador usa el dominio de Vercel para las
+llamadas autenticadas y el backend sigue conectándose a Oracle con su configuración
+privada. No se deben guardar credenciales de Oracle ni `JWT_SECRET` en el frontend.
+
+Para pruebas con el backend local en 8080, mantenerlo encendido junto con el túnel:
+
+```powershell
+cloudflared tunnel --url http://localhost:8080
+```
+
+El destino actual en `vercel.json` es temporal. Si Cloudflare genera otra URL,
+actualizar esa regla, subir el cambio y volver a desplegar. La terminal del túnel y
+la conexión del backend a Oracle deben permanecer activas durante las pruebas.
+Después del despliegue, comprobar `/api/health` y el inicio de sesión desde Vercel.
+
 ## Funcionalidades
 
 La conexión con el backend actual incluye **Estado de habitaciones**, **Reservas hasta el cobro y comprobante** y **Configuraciones**. Se conservan los colores y el diseño existente, con ajustes para pantallas pequeñas.
