@@ -14,6 +14,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authorization.AuthorizationDeniedException;
+import pe.com.rebolsysBackend.security.SesionOperacionService;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -32,8 +34,14 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({AuthenticationException.class, AccessDeniedException.class})
     public ResponseEntity<ErrorResponseDTO> handleSecurity(RuntimeException ex, HttpServletRequest request) {
         var estado = ex instanceof AuthenticationException ? HttpStatus.UNAUTHORIZED : HttpStatus.FORBIDDEN;
+        String mensaje = ex.getMessage();
+        if (ex instanceof AuthorizationDeniedException) {
+            var sesion = SesionOperacionService.enPeticion();
+            mensaje = sesion != null && sesion.requiereCambio()
+                ? "Cambia la contraseña temporal para continuar" : "Tu usuario no tiene acceso a esta función";
+        }
         return ResponseEntity.status(estado).header("Cache-Control", "no-store").body(new ErrorResponseDTO(
-            LocalDateTime.now(), estado.value(), estado.getReasonPhrase(), ex.getMessage(), request.getRequestURI(), null));
+            LocalDateTime.now(), estado.value(), estado.getReasonPhrase(), mensaje, request.getRequestURI(), null));
     }
 
     @ExceptionHandler(ServicioExternoException.class)

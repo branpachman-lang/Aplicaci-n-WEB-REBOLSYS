@@ -28,6 +28,20 @@ public class SesionOperacionService {
   @Value("${app.sesion-prueba.usuario:operacion_local}")
   private String username;
 
+  /** Excepción operativa local existente; SecurityConfig impide habilitarla en producción. */
+  public boolean esPrueba() {
+    var autenticacion = SecurityContextHolder.getContext().getAuthentication();
+    return habilitada && !(autenticacion != null
+        && autenticacion.getPrincipal() instanceof CredencialesService.Principal)
+        && "PRUEBA".equals(actual().modo());
+  }
+
+  public void limpiarCache() {
+    if (RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes atributos) {
+      atributos.getRequest().removeAttribute(ATRIBUTO);
+    }
+  }
+
   @Transactional(readOnly = true)
   public SesionActualDTO actual() {
     var atributos = RequestContextHolder.getRequestAttributes();

@@ -7,7 +7,7 @@ import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
-import pe.com.rebolsysBackend.security.Acceso;
+import org.springframework.security.access.prepost.PreAuthorize;
 import pe.com.rebolsysBackend.dto.LimpiezaDTO.InformeDetalle;
 import pe.com.rebolsysBackend.dto.ReportesDTO.*;
 import pe.com.rebolsysBackend.enums.EstadoInforme;
@@ -18,7 +18,7 @@ import pe.com.rebolsysBackend.service.service.LimpiezaService;
 @RequestMapping("/api/v1/reportes")
 @Tag(name = "Reportes", description = "Consultas de Gerencia. Los rangos de fechas incluyen ambos días en hora de Lima.")
 @ApiResponse(responseCode = "403", description = "La sesión activa requiere el rol GERENTE")
-@Acceso(Acceso.GERENTE)
+@PreAuthorize("hasRole('GERENTE')")
 @RequiredArgsConstructor
 public class ReportesController {
   private final ReportesService reportes;

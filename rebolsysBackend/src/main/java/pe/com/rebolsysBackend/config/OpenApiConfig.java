@@ -1,16 +1,14 @@
 package pe.com.rebolsysBackend.config;
 
-import pe.com.rebolsysBackend.security.Acceso;
+import pe.com.rebolsysBackend.security.PermisosEndpoint;
 import io.swagger.v3.oas.annotations.OpenAPIDefinition;
 import io.swagger.v3.oas.annotations.info.Info;
 import io.swagger.v3.oas.annotations.enums.SecuritySchemeType;
 import io.swagger.v3.oas.annotations.security.SecurityScheme;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
-import java.util.Arrays;
 import org.springdoc.core.customizers.OperationCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import pe.com.rebolsysBackend.security.AccesosService;
 
 @Configuration
 @OpenAPIDefinition(
@@ -29,8 +27,8 @@ public class OpenApiConfig {
   @Bean
   OperationCustomizer proteccionOperativa() {
     return (operacion, handler) -> {
-      var acceso = Arrays.asList(AccesosService.regla(handler));
-      if (!acceso.isEmpty() && !acceso.contains(Acceso.PUBLICO)) {
+      var acceso = PermisosEndpoint.regla(handler);
+      if (acceso != null && !"permitAll()".equals(acceso.value())) {
         operacion.addSecurityItem(new SecurityRequirement().addList("bearerAuth"));
       }
       return operacion;

@@ -8,7 +8,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import pe.com.rebolsysBackend.security.Acceso;
+import org.springframework.security.access.prepost.PreAuthorize;
 import pe.com.rebolsysBackend.dto.SistemaDTO.*;
 import pe.com.rebolsysBackend.dto.TipoHabitacionResponseDTO;
 import pe.com.rebolsysBackend.service.impl.HospedajeService;
@@ -18,7 +18,7 @@ import pe.com.rebolsysBackend.service.service.TipoHabitacionService;
 @RestController
 @RequestMapping("/api/v1/configuraciones")
 @Tag(name = "Configuración del sistema", description = "Edición para GERENTE y consulta de marca para sesiones autenticadas.")
-@Acceso(Acceso.GERENTE)
+@PreAuthorize("hasRole('GERENTE')")
 @RequiredArgsConstructor
 public class SistemaController {
   private final HospedajeService hospedaje;
@@ -40,13 +40,13 @@ public class SistemaController {
     return hospedaje.guardarLogo(archivo);
   }
 
-  @Acceso(Acceso.SESION)
+  @PreAuthorize("@sesionOperacionService.esPrueba() or isAuthenticated()")
   @GetMapping("/marca")
   public Marca marca() {
     return hospedaje.marca();
   }
 
-  @Acceso(Acceso.SESION)
+  @PreAuthorize("@sesionOperacionService.esPrueba() or isAuthenticated()")
   @GetMapping("/marca/logo/{nombre}")
   public ResponseEntity<Resource> logo(@PathVariable String nombre) {
     var logo = hospedaje.logo(nombre);

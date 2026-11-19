@@ -11,24 +11,24 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
-import pe.com.rebolsysBackend.security.Acceso;
+import org.springframework.security.access.prepost.PreAuthorize;
 import pe.com.rebolsysBackend.dto.SeguridadDTO.*;
 import pe.com.rebolsysBackend.service.impl.*;
 
 @RestController
 @RequestMapping("/api/v1/seguridad")
-@Acceso(Acceso.GERENTE)
+@PreAuthorize("hasRole('GERENTE')")
 @RequiredArgsConstructor
 public class GestionAccesosController {
   private final GestionAccesosService gestion;
   private final AccesosService accesos;
 
   @GetMapping("/empleados")
-  @Acceso("EMPLEADOS:VER")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('EMPLEADOS:VER')")
   public List<EmpleadoVista> empleados() { return gestion.empleados(); }
 
   @PostMapping("/empleados")
-  @Acceso("EMPLEADOS:CREAR")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('EMPLEADOS:CREAR')")
   @ResponseStatus(HttpStatus.CREATED)
   public EmpleadoVista crearEmpleado(@Valid @RequestBody NuevoEmpleado datos) { return gestion.crearEmpleado(datos); }
 
@@ -43,7 +43,7 @@ public class GestionAccesosController {
   }
 
   @GetMapping("/usuarios")
-  @Acceso("USUARIOS:VER")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('USUARIOS:VER')")
   public List<UsuarioVista> usuarios() { return gestion.usuarios(); }
 
   @PostMapping("/usuarios")
@@ -79,7 +79,7 @@ public class GestionAccesosController {
   public List<AccesosService.Funcion> funcionalidades() { return accesos.catalogo(); }
 
   @GetMapping("/roles")
-  @Acceso("ROLES:VER")
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('ROLES:VER')")
   public List<RolVista> roles() { return gestion.roles(); }
 
   @PutMapping("/roles/{id}")

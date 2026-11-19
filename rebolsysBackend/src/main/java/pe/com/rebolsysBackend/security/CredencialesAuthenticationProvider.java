@@ -17,7 +17,10 @@ public class CredencialesAuthenticationProvider implements AuthenticationProvide
   public Authentication authenticate(Authentication solicitud) {
     var principal = credenciales.iniciar(solicitud.getName(),
         java.util.Objects.toString(solicitud.getCredentials(), ""));
-    var usuario = usuarios.cargar(principal.idUsuario());
+    var usuario = usuarios.loadUserByUsername(solicitud.getName());
+    if (!principal.equals(usuario.principal())) {
+      throw new org.springframework.security.authentication.BadCredentialsException("Credenciales inválidas o vencidas");
+    }
     return UsernamePasswordAuthenticationToken.authenticated(usuario.principal(), null, usuario.getAuthorities());
   }
 

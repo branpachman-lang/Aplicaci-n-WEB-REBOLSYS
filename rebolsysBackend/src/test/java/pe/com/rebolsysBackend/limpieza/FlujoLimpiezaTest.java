@@ -3,6 +3,7 @@ package pe.com.rebolsysBackend.limpieza;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 
 import jakarta.persistence.EntityManager;
 import java.awt.image.BufferedImage;
@@ -24,6 +25,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.client.RestClient;
 import pe.com.rebolsysBackend.dto.ItemAsignacionDTO;
@@ -60,6 +63,14 @@ class FlujoLimpiezaTest {
   private Long habitacion;
   private Long item;
   private Long usuarioId;
+
+  private RequestPostProcessor actor(SesionActualDTO actual) {
+    return request -> {
+      request.setAttribute(SesionOperacionService.ATRIBUTO, actual);
+      var autoridades = actual.permisos().stream().map(SimpleGrantedAuthority::new).toList();
+      return user(actual.usuario()).authorities(autoridades).postProcessRequest(request);
+    };
+  }
 
   @BeforeEach
   void preparar() {
@@ -169,13 +180,13 @@ class FlujoLimpiezaTest {
         false, false, List.of("MANTENIMIENTO"), permisosAtencion);
     var fotoAtencion = respuesta(mvc.perform(multipart(API + "/evidencias")
         .file(new MockMultipartFile("archivo", "reparacion.png", "image/png", bytes.toByteArray()))
-        .requestAttr(SesionOperacionService.ATRIBUTO, personalMantenimiento)).andExpect(status().isCreated()));
+        .with(actor(personalMantenimiento))).andExpect(status().isCreated()));
     var reparacion = Map.of("accion", Map.of("tipoAccion", "REPARACION", "costoReparacion", 15), "evidencia", fotoAtencion);
-    mvc.perform(post(nuevoTicket).requestAttr(SesionOperacionService.ATRIBUTO, personalLimpieza)
+    mvc.perform(post(nuevoTicket).with(actor(personalLimpieza))
         .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsBytes(reparacion)))
         .andExpect(status().isForbidden());
     long primerTicket = respuesta(mvc.perform(post(nuevoTicket)
-        .requestAttr(SesionOperacionService.ATRIBUTO, personalMantenimiento).contentType(MediaType.APPLICATION_JSON)
+        .with(actor(personalMantenimiento)).contentType(MediaType.APPLICATION_JSON)
         .content(json.writeValueAsBytes(reparacion))).andExpect(status().isCreated()))
         .path("ticket").path("idTicket").asLong();
     assertThat(items.obtener(item).estadoActualItem()).isEqualTo(EstadoConservacion.BUENO);
@@ -187,35 +198,35 @@ class FlujoLimpiezaTest {
         .andExpect(jsonPath("$.informe.puedeAprobar").value(true))
         .andExpect(jsonPath("$.items[0].estadoEncontrado").value("DANADO"))
         .andExpect(jsonPath("$.items[0].estadoActualItem").value("BUENO"));
-    mvc.perform(delete(informe).requestAttr(SesionOperacionService.ATRIBUTO, personalLimpieza))
+    mvc.perform(delete(informe).with(actor(personalLimpieza)))
         .andExpect(status().isForbidden());
-    mvc.perform(delete(API + "/tickets/" + primerTicket).requestAttr(SesionOperacionService.ATRIBUTO, personalLimpieza))
+    mvc.perform(delete(API + "/tickets/" + primerTicket).with(actor(personalLimpieza)))
         .andExpect(status().isForbidden());
     mvc.perform(delete(API + "/tickets/" + primerTicket)
-        .requestAttr(SesionOperacionService.ATRIBUTO, personalMantenimiento)).andExpect(status().isNoContent());
+        .with(actor(personalMantenimiento))).andExpect(status().isNoContent());
     assertThat(items.obtener(item).estadoActualItem()).isEqualTo(EstadoConservacion.DANADO);
     mvc.perform(post(informe + "/aprobar")).andExpect(status().isConflict());
 
     long idTicket = respuesta(mvc.perform(post(nuevoTicket)
-        .requestAttr(SesionOperacionService.ATRIBUTO, personalMantenimiento).contentType(MediaType.APPLICATION_JSON)
+        .with(actor(personalMantenimiento)).contentType(MediaType.APPLICATION_JSON)
         .content(json.writeValueAsBytes(reparacion))).andExpect(status().isCreated()))
         .path("ticket").path("idTicket").asLong();
     String ticket = API + "/tickets/" + idTicket;
     var reposicion = "{\"tipoAccion\":\"REPOSICION\",\"observacionTecnica\":\"Mesa repuesta\"}";
-    mvc.perform(put(ticket).requestAttr(SesionOperacionService.ATRIBUTO, personalLimpieza)
+    mvc.perform(put(ticket).with(actor(personalLimpieza))
         .contentType(MediaType.APPLICATION_JSON).content(reposicion)).andExpect(status().isForbidden());
-    mvc.perform(put(ticket).requestAttr(SesionOperacionService.ATRIBUTO, personalMantenimiento)
+    mvc.perform(put(ticket).with(actor(personalMantenimiento))
         .contentType(MediaType.APPLICATION_JSON).content(reposicion))
         .andExpect(status().isOk()).andExpect(jsonPath("$.costoReparacion").doesNotExist());
     mvc.perform(get(API + "/tickets").param("tipoAccion", "REPOSICION").param("nombre", "TKT-" + idTicket)
         .param("numeroHabitacion", "301")).andExpect(status().isOk())
         .andExpect(jsonPath("$.totalElementos").value(1));
-    mvc.perform(post(informe + "/aprobar").requestAttr(SesionOperacionService.ATRIBUTO, personalLimpieza))
+    mvc.perform(post(informe + "/aprobar").with(actor(personalLimpieza)))
         .andExpect(status().isForbidden());
     mvc.perform(get(informe)).andExpect(status().isOk())
         .andExpect(jsonPath("$.informe.estado").value("POR_APROBAR"));
 
-    mvc.perform(post(informe + "/aprobar").requestAttr(SesionOperacionService.ATRIBUTO, personalMantenimiento))
+    mvc.perform(post(informe + "/aprobar").with(actor(personalMantenimiento)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.informe.estado").value("APROBADO"));
     mvc.perform(get(cuarto)).andExpect(status().isOk())

@@ -1,6 +1,6 @@
 package pe.com.rebolsysBackend.controller;
 
-import pe.com.rebolsysBackend.security.Acceso;
+import org.springframework.security.access.prepost.PreAuthorize;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -27,32 +27,32 @@ public class CategoriaController {
         this.categoriaService = categoriaService;
     }
 
-    @Acceso("PRODUCTOS:VER")
+    @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('PRODUCTOS:VER')")
     @GetMapping
     public ResponseEntity<Iterable<CategoriaResponseDTO>> readAll() {
         return ResponseEntity.ok(categoriaService.readAll());
     }
 
-    @Acceso("PRODUCTOS:CREAR_CATEGORIA")
+    @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('PRODUCTOS:CREAR_CATEGORIA')")
     @PostMapping
     public ResponseEntity<CategoriaResponseDTO> create(@Valid @RequestBody CategoriaRequestDTO request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(categoriaService.create(request));
     }
 
-    @Acceso("PRODUCTOS:VER")
+    @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('PRODUCTOS:VER')")
     @GetMapping("/{id}")
     public ResponseEntity<CategoriaResponseDTO> read(@PathVariable Long id) {
         return ResponseEntity.ok(categoriaService.read(id));
     }
 
-    @Acceso("PRODUCTOS:EDITAR_CATEGORIA")
+    @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('PRODUCTOS:EDITAR_CATEGORIA')")
     @PutMapping("/{id}")
     public ResponseEntity<CategoriaResponseDTO> update(
             @PathVariable Long id, @Valid @RequestBody CategoriaRequestDTO request) {
         return ResponseEntity.ok(categoriaService.update(id, request));
     }
 
-    @Acceso("PRODUCTOS:ELIMINAR_CATEGORIA")
+    @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('PRODUCTOS:ELIMINAR_CATEGORIA')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         categoriaService.delete(id);

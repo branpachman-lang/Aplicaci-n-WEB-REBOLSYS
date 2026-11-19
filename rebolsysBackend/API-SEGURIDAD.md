@@ -2,6 +2,29 @@
 
 El servidor autentica usuarios mediante JWT Bearer y credenciales guardadas con BCrypt. Las clases de seguridad están agrupadas en `security/`, tomando Pharma como referencia y conservando los permisos configurables de Oracle. El [contrato JWT](API-JWT.md) explica la firma, renovación, revocación y configuración de `JWT_SECRET`, obligatoria en producción. No requiere modificar el DDL.
 
+## Organización equivalente a Pharma
+
+| Responsabilidad | Clase en REBOLSYS |
+| --- | --- |
+| Recibir las solicitudes HTTP y validar los DTO | `controller/AuthController`, `dto/auth/` |
+| Definir y coordinar la autenticación | `service/service/AuthService`, `service/impl/AuthServiceImpl` |
+| Cargar el usuario y sus autoridades actuales | `security/UsuarioDetailsService implements UserDetailsService` |
+| Verificar credenciales mediante AuthenticationManager | `security/CredencialesAuthenticationProvider` |
+| Firmar, validar, renovar y revocar JWT | `security/JwtService` |
+| Autenticar las solicitudes Bearer | `security/JwtAuthenticationFilter` |
+| Configurar filtros y habilitar autorización por método | `config/SecurityConfig` con `@EnableMethodSecurity` |
+| Autorizar las operaciones | `@PreAuthorize` con `hasAuthority`, `hasAnyAuthority` o `hasRole` en los controladores |
+
+El recorrido del acceso es `AuthController → AuthServiceImpl → AuthenticationManager → CredencialesAuthenticationProvider → UsuarioDetailsService → JwtService`. El proveedor conserva la verificación BCrypt y las transacciones de `CredencialesService`: los intentos fallidos deben persistir y la apertura del turno debe permanecer serializada. No se utiliza un proveedor DAO genérico porque no contempla esas reglas del hospedaje. `UserDetails` no transporta el hash de la contraseña.
+
+En una petición protegida, el filtro valida el JWT y carga las autoridades desde Oracle; Spring Security evalúa `@PreAuthorize` antes de ejecutar el método. `PermisosEndpoint` solo extrae los códigos de esas anotaciones para el catálogo asignable y OpenAPI; no autoriza solicitudes. Los permisos siguen siendo editables desde Seguridad y se aplican en la siguiente petición. `ACCESO_OPERATIVO` es una autoridad interna para consultar catálogos; nunca se asigna a cuentas pendientes de cambiar su contraseña temporal.
+
+`SesionWebConfig` prepara el usuario y turno de la petición para las reglas de negocio y la auditoría. No decide permisos. Se retiraron `@Acceso`, `AccesoInterceptor` y `AccesosWebConfig`. El modo local de pruebas conserva su excepción operativa y no habilita funciones exclusivas de gerencia; producción lo rechaza.
+
+Esta reorganización conserva las rutas `/api/v1/sesion`, los nombres JSON, los cuatro roles, la renovación y revocación existentes. No requiere ejecutar SQL ni cambiar el frontend.
+
+Como en Pharma, MVC valida los argumentos antes de invocar el método protegido. Una petición con JWT válido y un cuerpo incorrecto puede responder 400 antes de comprobar el permiso; una solicitud válida sin permiso responde 403. La operación no se ejecuta en ninguno de los dos casos.
+
 ## Preparar el gerente inicial
 
 1. En una instalación existente, ejecutar [V15](src/main/resources/db/iteration/V15__credencial_temporal.sql) como `PropuestaHospedajeRB` después de V14. El DDL para una instalación nueva ya incluye la columna de vencimiento.

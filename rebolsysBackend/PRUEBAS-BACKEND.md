@@ -107,3 +107,23 @@ rechazo de firma inválida y revocación al cerrar. No se modificó Oracle.
 Consulta [API-JWT.md](API-JWT.md) para configurar la firma y la vigencia. Las
 pruebas de la colección cambian contraseñas: utiliza exclusivamente cuentas de
 prueba con clave temporal y valores privados locales.
+
+## Reorganización de seguridad con Pharma como referencia
+
+Validación del 19 de noviembre de 2026: `RUN_ORACLE_TESTS=false` y
+`.\mvnw.cmd -o package`, con Java 21. Resultado: 81 pruebas aprobadas,
+0 fallos y 109 pruebas opcionales omitidas. Se generó el JAR sin los antiguos
+`SesionOperacionController`, `Acceso` ni `AccesoInterceptor`.
+
+La prueba HTTP comprueba que todas las rutas operativas tengan `@PreAuthorize`
+y que el catálogo conserve sus 76 permisos. También verifica claves temporales,
+bloqueo por intentos fallidos, apertura y recuperación del turno, actualización
+de permisos en sesiones abiertas, acceso a reportes, cierre de caja y revocación.
+El flujo de limpieza conserva las restricciones por rol para aprobar informes
+y atender tickets. Los DTO de autenticación conservan validaciones y ocultan
+las contraseñas en `toString()`.
+
+Estas pruebas usan H2 para los flujos integrados. No se ejecutó SQL contra Oracle
+ni se modificaron su configuración, entidades, scripts o el frontend. Consulta
+[la organización de seguridad](API-SEGURIDAD.md#organización-equivalente-a-pharma)
+para recorrer las clases y conocer el orden de validación y autorización.

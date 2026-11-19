@@ -1,6 +1,6 @@
 package pe.com.rebolsysBackend.controller;
 
-import pe.com.rebolsysBackend.security.Acceso;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -19,7 +19,7 @@ public class ClienteController {
         this.clienteService = clienteService;
     }
 
-    @Acceso("CLIENTES:VER")
+    @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('CLIENTES:VER')")
     @GetMapping
     public ResponseEntity<ClienteResumenResponseDTO> buscar(
         @RequestParam Long tipoDocumento,

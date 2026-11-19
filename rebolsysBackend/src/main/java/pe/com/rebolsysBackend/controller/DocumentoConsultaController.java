@@ -1,6 +1,6 @@
 package pe.com.rebolsysBackend.controller;
 
-import pe.com.rebolsysBackend.security.Acceso;
+import org.springframework.security.access.prepost.PreAuthorize;
 import jakarta.validation.constraints.Pattern;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,7 +20,7 @@ public class DocumentoConsultaController {
         this.documentoConsultaService = documentoConsultaService;
     }
 
-    @Acceso("CLIENTES:CONSULTAR_DOCUMENTOS")
+    @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('CLIENTES:CONSULTAR_DOCUMENTOS')")
     @GetMapping("/dni/{numero}")
     public ResponseEntity<DocumentoConsultaResponseDTO> consultarDni(
         @PathVariable @Pattern(
@@ -31,7 +31,7 @@ public class DocumentoConsultaController {
         return ResponseEntity.ok(documentoConsultaService.consultarDni(numero));
     }
 
-    @Acceso("CLIENTES:CONSULTAR_DOCUMENTOS")
+    @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('CLIENTES:CONSULTAR_DOCUMENTOS')")
     @GetMapping("/ruc/{numero}")
     public ResponseEntity<DocumentoConsultaResponseDTO> consultarRuc(
         @PathVariable @Pattern(

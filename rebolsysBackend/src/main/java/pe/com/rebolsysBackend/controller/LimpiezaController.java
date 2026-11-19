@@ -1,6 +1,6 @@
 package pe.com.rebolsysBackend.controller;
 
-import pe.com.rebolsysBackend.security.Acceso;
+import org.springframework.security.access.prepost.PreAuthorize;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -26,35 +26,35 @@ import pe.com.rebolsysBackend.service.service.LimpiezaService;
 public class LimpiezaController {
   private final LimpiezaService servicio;
 
-  @Acceso("LIMPIEZA:VER_INICIO")
+  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('LIMPIEZA:VER_INICIO')")
   @GetMapping("/inicio")
   @Operation(summary = "Consultar el resumen de limpieza según el rol del usuario")
   public Inicio inicio() {
     return servicio.inicio();
   }
 
-  @Acceso("LIMPIEZA:VER_HABITACIONES")
+  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('LIMPIEZA:VER_HABITACIONES')")
   @GetMapping("/habitaciones")
   @Operation(summary = "Listar habitaciones con su estado en el flujo de limpieza")
   public List<HabitacionResumen> habitaciones(@Valid @ParameterObject @ModelAttribute FiltroHabitaciones filtro) {
     return servicio.habitaciones(filtro);
   }
 
-  @Acceso("LIMPIEZA:VER_HABITACIONES")
+  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('LIMPIEZA:VER_HABITACIONES')")
   @GetMapping("/habitaciones/{id}")
   @Operation(summary = "Ver mobiliario y último informe visible de una habitación")
   public HabitacionDetalle habitacion(@PathVariable @Positive Long id) {
     return servicio.habitacion(id);
   }
 
-  @Acceso("LIMPIEZA:INICIAR")
+  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('LIMPIEZA:INICIAR')")
   @PostMapping("/habitaciones/{id}/iniciar")
   @Operation(summary = "Iniciar o retomar el borrador de limpieza de la habitación")
   public Borrador iniciar(@PathVariable @Positive Long id) {
     return servicio.iniciar(id);
   }
 
-  @Acceso("LIMPIEZA:CANCELAR_BORRADOR")
+  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('LIMPIEZA:CANCELAR_BORRADOR')")
   @DeleteMapping("/borradores/{id}")
   @ResponseStatus(HttpStatus.NO_CONTENT)
   @Operation(summary = "Cancelar el borrador propio y devolver la habitación a Por limpiar")
@@ -62,14 +62,14 @@ public class LimpiezaController {
     servicio.cancelarBorrador(id);
   }
 
-  @Acceso("LIMPIEZA:ENVIAR_INFORME")
+  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('LIMPIEZA:ENVIAR_INFORME')")
   @PostMapping("/borradores/{id}/enviar")
   @Operation(operationId = "enviarInformeLimpieza", summary = "Enviar el informe completo y dejarlo por aprobar")
   public InformeDetalle enviar(@PathVariable @Positive Long id, @Valid @RequestBody EnviarInforme datos) {
     return servicio.enviar(id, datos);
   }
 
-  @Acceso("LIMPIEZA:VER_INFORMES")
+  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('LIMPIEZA:VER_INFORMES')")
   @GetMapping("/informes")
   @Operation(summary = "Buscar informes de limpieza enviados")
   public PaginaResponseDTO<InformeResumen> informes(@Valid @ParameterObject @ModelAttribute FiltroInformes filtro,
@@ -78,21 +78,21 @@ public class LimpiezaController {
     return servicio.informes(filtro, PageRequest.of(pagina, tamanio, Sort.by(Sort.Direction.DESC, "fechaHora", "idInformeRevision")));
   }
 
-  @Acceso("LIMPIEZA:VER_INFORMES")
+  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('LIMPIEZA:VER_INFORMES')")
   @GetMapping("/informes/{id}")
   @Operation(summary = "Ver un informe, sus incidencias y sus tickets")
   public InformeDetalle informe(@PathVariable @Positive Long id) {
     return servicio.informe(id);
   }
 
-  @Acceso("LIMPIEZA:EDITAR_INFORME")
+  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('LIMPIEZA:EDITAR_INFORME')")
   @PatchMapping("/informes/{id}")
   @Operation(summary = "Corregir los ítems indicados de un informe por aprobar")
   public InformeDetalle editarInforme(@PathVariable @Positive Long id, @Valid @RequestBody EditarInforme datos) {
     return servicio.editarInforme(id, datos);
   }
 
-  @Acceso("LIMPIEZA:ELIMINAR_INFORME")
+  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('LIMPIEZA:ELIMINAR_INFORME')")
   @DeleteMapping("/informes/{id}")
   @ResponseStatus(HttpStatus.NO_CONTENT)
   @Operation(summary = "Eliminar un informe por aprobar y sus tickets",
@@ -101,7 +101,7 @@ public class LimpiezaController {
     servicio.eliminarInforme(id);
   }
 
-  @Acceso("LIMPIEZA:APROBAR_INFORME")
+  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('LIMPIEZA:APROBAR_INFORME')")
   @PostMapping("/informes/{id}/aprobar")
   @Operation(summary = "Aprobar un informe sin incidencias pendientes y liberar la habitación",
       description = "Requiere el rol MANTENIMIENTO y el permiso LIMPIEZA:APROBAR_INFORME.")
@@ -109,7 +109,7 @@ public class LimpiezaController {
     return servicio.aprobar(id);
   }
 
-  @Acceso("LIMPIEZA:CREAR_TICKET")
+  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('LIMPIEZA:CREAR_TICKET')")
   @PostMapping("/informes/{id}/items/{idDetalleInforme}/ticket")
   @ResponseStatus(HttpStatus.CREATED)
   @Operation(summary = "Registrar la resolución de una incidencia con un ticket de mantenimiento",
@@ -119,7 +119,7 @@ public class LimpiezaController {
     return servicio.crearTicket(id, idDetalleInforme, datos);
   }
 
-  @Acceso("LIMPIEZA:VER_TICKETS")
+  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('LIMPIEZA:VER_TICKETS')")
   @GetMapping("/tickets")
   @Operation(summary = "Buscar tickets de mantenimiento")
   public PaginaResponseDTO<TicketResumen> tickets(@Valid @ParameterObject @ModelAttribute FiltroTickets filtro,
@@ -128,14 +128,14 @@ public class LimpiezaController {
     return servicio.tickets(filtro, PageRequest.of(pagina, tamanio, Sort.by(Sort.Direction.DESC, "fechaGeneracion", "idTicket")));
   }
 
-  @Acceso("LIMPIEZA:VER_TICKETS")
+  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('LIMPIEZA:VER_TICKETS')")
   @GetMapping("/tickets/{id}")
   @Operation(summary = "Ver un ticket de mantenimiento")
   public TicketDetalle ticket(@PathVariable @Positive Long id) {
     return servicio.ticket(id);
   }
 
-  @Acceso("LIMPIEZA:EDITAR_TICKET")
+  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('LIMPIEZA:EDITAR_TICKET')")
   @PutMapping("/tickets/{id}")
   @Operation(summary = "Editar acción, observaciones y costo de un ticket de un informe por aprobar",
       description = "Requiere el rol MANTENIMIENTO y el permiso LIMPIEZA:EDITAR_TICKET.")
@@ -143,7 +143,7 @@ public class LimpiezaController {
     return servicio.editarTicket(id, datos);
   }
 
-  @Acceso("LIMPIEZA:ELIMINAR_TICKET")
+  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('LIMPIEZA:ELIMINAR_TICKET')")
   @DeleteMapping("/tickets/{id}")
   @ResponseStatus(HttpStatus.NO_CONTENT)
   @Operation(summary = "Eliminar un ticket y reabrir la incidencia de su informe por aprobar",

@@ -1,6 +1,6 @@
 package pe.com.rebolsysBackend.controller;
 
-import pe.com.rebolsysBackend.security.Acceso;
+import org.springframework.security.access.prepost.PreAuthorize;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -15,7 +15,7 @@ import pe.com.rebolsysBackend.service.service.ConfiguracionService;
 public class ConfiguracionController {
   private final ConfiguracionService servicio;
 
-  @Acceso("@CATALOGOS")
+  @PreAuthorize("@sesionOperacionService.esPrueba() or hasAuthority('ACCESO_OPERATIVO')")
   @GetMapping("/catalogos")
   @Operation(summary = "Obtener tipos, categorías y estados para los formularios de configuración")
   public ConfiguracionCatalogosDTO catalogos() {

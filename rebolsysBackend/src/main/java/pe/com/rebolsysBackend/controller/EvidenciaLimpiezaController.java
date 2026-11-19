@@ -1,6 +1,6 @@
 package pe.com.rebolsysBackend.controller;
 
-import pe.com.rebolsysBackend.security.Acceso;
+import org.springframework.security.access.prepost.PreAuthorize;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +18,7 @@ import pe.com.rebolsysBackend.service.impl.EvidenciaLimpiezaService;
 public class EvidenciaLimpiezaController {
   private final EvidenciaLimpiezaService evidencias;
 
-  @Acceso("LIMPIEZA:CARGAR_EVIDENCIA")
+  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('LIMPIEZA:CARGAR_EVIDENCIA')")
   @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
   @ResponseStatus(HttpStatus.CREATED)
   @Operation(summary = "Cargar una foto de evidencia para un informe o ticket")
@@ -26,7 +26,7 @@ public class EvidenciaLimpiezaController {
     return evidencias.guardar(archivo);
   }
 
-  @Acceso("LIMPIEZA:VER_EVIDENCIA")
+  @PreAuthorize("@sesionOperacionService.esPrueba() or hasRole('GERENTE') or hasAuthority('LIMPIEZA:VER_EVIDENCIA')")
   @GetMapping(value = "/{nombre}", produces = {MediaType.IMAGE_PNG_VALUE, MediaType.IMAGE_JPEG_VALUE})
   @Operation(operationId = "descargarEvidenciaLimpieza", summary = "Descargar una foto de evidencia de limpieza")
   public ResponseEntity<Resource> obtener(@PathVariable String nombre) {

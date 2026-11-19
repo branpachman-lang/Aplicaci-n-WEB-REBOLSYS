@@ -1,6 +1,6 @@
 package pe.com.rebolsysBackend.controller;
 
-import pe.com.rebolsysBackend.security.Acceso;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -19,7 +19,7 @@ public class CatalogoController {
         this.catalogoService = catalogoService;
     }
 
-    @Acceso("@CATALOGOS")
+    @PreAuthorize("@sesionOperacionService.esPrueba() or hasAuthority('ACCESO_OPERATIVO')")
     @GetMapping
     public ResponseEntity<CatalogosResponseDTO> listar() {
         var datos = catalogoService.catalogos();

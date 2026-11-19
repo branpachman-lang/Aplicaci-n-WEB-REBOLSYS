@@ -36,6 +36,7 @@ import pe.com.rebolsysBackend.enums.EstadoUsuario;
 import pe.com.rebolsysBackend.security.AccesosService;
 import pe.com.rebolsysBackend.security.CredencialesService;
 import pe.com.rebolsysBackend.security.JwtService;
+import pe.com.rebolsysBackend.security.PermisosEndpoint;
 import pe.com.rebolsysBackend.service.service.ProveedorFacturacionClient;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -81,8 +82,13 @@ class AccesoHttpTest {
   void cadaRutaOperativaTieneReglaExplicita() throws Exception {
     var sinRegla = requestMappingHandlerMapping.getHandlerMethods().entrySet().stream()
         .filter(e -> e.getKey().getPatternValues().stream().anyMatch(p -> p.startsWith(API + "/")))
-        .filter(e -> AccesosService.regla(e.getValue()).length == 0).map(Map.Entry::getKey).toList();
+        .filter(e -> PermisosEndpoint.regla(e.getValue()) == null).map(Map.Entry::getKey).toList();
     assertThat(sinRegla).isEmpty();
+    try (var entrada = getClass().getResourceAsStream("/seguridad/catalogo-permisos.json")) {
+      var esperado = json.readValue(entrada, String[].class);
+      assertThat(accesos.catalogo().stream().map(AccesosService.Funcion::codigo).toList())
+          .containsExactly(esperado);
+    }
     mvc.perform(get("/v3/api-docs")).andExpect(status().isOk())
         .andExpect(jsonPath("$.paths['/api/v1/seguridad/usuarios'].post.security[0].bearerAuth").isArray());
   }
@@ -217,8 +223,14 @@ class AccesoHttpTest {
     mvc.perform(get(API + "/habitaciones/configuracion").header("Authorization", "Bearer " + operadora)).andExpect(status().isOk());
     mvc.perform(get(API + "/productos").header("Authorization", "Bearer " + operadora)).andExpect(status().isForbidden());
     mvc.perform(get(API + "/seguridad/usuarios").header("Authorization", "Bearer " + operadora)).andExpect(status().isForbidden());
-    peticion(post(API + "/reservas"), operadora, Map.of()).andExpect(status().isForbidden());
-    peticion(put(API + "/habitaciones/1"), operadora, Map.of()).andExpect(status().isForbidden());
+    // DTO válidos: @PreAuthorize se ejecuta al invocar el método, después de la validación MVC.
+    peticion(post(API + "/reservas"), operadora, Map.of("claveRegistro", UUID.randomUUID().toString(),
+        "idCliente", 1, "detalles", List.of(Map.of("idHabitacion", habitacion,
+            "fechaIngreso", "2026-11-20T14:00:00", "fechaSalida", "2026-11-21T12:00:00", "costoEstadia", 50))))
+        .andExpect(status().isForbidden());
+    peticion(put(API + "/habitaciones/1"), operadora, Map.of("numeroCuarto", "101", "idTipoHabitacion", 1,
+        "estadoHabitacion", "DISPONIBLE", "capacidadPersonas", 1, "plazasCama", 1, "maxMenoresSinCama", 0))
+        .andExpect(status().isForbidden());
     peticion(delete(API + "/habitaciones/1"), operadora, null).andExpect(status().isForbidden());
     peticion(put(API + "/seguridad/usuarios/" + id + "/accesos"), operadora,
         Map.of("roles", List.of(), "permisos", List.of("RESERVAS:CREAR"))).andExpect(status().isForbidden());
@@ -313,7 +325,9 @@ class AccesoHttpTest {
     var catalogo = tx.execute(s -> prepararMovimientosCaja(idTurno));
     String ruta = API + "/caja/turnos/" + idTurno;
     mvc.perform(get(ruta).header("Authorization", "Bearer " + operadora)).andExpect(status().isNotFound());
-    peticion(post(ruta + "/cierre"), operadora, Map.of()).andExpect(status().isForbidden());
+    peticion(post(ruta + "/cierre"), operadora, Map.of("revision", "a".repeat(64),
+        "arqueos", List.of(Map.of("idFormaPago", catalogo.get("efectivo"), "montoDeclarado", 0))))
+        .andExpect(status().isForbidden());
     peticion(post(API + "/gastos"), operadora, Map.of("idUsuario", catalogo.get("usuario"), "idTurno", idTurno,
         "idTipoMovimiento", catalogo.get("gasto"), "concepto", "Gasto ajeno", "monto", 10))
         .andExpect(status().isConflict());

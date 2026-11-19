@@ -27,6 +27,8 @@ import pe.com.rebolsysBackend.exception.GlobalExceptionHandler;
 import pe.com.rebolsysBackend.repository.TipoDocumentoRepository;
 import pe.com.rebolsysBackend.validation.DocumentoIdentidadValidator;
 import tools.jackson.databind.json.JsonMapper;
+import pe.com.rebolsysBackend.dto.auth.LoginRequestDTO;
+import pe.com.rebolsysBackend.dto.auth.CambioPasswordRequestDTO;
 
 class DtoValidacionTest {
   private static ValidatorFactory factory;
@@ -72,6 +74,20 @@ class DtoValidacionTest {
   @AfterAll
   static void cerrarValidador() {
     factory.close();
+  }
+
+  @Test
+  void solicitudesDeAutenticacionConservanValidacionYNoRevelanClavesEnToString() {
+    var login = mapper.readValue("{\"usuario\":\"\",\"contrasena\":\"\"}", LoginRequestDTO.class);
+    assertThat(validator.validate(login)).extracting(v -> v.getPropertyPath().toString())
+        .containsExactlyInAnyOrder("usuario", "contrasena");
+    var cambio = mapper.readValue("{\"actual\":\"\",\"nueva\":\"" + "x".repeat(129) + "\"}", CambioPasswordRequestDTO.class);
+    assertThat(validator.validate(cambio)).extracting(v -> v.getPropertyPath().toString())
+        .containsExactlyInAnyOrder("actual", "nueva");
+    assertThat(new LoginRequestDTO("usuario@example.test", "Clave confidencial").toString())
+        .doesNotContain("Clave confidencial", "usuario@example.test");
+    assertThat(new CambioPasswordRequestDTO("Anterior confidencial", "Nueva confidencial").toString())
+        .doesNotContain("Anterior confidencial", "Nueva confidencial");
   }
 
   @Test

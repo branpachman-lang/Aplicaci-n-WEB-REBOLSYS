@@ -9,7 +9,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationContext;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 import pe.com.rebolsysBackend.entity.*;
 import pe.com.rebolsysBackend.exception.RecursoNoEncontradoException;
@@ -35,15 +34,9 @@ public class AccesosService {
 
   public record Funcion(String codigo, String modulo, String accion) {}
 
-  public static String[] regla(HandlerMethod handler) {
-    var acceso = handler.getMethodAnnotation(Acceso.class);
-    if (acceso == null) acceso = handler.getBeanType().getAnnotation(Acceso.class);
-    return acceso == null ? new String[0] : acceso.value();
-  }
-
   public List<Funcion> catalogo() {
     return contexto.getBean("requestMappingHandlerMapping", RequestMappingHandlerMapping.class).getHandlerMethods()
-        .values().stream().flatMap(h -> Arrays.stream(regla(h))).filter(c -> !c.startsWith("@"))
+        .values().stream().flatMap(h -> PermisosEndpoint.permisos(h).stream())
         .distinct().sorted().map(c -> new Funcion(c, c.split(":", 2)[0], c.split(":", 2)[1])).toList();
   }
 
