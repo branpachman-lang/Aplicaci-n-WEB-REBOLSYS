@@ -19,7 +19,7 @@ idTipoHabitacion, estado y capacidadMinima. Ordena por número e identificador.
 PATCH /habitaciones/{id}/estado recibe {estadoHabitacion}. No sobrescribe número,
 tipo ni capacidad. OCUPADO corresponde exclusivamente a una estancia en curso:
 no se puede simular un ingreso o salida cambiando la configuración.
-DISPONIBLE, LIMPIEZA y MANTENIMIENTO se gestionan sin ocupar la habitación.
+DISPONIBLE, POR_LIMPIAR y MANTENIMIENTO se gestionan sin ocupar la habitación. EN_LIMPIEZA se establece al iniciar un informe y solo se abandona mediante el flujo de limpieza; no puede seleccionarse manualmente.
 
 Tipos de habitación: CRUD en /tipos-habitacion. No se reduce capacidad de un tipo
 por debajo de sus habitaciones ni la de una habitación por debajo de ocupantes

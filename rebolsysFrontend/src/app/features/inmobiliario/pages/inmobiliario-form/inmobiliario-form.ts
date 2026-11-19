@@ -370,7 +370,8 @@ export class InmobiliarioForm implements OnInit {
         return 'disponible';
       case 'OCUPADO':
         return 'en_curso';
-      case 'LIMPIEZA':
+      case 'POR_LIMPIAR':
+      case 'EN_LIMPIEZA':
         return 'limpieza';
       case 'MANTENIMIENTO':
         return 'mantenimiento';

@@ -59,6 +59,8 @@ vacía, ejecuta estos archivos en orden desde una sesión de ese esquema.
 4. [DATOS_ROLES_OFICIALES_V2.sql](src/main/resources/db/schema/DATOS_ROLES_OFICIALES_V2.sql) carga los cuatro roles oficiales. Confirma las cargas con `COMMIT` y configura los permisos operativos en **Seguridad**.
 5. [DATOS_APROBACION_MANTENIMIENTO_V2.sql](src/main/resources/db/schema/DATOS_APROBACION_MANTENIMIENTO_V2.sql) habilita la atención de tickets, la carga de evidencias y la aprobación de informes para Mantenimiento. Confirma con `COMMIT`.
 
+6. [V17](src/main/resources/db/iteration/V17__estados_limpieza_explicitos.sql) sincroniza los estados explícitos de limpieza y garantiza un solo informe activo por habitación. Ejecutar con la aplicación detenida, revisar el resultado y confirmar con `COMMIT`.
+
 Hibernate valida el esquema al arrancar y Flyway está deshabilitado. El DDL anterior
 y sus scripts de demostración se conservan como historial.
 

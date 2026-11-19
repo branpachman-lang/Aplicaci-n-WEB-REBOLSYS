@@ -258,7 +258,7 @@ public class ReservaServiceImpl implements ReservaService {
                 cuenta.validarSalida(d.getReserva());
                 d.setFechaSalidaReal(ahora);
                 d.setEstadoDetalle(EstadoReserva.FINALIZADA);
-                h.setEstadoHabitacion(EstadoHabitacion.LIMPIEZA);
+                h.setEstadoHabitacion(EstadoHabitacion.POR_LIMPIAR);
             }
             case "cancelacion" -> {
                 if (d.getEstadoDetalle() == EstadoReserva.CANCELADA) return respuestaDetalle(d);
