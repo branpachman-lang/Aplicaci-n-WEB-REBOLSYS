@@ -1,3 +1,9 @@
+import { ElementRef } from '@angular/core';
+import { ImpresionService } from '../../../../core/services/impresion-service';
+import { ComprobanteDialog } from '../../../reservas/components/comprobante-dialog/comprobante-dialog';
+import { notificarCambios } from '../../../../core/services/avisos-formulario';
+import { CatalogoService } from '../../../../core/services/catalogo-service';
+import { Catalogos } from '../../../../core/models/catalogo.model';
 import { generarClaveOperacion } from '../../../../core/utils/clave-operacion';
 import { VentaCarrito } from "../../components/venta-carrito/venta-carrito";
 import { PermisosUi } from "../../../../core/services/permisos-ui";
@@ -22,7 +28,6 @@ import { Categoria } from "../../../categorias/models/categoria.model";
 import { Venta, VentaRequest, ReservaVenta } from "../../models/venta.model";
 import {
   CobroReserva,
-  CuentaReserva,
 } from "../../../reservas/models/reserva-api.model";
 import { ReservaService } from "../../../reservas/services/reserva-service";
 import { coincideReserva } from "../../utils/buscar-reserva";
@@ -43,12 +48,19 @@ import { VentaTicket } from "../../components/venta-ticket/venta-ticket";
     DialogFocus,
     VentaTicket,
     VentaCarrito,
+    ComprobanteDialog,
   ],
   templateUrl: "./venta-form.html",
   styleUrl: "./venta-form.css",
 })
 export class VentaForm {
   readonly acceso = inject(PermisosUi);
+  private readonly elemento = inject(ElementRef<HTMLElement>);
+  private readonly impresion = inject(ImpresionService);
+  comprobanteAbierto = signal(false);
+  private catalogoService = inject(CatalogoService);
+  catalogos = signal<Catalogos | null>(null);
+  idUsuario = computed(() => this.acceso.actual()?.idUsuario ?? null);
   id = input<string>();
   original = signal<Venta | null>(null);
   private router = inject(Router);
@@ -63,16 +75,16 @@ export class VentaForm {
   carrito = signal<{ producto: Producto; cantidad: number }[]>([]);
   cargando = signal(true);
   error = signal("");
+  private readonly alertaError = notificarCambios(this.error, 'error');
   errorReservas = signal("");
-  cuentaReserva = signal<CuentaReserva | null>(null);
-  cargandoCuenta = signal(false);
-  errorCuenta = signal("");
+  private readonly alertaErrorReservas = notificarCambios(this.errorReservas, 'error');
   ingresoAbierto = signal<ReservaVenta | null>(null);
   errorIngreso = signal("");
-  private consultaCuenta = 0;
+  private readonly alertaErrorIngreso = notificarCambios(this.errorIngreso, 'error');
   errorCatalogo = signal(false);
   guardando = signal(false);
   errorPago = signal("");
+  private readonly alertaErrorPago = notificarCambios(this.errorPago, 'error');
   pagoAbierto = signal(false);
   venta = signal<Venta | null>(null);
   fallidas = signal(new Set<number>());
@@ -124,6 +136,7 @@ export class VentaForm {
     this.errorReservas.set("");
     this.errorCatalogo.set(false);
     forkJoin({
+      catalogos: this.catalogoService.listar(),
       productos: this.productoService.catalogo(),
       categorias: this.categoriaService.listar(),
       reservas: this.ventaService.reservas().pipe(
@@ -135,6 +148,7 @@ export class VentaForm {
       original: this.id() ? this.ventaService.obtener(this.id()!) : of(null),
     }).subscribe({
       next: (r) => {
+        this.catalogos.set(r.catalogos);
         this.productos.set(r.productos);
         this.categorias.set(r.categorias);
         this.reservas.set(r.reservas);
@@ -148,7 +162,7 @@ export class VentaForm {
           }
           this.original.set(r.original);
           this.tipoComprador.set("HOSPEDAJE");
-          this.modoVenta.set("CARGO_RESERVA");
+          this.modoVenta.set("SEPARADA");
           this.reservaId.set(r.original.idDetalleReserva);
           this.compradorNombre.set(r.original.compradorNombre);
           const anteriores = new Map(
@@ -199,41 +213,14 @@ export class VentaForm {
     this.tipoComprador.set(tipo);
     this.reservaId.set(null);
     this.compradorNombre.set("");
-    this.modoVenta.set(tipo === "EXTERNO" ? "SEPARADA" : "CARGO_RESERVA");
+    this.modoVenta.set("SEPARADA");
     this.buscarHabitacion.set("");
-    this.consultarCuenta();
   }
   elegirReserva(id: number | null) {
     if (this.guardando() || this.solicitudFijada() || this.pendiente()) return;
     this.reservaId.set(id);
     this.compradorNombre.set(this.seleccionada()?.clienteNombre || "");
-    this.modoVenta.set("CARGO_RESERVA");
-    this.consultarCuenta();
-  }
-  consultarCuenta() {
-    const consulta = ++this.consultaCuenta;
-    const r = this.seleccionada();
-    this.cuentaReserva.set(null);
-    this.errorCuenta.set("");
-    this.cargandoCuenta.set(!!r);
-    if (!r) return;
-    this.reservaService
-      .cuenta(r.idReserva)
-      .pipe(takeUntilDestroyed(this.destroy))
-      .subscribe({
-        next: (cuenta) => {
-          if (consulta !== this.consultaCuenta) return;
-          this.cuentaReserva.set(cuenta);
-          this.cargandoCuenta.set(false);
-          if (!cuenta.admiteConsumosConsolidados)
-            this.modoVenta.set("SEPARADA");
-        },
-        error: (e) => {
-          if (consulta !== this.consultaCuenta) return;
-          this.errorCuenta.set(mensajeError(e));
-          this.cargandoCuenta.set(false);
-        },
-      });
+    this.modoVenta.set("SEPARADA");
   }
   abrirIngreso() {
     const r = this.seleccionada();
@@ -277,8 +264,7 @@ export class VentaForm {
           this.guardando.set(false);
           this.ingresoAbierto.set(null);
           this.error.set("");
-          this.consultarCuenta();
-        },
+              },
         error: (e) => {
           this.guardando.set(false);
           this.errorIngreso.set(mensajeError(e));
@@ -378,21 +364,6 @@ export class VentaForm {
         );
         return;
       }
-      if (this.cargandoCuenta() || !this.cuentaReserva()) {
-        this.error.set(
-          "Consulta la cuenta de la reserva antes de confirmar la venta.",
-        );
-        return;
-      }
-      if (
-        this.modoVenta() === "CARGO_RESERVA" &&
-        !this.cuentaReserva()!.admiteConsumosConsolidados
-      ) {
-        this.error.set(
-          "La cuenta de la reserva ya está pagada o emitida. Selecciona cobrar aparte.",
-        );
-        return;
-      }
     }
     if (this.id()) {
       if (!this.original()?.editable || this.guardando()) return;
@@ -418,13 +389,10 @@ export class VentaForm {
         });
       return;
     }
-    const cargo =
-      this.tipoComprador() === "HOSPEDAJE" &&
-      this.modoVenta() === "CARGO_RESERVA";
     const r = this.seleccionada();
     this.solicitud = {
       claveRegistro: this.clave,
-      modoVenta: cargo ? "CARGO_RESERVA" : "SEPARADA",
+      modoVenta: "SEPARADA",
       idDetalleReserva: r?.idDetalleReserva ?? null,
       idCliente:
         r && this.compradorNombre().trim() === r.clienteNombre
@@ -438,8 +406,7 @@ export class VentaForm {
       })),
       efectivoRecibido: null,
     };
-    if (cargo) this.registrar(null);
-    else if (this.total() === 0) this.registrar(0);
+    if (this.total() === 0) this.registrar(0);
     else {
       this.errorPago.set("");
       this.pagoAbierto.set(true);
@@ -471,7 +438,8 @@ export class VentaForm {
       },
       error: (e) => {
         this.guardando.set(false);
-        if (e.status >= 400 && e.status < 500 && !this.pendiente()?.idVenta) {
+        const rechazoLocal = e instanceof Error && !('status' in e);
+        if ((rechazoLocal || (e.status >= 400 && e.status < 500)) && !this.pendiente()?.idVenta) {
           this.solicitudFijada.set(false);
         }
         const mensaje =
@@ -513,13 +481,19 @@ export class VentaForm {
       },
     });
   }
+  refrescarComprobante() {
+    const id = this.venta()?.idVenta;
+    if (id) this.ventaService.obtener(id).subscribe({ next: v => this.venta.set(v), error: e => this.error.set(mensajeError(e)) });
+  }
   nuevaVenta() {
+    this.comprobanteAbierto.set(false);
     this.venta.set(null);
     this.compradorNombre.set("");
     this.reservaId.set(null);
     this.error.set("");
   }
   imprimir() {
-    window.print();
+    void this.impresion.imprimir(this.elemento.nativeElement.querySelector('.success-ticket [data-ticket]'))
+      .catch(e => this.error.set(e.message));
   }
 }

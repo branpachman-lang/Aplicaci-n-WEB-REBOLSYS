@@ -1,3 +1,4 @@
+import { notificarCambios } from '../../../../core/services/avisos-formulario';
 import { generarClaveOperacion } from '../../../../core/utils/clave-operacion';
 import { PermisosUi } from "../../../../core/services/permisos-ui";
 import {
@@ -44,7 +45,9 @@ export class ConfiguracionList implements OnInit {
   cargando = signal(true);
   ocupado = signal(false);
   error = signal("");
+  private readonly alertaError = notificarCambios(this.error, 'error');
   errorModal = signal("");
+  private readonly alertaErrorModal = notificarCambios(this.errorModal, 'error');
   buscar = signal("");
   estado = signal("");
   editando = signal<

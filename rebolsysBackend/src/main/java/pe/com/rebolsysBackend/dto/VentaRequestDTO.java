@@ -13,4 +13,12 @@ public record VentaRequestDTO(
     @Size(max = 250) String compradorNombreLibre,
     @NotNull ModalidadCobro modalidadCobro,
     @Positive Long idDetalleReserva,
-    @NotEmpty @Size(max = 100) List<@NotNull @Valid VentaLineaRegistroDTO> detalles) {}
+    @NotEmpty @Size(max = 100) List<@NotNull @Valid VentaLineaRegistroDTO> detalles,
+    @Valid CobroInmediatoDTO cobro) {
+  public VentaRequestDTO(String claveRegistro, Long idUsuario, Long idClienteComprador,
+      String compradorNombreLibre, ModalidadCobro modalidadCobro, Long idDetalleReserva,
+      List<VentaLineaRegistroDTO> detalles) {
+    this(claveRegistro, idUsuario, idClienteComprador, compradorNombreLibre, modalidadCobro,
+        idDetalleReserva, detalles, null);
+  }
+}

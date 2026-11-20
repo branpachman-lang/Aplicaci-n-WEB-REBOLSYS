@@ -57,7 +57,7 @@ public class CuentaCobroServiceImpl implements CuentaCobroService {
     exigir(request.monto().compareTo(gestion.saldo(c)) <= 0, "El pago supera el saldo pendiente de esta cuenta");
     var forma = formas.findById(request.idFormaPago())
         .orElseThrow(() -> new RecursoNoEncontradoException("La forma de pago no existe"));
-    Long reserva = idReserva(c);
+    Long reserva = c.getReserva() == null ? null : c.getReserva().getIdReserva();
     String codigo = reserva == null ? "COBRO_VENTA" : "COBRO_RESERVA";
     var tipo = movimientos.findByNombreMovimiento(codigo)
         .orElseThrow(() -> new ReglaNegocioException("Falta configurar " + codigo));

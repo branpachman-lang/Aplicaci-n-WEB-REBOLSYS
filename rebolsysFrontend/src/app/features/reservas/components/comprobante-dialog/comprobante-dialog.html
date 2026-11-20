@@ -12,7 +12,7 @@
     (click)="$event.stopPropagation()"
   >
     <header class="modal-header no-print">
-      <p class="eyebrow">COMPROBANTES · RESERVA R{{reserva().idReserva}}</p>
+      <p class="eyebrow">COMPROBANTES · {{ reserva() ? 'RESERVA R' + reserva()!.idReserva : 'VENTA V' + venta()!.idVenta }}</p>
       <button
         class="icon-button"
         aria-label="Cerrar comprobante"
@@ -43,13 +43,14 @@
       >
     </div>
     @if(documento();as doc){
+    <article class="ticket" data-ticket>
     <app-marca-hospedaje [mostrarSinConfigurar]="true" />
     <p class="receipt-number">
       <strong>{{doc.tipo}} {{doc.serie}}-{{doc.numero}}</strong>
     </p>
     <p>{{doc.receptorNombre}} · {{doc.receptorNumeroDoc}}</p>
     <p class="muted">
-      Reserva R{{reserva().idReserva}} · {{doc.fechaEmision | date:'dd/MM/yyyy
+      {{ reserva() ? 'Reserva R' + reserva()!.idReserva : 'Venta V' + venta()!.idVenta }} · {{doc.fechaEmision | date:'dd/MM/yyyy
       HH:mm'}}
     </p>
     <div class="table-scroll">
@@ -57,7 +58,7 @@
         <thead>
           <tr>
             <th>Concepto</th>
-            <th>Cantidad</th>
+            <th>Cant.</th>
             <th>Importe</th>
           </tr>
         </thead>
@@ -72,6 +73,9 @@
         </tbody>
       </table>
     </div>
+    @if (emision(); as fiscal) {
+      <p>Valor de venta: {{fiscal.subtotal | currency:'PEN':'S/ '}} · IGV: {{fiscal.igv | currency:'PEN':'S/ '}}</p>
+    }
     <div class="payment-total">
       <span>Total con impuesto incluido</span
       ><strong>{{doc.total | currency:'PEN':'S/ '}}</strong>
@@ -83,8 +87,13 @@
     <p class="inline-note">
       Entorno beta de pruebas. Sin validez tributaria de producción.
     </p>
+    </article>
+    <app-entrega-comprobante [idComprobante]="doc.idCuenta!" />
     <div class="no-print">
       @if(emision();as e){
+      @if (e.codigoRespuesta === 'SIMULACION_LOCAL') {
+        <p class="inline-note">Simulación local guardada. Sin envío a SUNAT ni validez tributaria.</p>
+      }
       <h3 class="spaced-title">Emisión electrónica · {{e.estado}}</h3>
       <p><strong>{{e.serie}}-{{e.correlativo}}</strong> · {{e.ambiente}}</p>
       <p>
@@ -107,7 +116,7 @@
         >
           Actualizar estado
         </button>
-        @if(e.estado==='PREPARADO'||e.estado==='ERROR_ENVIO'){<button
+        @if(e.codigoRespuesta !== 'SIMULACION_LOCAL' && (e.estado==='PREPARADO'||e.estado==='ERROR_ENVIO')){<button
           class="button primary"
           [disabled]="ocupado()"
           (click)="enviar()"
@@ -147,8 +156,7 @@
       <button class="button" (click)="cargarEstado(doc.idCuenta!)">
         Consultar estado electrónico
       </button>
-      } @else if(configuracion()?.habilitada &&
-      !configuracion()?.configuracionPendiente?.length){
+      } @else {
       <h3 class="spaced-title">Preparar emisión electrónica beta</h3>
       <label class="field"
         >Impuesto total (%)<input
@@ -207,19 +215,16 @@
         Añadir cuota
       </button>
       }
-      <button
-        class="button primary full spaced-title"
-        [disabled]="ocupado()"
-        (click)="preparar()"
-      >
-        {{ocupado()?'Preparando…':fiscalFijada()?'Recuperar
-        preparación':'Preparar comprobante electrónico beta'}}
-      </button>
+      @if (configuracion()?.habilitada && !configuracion()?.configuracionPendiente?.length) {
+        <button class="button primary full spaced-title" [disabled]="ocupado() || (fiscalFijada() && modoFiscal() === 'local')" (click)="preparar()">
+          {{ ocupado() ? 'Preparando…' : fiscalFijada() ? 'Recuperar preparación' : 'Preparar comprobante electrónico beta' }}
+        </button>
       } @else {
-      <p class="inline-note">
-        La facturación beta necesita configuración en el backend. El comprobante
-        interno ya está generado.
-      </p>
+        <p class="inline-note">La simulación local está disponible. El envío al proveedor beta requiere habilitación del hospedaje.</p>
+      }
+      <button class="button" [disabled]="ocupado() || !estadoConsultado() || doc.saldo > 0 || (fiscalFijada() && modoFiscal() === 'proveedor')" (click)="preparar(true)">
+        {{ fiscalFijada() && modoFiscal() === 'local' ? 'Recuperar la misma simulación' : 'Simular factura o boleta localmente' }}
+      </button>
       }
       <button class="button full" [disabled]="ocupado()" (click)="imprimir()">
         <app-icon name="print" />Imprimir comprobante interno

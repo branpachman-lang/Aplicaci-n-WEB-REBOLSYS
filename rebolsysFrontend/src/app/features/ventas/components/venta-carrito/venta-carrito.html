@@ -74,13 +74,10 @@
       (click)="confirmar.emit()"
     >
       <app-icon name="check" />{{ guardando() ? 'Guardando…' : editando() ?
-      'Guardar cambios' : modoVenta() === 'CARGO_RESERVA' ? 'Añadir consumo a la
-      reserva' : 'Confirmar venta' }}
+      'Guardar cambios' : 'Confirmar y pagar venta' }}
     </button>
     <p class="cart-footnote">
-      {{ editando() ? 'Venta pendiente · Sin comprobante emitido' : modoVenta()
-      === 'CARGO_RESERVA' ? 'Cargo pendiente a la reserva' : 'Comprobante
-      interno · Cobro en efectivo.' }}
+      {{ editando() ? 'Borrador · Sin cobro confirmado' : 'Pago completo al confirmar la venta.' }}
     </p>
   </footer>
 </aside>

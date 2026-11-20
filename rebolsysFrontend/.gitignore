@@ -61,6 +61,13 @@ proxy.qa.json
 !src/app/core/services/permisos-ui.spec.ts
 !src/app/shared/directives/archivo-protegido.spec.ts
 !tsconfig.spec.json
+!src/app/features/ventas/services/cobro-inmediato.spec.ts
+!src/app/features/ventas/pages/venta-form/venta-form.spec.ts
+!src/app/features/reservas/pages/reserva-form/reserva-form.spec.ts
+!src/app/core/services/notificacion.service.spec.ts
+!src/app/core/services/impresion-service.spec.ts
+!src/app/shared/components/entrega-comprobante/entrega-comprobante.spec.ts
+!src/app/features/reservas/components/comprobante-dialog/comprobante-dialog.spec.ts
 .env
 .env.*
 !.env.example

@@ -38,8 +38,9 @@ public class AuditoriaGeneral {
     @Column(name = "nombreTabla", nullable = false, length = 50, columnDefinition = "VARCHAR2(50)")
     private String nombreTabla;
 
-    @Column(name = "idRegistro", nullable = false, columnDefinition = "NUMBER")
-    private Long idRegistro;
+    @Lob
+    @Column(name = "CLAVE_REGISTRO", nullable = false, columnDefinition = "CLOB")
+    private String claveRegistro;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "accion", nullable = false, length = 10, columnDefinition = "VARCHAR2(10)")

@@ -1,12 +1,65 @@
 # REBOLSYS Backend — propuesta de siete casos de uso
 
+## Comprobantes, ticket de 80 mm y correo
+
+Las reservas y las ventas permiten generar una boleta o factura interna desde su
+cuenta pagada. El mismo diálogo ofrece **Simular factura o boleta localmente**:
+guarda los importes y el desglose del impuesto en `EMISION_ELECTRONICA`, con estado
+`PREPARADO`, ambiente `BETA` y código `SIMULACION_LOCAL`. Requiere los datos del
+hospedaje, pero no credenciales de APIsPerú. Esa simulación no se puede enviar al
+proveedor, no crea XML firmado ni CDR y no acredita aceptación de SUNAT.
+
+**Imprimir comprobante** abre el diálogo del navegador con solo el ticket de
+80 mm. Elegir la impresora térmica y su papel de 80 mm en ese diálogo; la página
+web no selecciona una impresora ni imprime silenciosamente. **Descargar ticket PDF**
+genera una representación local del mismo ancho. Todos los documentos de prueba
+conservan el aviso de que no tienen validez tributaria de producción.
+
+**Enviar al correo** sugiere el correo del receptor y permite corregir el destino
+antes de confirmar. Adjunta el PDF y conserva los pagos y la numeración. Utiliza
+los permisos existentes de emisión de comprobantes de reservas o ventas, verificando
+también el origen del documento. No modifica el correo del perfil del cliente.
+
+Para habilitar SMTP, completar la configuración privada importada desde
+`.local/application-local-private.properties`, sin subirla al repositorio:
+
+```properties
+app.correo.habilitado=true
+app.correo.remitente=cuenta-del-hospedaje@ejemplo.com
+spring.mail.host=servidor-smtp-del-proveedor
+spring.mail.port=587
+spring.mail.username=cuenta-del-hospedaje@ejemplo.com
+spring.mail.password=CLAVE_PRIVADA_DEL_PROVEEDOR
+```
+
+STARTTLS y autenticación están activados por defecto. Para otro tipo de conexión,
+ajustar las propiedades `spring.mail.properties.mail.smtp.*` según el proveedor.
+También se admiten `MAIL_ENABLED`, `MAIL_FROM`, `MAIL_HOST`, `MAIL_PORT`,
+`MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_AUTH`, `MAIL_STARTTLS` y `MAIL_SSL` del entorno.
+El envío queda deshabilitado hasta configurarlo. La respuesta confirma aceptación
+por el servidor SMTP; ante un resultado incierto no se reintenta automáticamente.
+
+La estructura adicional se prepara manualmente con
+[V18](src/main/resources/db/iteration/V18__emision_electronica.sql) y
+[V19](src/main/resources/db/iteration/V19__columnas_compatibilidad_ddl_actual.sql),
+aplicando solo los objetos ausentes. Flyway sigue deshabilitado y Hibernate valida
+el esquema. La colección
+[comprobantes-entrega](api/postman/comprobantes-entrega.postman_collection.json)
+incluye consultas, PDF y simulación; omite la petición de correo salvo habilitación
+explícita del entorno de pruebas.
+
+`ComprobanteEntregaTest` verifica el PDF y sus dimensiones, la simulación local,
+los permisos, el contenido MIME y los fallos SMTP sobre H2, sin enviar correos reales.
+
+## Organización general
+
 Backend con Java 21, Spring Boot, JPA y Oracle, adaptado al DDL propuesto con cliente
 unificado. Mantiene controladores, servicios, implementaciones, repositorios,
-entidades y DTO separados. El frontend no forma parte de esta adaptación.
+entidades y DTO separados. El frontend Angular consume estos contratos.
 
 El backend incluye el [flujo de reservas asistidas](API-RESERVAS.md):
-ocupantes opcionales al reservar, anticipo, ingreso con saldo pendiente, consumos
-consolidados o separados, pagos parciales, comprobantes internos y salida con
+ocupantes opcionales al reservar, pago completo al registrar, ingreso, consumos
+cobrados al instante en cuentas propias, comprobantes internos y salida con
 saldo cero. Presencial, llamada y WhatsApp se registran mediante un operador.
 Para probar el recorrido completo se incluye
 [reservas-flujo.postman_collection.json](api/postman/reservas-flujo.postman_collection.json).
@@ -19,8 +72,8 @@ La V9 y las categorías de desarrollo ya se prepararon en la base local.
 
 El módulo de [ventas de productos](API-VENTAS.md) permite un carrito con varios
 productos, editar borradores, confirmar todos sus stocks en una transacción y
-cobrar una venta directa con comprobante interno. Los consumos de reservas
-conservan sus reglas y cuenta. Los cobros y documentos usan un servicio común.
+cobrar el total dentro de la misma transacción. Los consumos de huéspedes
+conservan la referencia a la reserva y se pagan en su propia cuenta. Los cobros y documentos usan un servicio común.
 Se incluye [ventas-productos.postman_collection.json](api/postman/ventas-productos.postman_collection.json).
 DATOS_VENTAS.sql prepara COBRO_VENTA; ya está aplicado en la base local.
 
@@ -50,8 +103,14 @@ habitación; solo menores de siete años pueden alojarse sin cama dentro del lí
 
 ## Base de datos y arranque
 
-Esta versión usa el esquema Oracle **REBOLSYSDBV2**. Para preparar una instancia
-vacía, ejecuta estos archivos en orden desde una sesión de ese esquema.
+La referencia vigente es [DDL_REBOLSYS_ACTUAL.sql](src/main/resources/db/schema/DDL_REBOLSYS_ACTUAL.sql),
+actualizada con el DDL proporcionado por el usuario: 46 tablas y auditoría
+con `CLAVE_REGISTRO CLOB`. El código no modifica automáticamente Oracle.
+No ejecutar un DDL de creación sobre una base poblada. La instancia debe incluir
+todas las tablas y columnas antes de arrancar con `ddl-auto=validate`.
+
+Los siguientes pasos corresponden al esquema **anterior REBOLSYSDBV2** y se conservan
+como historial; no son una migración para el DDL vigente:
 
 1. [DDL_REBOLSYS_V2.sql](src/main/resources/db/schema/DDL_REBOLSYS_V2.sql) crea las tablas base.
 2. [V16](src/main/resources/db/iteration/V16__mobiliario_sin_detalle_habitacion.sql) adapta las claves históricas y agrega las columnas y la tabla de emisión que requiere la aplicación.
@@ -128,6 +187,16 @@ Ya se aplicó en la base local de desarrollo. Flyway sigue deshabilitado.
 Las rutas operativas requieren inicio de sesión y permisos por funcionalidad.
 `idUsuario` identifica al responsable que exige el DDL. APIs Perú conserva su consulta opcional
 con `APISPERU_TOKEN`; los siete casos funcionan sin ese servicio.
+
+## Datos de prueba de operación
+
+La [carga manual de prueba](tools/datos-prueba/README.md) genera 30 reservas pagadas
+en distintos estados, 50 clientes, 50 productos y 8 empleados con acceso mediante
+los cuatro roles oficiales. Completa las habitaciones de referencia si faltan.
+Desde la raíz del repositorio, ejecuta
+`node rebolsysBackend/tools/datos-prueba/generar-semilla.mjs` y abre el SQL generado
+en `rebolsysBackend/.local/datos-prueba-operacion/` con SQL Developer. La generación
+no ejecuta inserts; los accesos privados permanecen fuera de Git.
 
 ## Pruebas
 

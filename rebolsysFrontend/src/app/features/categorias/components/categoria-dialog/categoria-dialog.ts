@@ -1,3 +1,4 @@
+import { notificarCambios } from '../../../../core/services/avisos-formulario';
 import {
   Component,
   DestroyRef,
@@ -28,7 +29,9 @@ export class CategoriaDialog implements OnInit {
   cargando = signal(true);
   guardando = signal(false);
   error = signal("");
+  private readonly alertaError = notificarCambios(this.error, 'error');
   aviso = signal("");
+  private readonly alertaAviso = notificarCambios(this.aviso, 'exito');
   nombre = "";
   ngOnInit() {
     this.cargar();

@@ -1084,7 +1084,7 @@ class PropuestaOracleTest {
   void auditoriaDeCambiosConservaElUsuarioYRegistroAfectado() {
     auditoriaOperacion.registrar(new SesionActualDTO(usuario,"recepcion.flujo","ACTIVA",turno,formaPago),"HABITACION",habitacion,"PUT","/api/v1/habitaciones/"+habitacion,"127.0.0.1");
     var a=em.createQuery("select a from AuditoriaGeneral a where a.usuario.idUsuario=:usuario and a.nombreTabla='HABITACION'",AuditoriaGeneral.class).setParameter("usuario",usuario).getSingleResult();
-    assertThat(a.getIdRegistro()).isEqualTo(habitacion);assertThat(a.getUsuario().getIdUsuario()).isEqualTo(usuario);assertThat(a.getAccion()).isEqualTo(AccionAuditoria.UPDATE);assertThat(a.getDatosNuevos()).contains("PUT /api/v1/habitaciones/");assertThat(a.getFechaHora()).isNotNull();
+    assertThat(a.getClaveRegistro()).isEqualTo("{\"id\":" + habitacion + "}");assertThat(a.getUsuario().getIdUsuario()).isEqualTo(usuario);assertThat(a.getAccion()).isEqualTo(AccionAuditoria.UPDATE);assertThat(a.getDatosNuevos()).contains("PUT /api/v1/habitaciones/");assertThat(a.getFechaHora()).isNotNull();
   }
 
   @Test

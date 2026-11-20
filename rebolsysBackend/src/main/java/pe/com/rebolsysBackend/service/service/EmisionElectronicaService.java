@@ -5,6 +5,7 @@ import pe.com.rebolsysBackend.dto.*;
 
 public interface EmisionElectronicaService {
   EmisionElectronicaDTO preparar(Long id,EmisionElectronicaRequestDTO r);
+  EmisionElectronicaDTO simular(Long id,EmisionElectronicaRequestDTO r);
   EmisionElectronicaDTO obtener(Long id);
   EmisionElectronicaDTO enviar(Long id,OperacionUsuarioDTO r);
   EmisionElectronicaDTO consultar(Long id,OperacionUsuarioDTO r);

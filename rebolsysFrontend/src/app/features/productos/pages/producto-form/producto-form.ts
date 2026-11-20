@@ -1,3 +1,4 @@
+import { notificarCambios } from '../../../../core/services/avisos-formulario';
 import { Component, inject, input, signal } from "@angular/core";
 import {
   ReactiveFormsModule,
@@ -40,6 +41,7 @@ export class ProductoForm {
   cargando = signal(true);
   guardando = signal(false);
   error = signal("");
+  private readonly alertaError = notificarCambios(this.error, 'error');
   categoriasAbiertas = signal(false);
   usuarios = signal<Catalogo[]>([]);
   confirmacionPendiente = signal(false);

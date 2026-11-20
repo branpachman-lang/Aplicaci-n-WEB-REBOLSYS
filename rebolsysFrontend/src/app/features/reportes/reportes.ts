@@ -1,3 +1,4 @@
+import { notificarCambios } from '../../core/services/avisos-formulario';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Component, DestroyRef, inject, signal } from '@angular/core';
@@ -66,10 +67,13 @@ export class Reportes {
   protected readonly resultado = signal<Resultado | null>(null);
   protected readonly cargando = signal(false);
   protected readonly error = signal('');
+  private readonly alertaError = notificarCambios(this.error, 'error');
   protected readonly errorRango = signal('');
+  private readonly alertaErrorRango = notificarCambios(this.errorRango, 'error');
   protected readonly informeAbierto = signal<number | null>(null);
   protected readonly detalle = signal<InformeDetalle | null>(null);
   protected readonly errorInforme = signal('');
+  private readonly alertaErrorInforme = notificarCambios(this.errorInforme, 'error');
   protected readonly form = inject(FormBuilder).nonNullable.group(FILTROS);
   protected readonly aplicados = signal(FILTROS);
 

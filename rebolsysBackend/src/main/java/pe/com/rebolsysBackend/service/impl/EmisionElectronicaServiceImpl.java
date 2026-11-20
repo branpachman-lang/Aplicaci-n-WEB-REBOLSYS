@@ -29,13 +29,17 @@ public class EmisionElectronicaServiceImpl implements EmisionElectronicaService 
   private final FacturacionApisPeruProperties config;
   private final TransactionTemplate tx;
   private final EntityManager em;
+  private final HospedajeService hospedaje;
+  private final tools.jackson.databind.ObjectMapper json;
 
   public EmisionElectronicaServiceImpl(EmisionElectronicaRepository emisiones,ComprobanteRepository comprobantes,
       ComprobanteDetalleRepository lineas,PagoRepository pagos,ReglasPropuesta reglas,DocumentoFiscalBuilder builder,
-      ProveedorFacturacionClient proveedor,FacturacionApisPeruProperties config,PlatformTransactionManager manager,EntityManager em) {
+      ProveedorFacturacionClient proveedor,FacturacionApisPeruProperties config,PlatformTransactionManager manager,EntityManager em,
+      HospedajeService hospedaje, tools.jackson.databind.ObjectMapper json) {
     this.emisiones=emisiones; this.comprobantes=comprobantes; this.lineas=lineas; this.pagos=pagos;
     this.reglas=reglas; this.builder=builder; this.proveedor=proveedor; this.config=config;
     this.tx=new TransactionTemplate(manager); this.em=em;
+    this.hospedaje=hospedaje; this.json=json;
   }
 
   @Override
@@ -48,6 +52,45 @@ public class EmisionElectronicaServiceImpl implements EmisionElectronicaService 
     if (!config.isHabilitada() || !config.pendientes().isEmpty())
       throw new ServicioExternoException(HttpStatus.SERVICE_UNAVAILABLE,
           "Configura y habilita la cuenta de facturación beta de APIsPerú; consulta /api/v1/facturacion/configuracion");
+  }
+
+  @Override
+  public EmisionElectronicaDTO simular(Long id, EmisionElectronicaRequestDTO r) {
+    reglas.validar(r);
+    return tx.execute(s -> {
+      var usuario = reglas.usuario(r.idUsuario());
+      var c = comprobantes.bloquear(id).orElseThrow(() -> new RecursoNoEncontradoException("El comprobante no existe"));
+      em.refresh(c);
+      String firma = reglas.firma(Map.of("modo", "SIMULACION_LOCAL", "datos", r));
+      var anterior = emisiones.findByClaveOperacion(r.claveOperacion());
+      if (anterior.isPresent()) {
+        exigir(anterior.get().getComprobante().getIdComprobante().equals(id)
+            && firma.equals(anterior.get().getFirmaSolicitud()), "La clave corresponde a otra simulación");
+        return respuesta(anterior.get());
+      }
+      exigir(emisiones.findByComprobanteIdComprobante(id).isEmpty(), "El comprobante ya tiene una emisión preparada");
+      exigir(c.getEstadoComprobante() == EstadoComprobante.EMITIDO, "Genera primero la boleta o factura interna");
+      exigir(Set.of("BOLETA", "FACTURA").contains(c.getTipoComprobante().getCodigo()), "Solo se simulan boletas y facturas");
+      var marca = hospedaje.marca();
+      exigir(marca.ruc() != null && marca.ruc().matches("[0-9]{11}"), "Configura el RUC del hospedaje antes de simular una factura");
+      exigir(c.getNumeroComprobante() != null && c.getNumeroComprobante().matches("[1-9][0-9]{0,7}"), "El correlativo admite hasta ocho dígitos");
+      var pagado = pagos.findByComprobanteIdComprobante(id).stream().filter(p -> p.getVerificado() == 1)
+          .map(Pago::getMonto).reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+      exigir(pagado.compareTo(c.getTotalPagar()) == 0, "El comprobante debe estar completamente pagado");
+      var documento = builder.construir(c, lineas.findByComprobanteIdComprobanteOrderByNumeroLinea(id), java.math.BigDecimal.ZERO, r);
+      var e = new EmisionElectronica();
+      e.setComprobante(c); e.setUsuario(usuario); e.setClaveOperacion(r.claveOperacion()); e.setFirmaSolicitud(firma);
+      e.setEstado(EstadoEmisionElectronica.PREPARADO); e.setAmbiente("BETA"); e.setRucEmisor(marca.ruc());
+      e.setTipoDocumento("FACTURA".equals(c.getTipoComprobante().getCodigo()) ? "01" : "03");
+      e.setSerie(c.getSerie()); e.setCorrelativo(Long.valueOf(c.getNumeroComprobante())); e.setFechaEmision(c.getFechaEmision());
+      e.setFechaActualizacion(ahora()); e.setIntentos(0);
+      e.setSolicitud(json.writeValueAsString(Map.of("simulacionLocal", true, "hospedaje", marca,
+          "documento", json.readTree(documento.solicitud()))));
+      e.setSubtotal(documento.subtotal()); e.setIgv(documento.igv()); e.setTotal(documento.total());
+      e.setCodigoRespuesta("SIMULACION_LOCAL");
+      e.setMensajeRespuesta("Simulación local sin envío a SUNAT ni al proveedor. No genera XML firmado ni CDR y no tiene validez tributaria.");
+      return respuesta(emisiones.saveAndFlush(e));
+    });
   }
 
   @Override
@@ -108,6 +151,7 @@ public class EmisionElectronicaServiceImpl implements EmisionElectronicaService 
     var preparado=tx.execute(s->{
       reglas.usuario(r.idUsuario());
       var e=buscar(id,true);
+      exigir(!"SIMULACION_LOCAL".equals(e.getCodigoRespuesta()), "La simulación local no se puede enviar al proveedor ni a SUNAT");
       if (definitiva(e) || e.getEstado()==EstadoEmisionElectronica.ENVIANDO)
         return new Preparado(respuesta(e),e.getSolicitud(),false);
       exigir(e.getEstado()!=EstadoEmisionElectronica.INCIERTO,"Consulta el CDR antes de reenviar un documento con resultado incierto");
@@ -170,6 +214,7 @@ public class EmisionElectronicaServiceImpl implements EmisionElectronicaService 
   @Override
   public byte[] archivo(Long id,String tipo) {
     var e=tx.execute(s->buscar(id,false));
+    exigir(!"SIMULACION_LOCAL".equals(e.getCodigoRespuesta()), "La simulación local no tiene archivos fiscales; descarga el ticket PDF del comprobante");
     if ("pdf".equals(tipo)) {
       configurada();
       try { return proveedor.pdf(e.getSolicitud(),e.getRucEmisor()); }

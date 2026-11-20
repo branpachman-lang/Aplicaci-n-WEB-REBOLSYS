@@ -1,0 +1,181 @@
+{
+  "info": {
+    "name": "REBOLSYS - tickets, simulación local y correo",
+    "description": "Usar solo una base de pruebas con un comprobante pagado y emitido, todavía sin emisión electrónica. JWT obligatorio. La simulación es local y no genera aceptación SUNAT. La petición de correo se omite salvo que el entorno tenga permitirEnvioCorreo=true; entonces puede enviar un mensaje real al destinatario configurado.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{rebolsysJwt}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "rebolsysJwt",
+      "value": ""
+    },
+    {
+      "key": "idComprobante",
+      "value": ""
+    },
+    {
+      "key": "idUsuario",
+      "value": ""
+    },
+    {
+      "key": "direccionReceptor",
+      "value": ""
+    },
+    {
+      "key": "claveSimulacion",
+      "value": ""
+    },
+    {
+      "key": "correoDestino",
+      "value": "destino@example.test"
+    }
+  ],
+  "item": [
+    {
+      "name": "Consultar destino sugerido y disponibilidad SMTP",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200',()=>pm.response.to.have.status(200));",
+              "pm.test('No expone credenciales',()=>{const d=pm.response.json();pm.expect(d).to.have.property('correoHabilitado');pm.expect(d).not.to.have.property('password');});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/comprobantes/{{idComprobante}}/entrega"
+      }
+    },
+    {
+      "name": "Descargar ticket PDF de 80 mm",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('PDF',()=>{pm.response.to.have.status(200);pm.expect(pm.response.headers.get('Content-Type')).to.include('application/pdf');pm.expect(pm.response.text().startsWith('%PDF-')).to.eql(true);});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/comprobantes/{{idComprobante}}/ticket"
+      }
+    },
+    {
+      "name": "Simular boleta o factura localmente sin proveedor",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if(!pm.collectionVariables.get('claveSimulacion')) pm.collectionVariables.set('claveSimulacion',pm.variables.replaceIn('{{$guid}}')); "
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Simulación persistida',()=>{pm.response.to.have.status(201);const e=pm.response.json();pm.expect(e.estado).to.eql('PREPARADO');pm.expect(e.codigoRespuesta).to.eql('SIMULACION_LOCAL');pm.expect(e.xmlDisponible).to.eql(false);pm.expect(e.cdrDisponible).to.eql(false);});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/comprobantes/{{idComprobante}}/simulacion",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"claveOperacion\": \"{{claveSimulacion}}\",\n  \"idUsuario\": \"{{idUsuario}}\",\n  \"tasaIgv\": 18,\n  \"direccionReceptor\": \"{{direccionReceptor}}\",\n  \"tratamientos\": [],\n  \"cuotas\": []\n}"
+        }
+      }
+    },
+    {
+      "name": "Consultar simulación sin volver a emitir",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200',()=>pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/comprobantes/{{idComprobante}}/emision-electronica"
+      }
+    },
+    {
+      "name": "Enviar copia por correo (requiere habilitación explícita de la prueba)",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if(pm.environment.get('permitirEnvioCorreo')!=='true') pm.execution.skipRequest();"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Aceptado por SMTP',()=>pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/comprobantes/{{idComprobante}}/correo",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"correo\": \"{{correoDestino}}\"\n}"
+        }
+      }
+    }
+  ]
+}

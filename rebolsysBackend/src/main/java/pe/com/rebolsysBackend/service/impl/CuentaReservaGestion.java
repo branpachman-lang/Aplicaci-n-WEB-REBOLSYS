@@ -57,12 +57,6 @@ public class CuentaReservaGestion {
     return c.getTotalPagar().subtract(pagado(c));
   }
 
-  public boolean admiteCargos(Reserva r) {
-    return principal(r)
-        .map(c -> c.getEstadoComprobante() == EstadoComprobante.BORRADOR && saldo(c).signum() > 0)
-        .orElseGet(() -> alojamiento(r).signum() > 0);
-  }
-
   public TurnoCaja turno(Long id, Long usuario) {
     var t =
         turnos
@@ -143,8 +137,6 @@ public class CuentaReservaGestion {
   }
 
   public Comprobante cuentaVenta(Venta v, TurnoCaja turno) {
-    exigir(v.getModalidadCobro() == ModalidadCobro.SEPARADA,
-        "Este consumo se paga en la cuenta principal de la reserva");
     exigir(v.getEstadoVenta() == EstadoVenta.CONFIRMADA, "Confirma la venta antes de cobrarla");
     var existente = cuentas.findByClaveIdempotencia("CUENTA-V-" + v.getIdVenta());
     if (existente.isPresent()) return existente.get();
@@ -163,41 +155,17 @@ public class CuentaReservaGestion {
   }
 
   public void validarVenta(Venta v) {
-    if (v.getDetalleReserva() == null) return;
-    var r = bloquear(v.getDetalleReserva().getReserva().getIdReserva());
-    if (v.getModalidadCobro() == ModalidadCobro.RESERVA)
-      exigir(
-          admiteCargos(r),
-          "La cuenta de reserva está pagada o emitida; registra el consumo con modalidad SEPARADA");
+    if (v.getDetalleReserva() != null)
+      bloquear(v.getDetalleReserva().getReserva().getIdReserva());
   }
 
   public Comprobante registrarVenta(Venta v, Long operador) {
-    if (v.getDetalleReserva() == null) return null;
-    var r = bloquear(v.getDetalleReserva().getReserva().getIdReserva());
-    var existentes = lineas.existsByDetalleVentaVentaIdVenta(v.getIdVenta());
-    if (existentes)
-      return v.getModalidadCobro() == ModalidadCobro.RESERVA
-          ? principal(r).orElseThrow()
-          : cuentaVenta(v);
     validarVenta(v);
-    var turno = turnoOperador(operador);
-    if (v.getModalidadCobro() == ModalidadCobro.SEPARADA) return cuentaVenta(v, turno);
-    var c = principal(r, turno);
-    int n = lineas.findByComprobanteIdComprobanteOrderByNumeroLinea(c.getIdComprobante()).size();
-    for (var d : v.getDetalles()) {
-      var l =
-          base(
-              c,
-              ++n,
-              d.getDescripcion(),
-              BigDecimal.valueOf(d.getCantidad()),
-              d.getValorUnitario(),
-              d.getIgv());
-      l.setDetalleVenta(d);
-      lineas.save(l);
-    }
-    recalcular(c);
-    return c;
+    // Conservar los cargos históricos ya consolidados sin trasladarlos ni duplicarlos.
+    if (lineas.existsByDetalleVentaVentaIdVenta(v.getIdVenta()))
+      return cuentas.findByClaveIdempotencia("CUENTA-V-" + v.getIdVenta())
+          .orElseGet(() -> principal(v.getDetalleReserva().getReserva()).orElseThrow());
+    return cuentaVenta(v, turnoOperador(operador));
   }
 
   private ComprobanteDetalle base(

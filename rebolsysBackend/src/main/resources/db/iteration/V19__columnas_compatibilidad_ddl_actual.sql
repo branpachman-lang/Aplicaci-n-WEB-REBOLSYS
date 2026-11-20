@@ -1,0 +1,11 @@
+-- Compatibilidad con las columnas del DDL vigente.
+-- Revisar USER_TAB_COLUMNS antes de ejecutar cada ALTER; aplicar solo las que falten.
+-- Son columnas opcionales: no actualiza ni elimina registros existentes.
+ALTER TABLE HABITACION ADD (PRECIOPORNOCHE NUMBER(10,2));
+ALTER TABLE PRODUCTO ADD (DESCRIPCION VARCHAR2(500 CHAR));
+ALTER TABLE USUARIO_CREDENCIAL ADD (FECHAVENCIMIENTO TIMESTAMP);
+ALTER TABLE DETALLE_INFORME ADD (CONDICIONANTERIOR VARCHAR2(30));
+ALTER TABLE MOVIMIENTO_INVENTARIO ADD (CONDICIONITEM VARCHAR2(30));
+ALTER TABLE FLUJO_CAJA ADD (CLAVEREGISTRO VARCHAR2(64));
+
+-- La restricción de unicidad sobre CLAVEREGISTRO se revisa y autoriza por separado.

@@ -1,3 +1,4 @@
+import { notificarCambios } from '../../../../core/services/avisos-formulario';
 import { generarClaveOperacion } from '../../../../core/utils/clave-operacion';
 import { DialogFocus } from "../../../../shared/directives/dialog-focus";
 import { NotificacionService } from "../../../../core/services/notificacion.service";
@@ -80,6 +81,7 @@ export class ReservaForm {
   rooms = signal<Habitacion[]>([]);
   cargando = signal(true);
   errorCarga = signal("");
+  private readonly alertaErrorCarga = notificarCambios(this.errorCarga, 'error');
   guardando = signal(false);
   editandoHuesped = signal<number | null>(null);
   private clienteClave = "";
@@ -102,6 +104,7 @@ export class ReservaForm {
   pagoFijado = signal(false);
   comprobando = signal(false);
   errorDisponibilidad = signal("");
+  private readonly alertaErrorDisponibilidad = notificarCambios(this.errorDisponibilidad, 'error');
   private consultaDisponibilidad = 0;
   private solicitudApi: RegistroReservaApi | null = null;
   private clavePago = generarClaveOperacion();
@@ -1070,10 +1073,12 @@ export class ReservaForm {
   }
   confirmar(pago: ConfirmacionPago) {
     if (this.guardando() || !this.solicitud) return;
-    if (pago.forma !== "PENDIENTE" && !pago.cobro) {
-      this.alertar("Selecciona un turno abierto y una forma de pago.");
+    if (pago.forma === 'PENDIENTE' || !pago.cobro || pago.monto !== this.total()) {
+      this.alertar('Selecciona una forma de pago y abona el importe completo de la reserva.');
       return;
     }
+    this.pagoEnviado ??= structuredClone(pago);
+    this.pagoFijado.set(true);
     this.guardando.set(true);
     this.registroIniciado.set(true);
     const preparar = this.solicitudApi
@@ -1082,23 +1087,16 @@ export class ReservaForm {
     preparar
       .pipe(
         concatMap((request) => {
-          this.solicitudApi = request;
-          return this.reservaRegistrada()
-            ? of(this.reservaRegistrada()!)
-            : this.reservaService.crear(request);
+          this.solicitudApi = { ...request, cobro: {
+            idFormaPago: this.pagoEnviado!.cobro!.idFormaPago,
+            monto: this.pagoEnviado!.monto!,
+            numeroOperacion: this.pagoEnviado!.cobro!.numeroOperacion,
+          }};
+          return this.reservaService.crear(this.solicitudApi);
         }),
-        concatMap((reserva) => {
+        concatMap(reserva => {
           this.reservaRegistrada.set(reserva);
-          if (pago.forma === "PENDIENTE" && !this.pagoEnviado)
-            return this.reservaService.cuenta(reserva.idReserva);
-          this.pagoEnviado ??= structuredClone(pago);
-          this.pagoFijado.set(true);
-          return this.reservaService.pagar(
-            reserva.idReserva,
-            this.clavePago,
-            this.pagoEnviado.monto!,
-            this.pagoEnviado.cobro!,
-          );
+          return this.reservaService.cuenta(reserva.idReserva);
         }),
         takeUntilDestroyed(this.destroy),
       )
@@ -1123,15 +1121,16 @@ export class ReservaForm {
         },
         error: (e) => {
           this.guardando.set(false);
-          if (!this.solicitudApi) this.registroIniciado.set(false);
-          if (this.reservaRegistrada() && e.status >= 400 && e.status < 500) {
-            this.pagoEnviado = null;
+          if (!this.solicitudApi) {
+            this.registroIniciado.set(false);
             this.pagoFijado.set(false);
-            this.clavePago = generarClaveOperacion();
+            this.pagoEnviado = null;
           }
           // Un 4xx confirma que la operación fue rechazada. Los fallos de red
           // conservan la solicitud y su clave para consultar/reintentar sin duplicar.
           if (!this.reservaRegistrada() && e.status >= 400 && e.status < 500) {
+            this.pagoEnviado = null;
+            this.pagoFijado.set(false);
             this.registroIniciado.set(false);
             this.solicitudApi = null;
             this.clave = generarClaveOperacion();
@@ -1140,7 +1139,7 @@ export class ReservaForm {
             (this.reservaRegistrada()
               ? "Reserva R" +
                 this.reservaRegistrada()!.idReserva +
-                " guardada. El cobro aún no está confirmado. Reintenta el mismo pago o consulta la reserva. "
+                " pagada. No se pudo cargar la cuenta. Reintenta o consulta la reserva. "
               : "") +
               (e instanceof Error && !("status" in e)
                 ? e.message

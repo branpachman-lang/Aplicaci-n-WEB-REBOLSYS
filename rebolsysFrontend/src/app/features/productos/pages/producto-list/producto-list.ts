@@ -1,3 +1,4 @@
+import { notificarCambios } from '../../../../core/services/avisos-formulario';
 import { generarClaveOperacion } from '../../../../core/utils/clave-operacion';
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -33,6 +34,7 @@ export class ProductoList implements OnInit {
   categorias = signal<Categoria[]>([]);
   categoriasAbiertas = signal(false);
   error = signal('');
+  private readonly alertaError = notificarCambios(this.error, 'error');
   cargando = signal(true);
   fallidas = signal<Set<number>>(new Set());
 
@@ -54,6 +56,7 @@ export class ProductoList implements OnInit {
   movimientos = signal<MovimientoInventario[]>([]);
   cargandoMovimientos = signal(false);
   errorMovimientos = signal('');
+  private readonly alertaErrorMovimientos = notificarCambios(this.errorMovimientos, 'error');
 
   // Modal de ajuste de existencias
   ajustandoProducto = signal<Producto | null>(null);

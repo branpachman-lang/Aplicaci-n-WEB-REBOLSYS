@@ -1,3 +1,4 @@
+import { notificarCambios } from '../../../../core/services/avisos-formulario';
 import {
   Component,
   inject,
@@ -27,6 +28,7 @@ export class OcupacionDialog implements OnInit {
   private fb = inject(FormBuilder);
   guardando = signal(false);
   error = signal('');
+  private readonly alertaError = notificarCambios(this.error, 'error');
   form = this.fb.nonNullable.group({
     capacidadPersonas: [
       1,

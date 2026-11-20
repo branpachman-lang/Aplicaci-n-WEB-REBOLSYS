@@ -7,7 +7,7 @@
   },
   "servers": [
     {
-      "url": "http://127.0.0.1:51643",
+      "url": "http://localhost",
       "description": "Generated server url"
     }
   ],
@@ -1667,7 +1667,7 @@
         "tags": [
           "Ventas de productos"
         ],
-        "summary": "Confirmar el carrito y descontar stock de todos sus productos",
+        "summary": "Confirmar el borrador con pago completo y descuento de stock atómicos",
         "operationId": "confirmar",
         "parameters": [
           {
@@ -1684,7 +1684,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/OperacionUsuarioDTO"
+                "$ref": "#/components/schemas/VentaConfirmacionDTO"
               }
             }
           },
@@ -1855,7 +1855,7 @@
         "tags": [
           "Ventas de productos"
         ],
-        "summary": "Registrar y confirmar venta completa en una sola operación",
+        "summary": "Registrar, confirmar y cobrar el total de la venta en una transacción",
         "operationId": "registrarConfirmada",
         "requestBody": {
           "content": {
@@ -2299,7 +2299,7 @@
         "tags": [
           "Reservas"
         ],
-        "summary": "Registrar reserva asistida con ocupantes opcionales",
+        "summary": "Registrar reserva con ocupantes opcionales y pago completo en una transacción",
         "operationId": "registrar_1",
         "requestBody": {
           "content": {
@@ -3268,6 +3268,54 @@
         ]
       }
     },
+    "/api/v1/comprobantes/{id}/simulacion": {
+      "post": {
+        "tags": [
+          "Facturación electrónica beta"
+        ],
+        "summary": "Simular localmente una boleta o factura pagada sin credenciales del proveedor",
+        "description": "Persiste el desglose de impuesto y el estado PREPARADO en BETA. No envía a SUNAT, no genera CDR ni XML firmado y no declara aceptación fiscal.",
+        "operationId": "simular",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmisionElectronicaRequestDTO"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmisionElectronicaDTO"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/comprobantes/{id}/emision-electronica": {
       "get": {
         "tags": [
@@ -3433,6 +3481,57 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/EmisionElectronicaDTO"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/comprobantes/{id}/correo": {
+      "post": {
+        "tags": [
+          "Entrega de comprobantes"
+        ],
+        "summary": "Enviar una copia del comprobante con PDF de 80 mm por SMTP",
+        "description": "Envío manual explícito; no emite de nuevo ni modifica pagos. No reintentar automáticamente ante un resultado incierto.",
+        "operationId": "enviar_1",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComprobanteCorreoDTO"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
                 }
               }
             }
@@ -4874,6 +4973,7 @@
           "Limpieza y mantenimiento"
         ],
         "summary": "Ver mobiliario y último informe aprobado de una habitación",
+        "description": "En EN_LIMPIEZA devuelve SIN_REGISTRAR, SIN_INFORME y SIN_TICKET, incluso después del envío. Las banderas de acciones consideran los permisos del usuario.",
         "operationId": "habitacion",
         "parameters": [
           {
@@ -4904,8 +5004,7 @@
           {
             "bearerAuth": []
           }
-        ],
-        "description": "En EN_LIMPIEZA devuelve SIN_REGISTRAR, SIN_INFORME y SIN_TICKET, incluso después del envío. Las banderas de acciones consideran los permisos del usuario."
+        ]
       }
     },
     "/api/v1/limpieza/evidencias/{nombre}": {
@@ -5705,6 +5804,85 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ConfiguracionCatalogosDTO"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/comprobantes/{id}/ticket": {
+      "get": {
+        "tags": [
+          "Entrega de comprobantes"
+        ],
+        "summary": "Descargar comprobante interno en PDF de 80 mm",
+        "description": "Solo documentos emitidos; conserva el aviso de prueba. Se valida el permiso sobre su origen, reserva o venta.",
+        "operationId": "ticket_1",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "byte"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/comprobantes/{id}/entrega": {
+      "get": {
+        "tags": [
+          "Entrega de comprobantes"
+        ],
+        "summary": "Consultar correo sugerido del receptor y disponibilidad del envío",
+        "operationId": "destino",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "object"
+                  }
                 }
               }
             }
@@ -7302,6 +7480,30 @@
           }
         }
       },
+      "CobroInmediatoDTO": {
+        "required": [
+          "idFormaPago",
+          "monto"
+        ],
+        "type": "object",
+        "properties": {
+          "idFormaPago": {
+            "minimum": 0,
+            "exclusiveMinimum": true,
+            "type": "integer",
+            "format": "int64"
+          },
+          "monto": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "numeroOperacion": {
+            "maxLength": 50,
+            "minLength": 0,
+            "type": "string"
+          }
+        }
+      },
       "VentaRequestDTO": {
         "required": [
           "claveRegistro",
@@ -7353,6 +7555,27 @@
             "items": {
               "$ref": "#/components/schemas/VentaLineaRegistroDTO"
             }
+          },
+          "cobro": {
+            "$ref": "#/components/schemas/CobroInmediatoDTO"
+          }
+        }
+      },
+      "VentaConfirmacionDTO": {
+        "required": [
+          "cobro",
+          "idUsuario"
+        ],
+        "type": "object",
+        "properties": {
+          "idUsuario": {
+            "minimum": 0,
+            "exclusiveMinimum": true,
+            "type": "integer",
+            "format": "int64"
+          },
+          "cobro": {
+            "$ref": "#/components/schemas/CobroInmediatoDTO"
           }
         }
       },
@@ -7806,6 +8029,7 @@
       "ReservaRegistroRequestDTO": {
         "required": [
           "claveRegistro",
+          "cobro",
           "detalles",
           "idCliente",
           "idUsuario"
@@ -7836,6 +8060,9 @@
             "items": {
               "$ref": "#/components/schemas/ReservaDetalleRegistroDTO"
             }
+          },
+          "cobro": {
+            "$ref": "#/components/schemas/CobroInmediatoDTO"
           }
         }
       },
@@ -8615,6 +8842,20 @@
           },
           "cdrDisponible": {
             "type": "boolean"
+          }
+        }
+      },
+      "ComprobanteCorreoDTO": {
+        "required": [
+          "correo"
+        ],
+        "type": "object",
+        "properties": {
+          "correo": {
+            "maxLength": 254,
+            "minLength": 0,
+            "type": "string",
+            "format": "email"
           }
         }
       },

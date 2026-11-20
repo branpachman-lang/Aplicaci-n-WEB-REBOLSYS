@@ -45,6 +45,9 @@
       ><app-icon name="edit" />Editar venta pendiente</a
     >
     }
+    @if (v.estadoVenta === 'CONFIRMADA' && v.modoVenta === 'SEPARADA' && acceso.permite('VENTAS:EMITIR_COMPROBANTE')) {
+      <button class="button" (click)="abrirComprobante()">{{ v.comprobante ? 'Ver comprobante y enviar al correo' : 'Generar boleta o factura' }}</button>
+    }
     <button class="button primary" (click)="imprimir()">
       <app-icon name="print" />Imprimir {{ v.comprobante ? 'comprobante' :
       'constancia' }}
@@ -54,4 +57,9 @@
 </div>
 } @else {
 <div class="loading-state">Cargando venta…</div>
+}
+
+@if (comprobanteAbierto() && venta() && catalogos()) {
+  <app-comprobante-dialog [venta]="venta()!" [catalogos]="catalogos()!"
+    (cerrar)="comprobanteAbierto.set(false)" (actualizado)="cargar()" />
 }

@@ -1,3 +1,4 @@
+import { notificarCambios } from '../../../../core/services/avisos-formulario';
 import { PermisosUi } from "../../../../core/services/permisos-ui";
 import { DialogFocus } from "../../../../shared/directives/dialog-focus";
 import { Habitacion, Bloque, MobiliarioHabitacion } from "../../models/habitacion.model";
@@ -34,10 +35,12 @@ export class HabitacionList {
   piso = signal("todos");
   cargando = signal(true);
   error = signal("");
+  private readonly alertaError = notificarCambios(this.error, 'error');
   detalle = signal<Habitacion | null>(null);
   mobiliario = signal<MobiliarioHabitacion[]>([]);
   cargandoMobiliario = signal(false);
   errorMobiliario = signal('');
+  private readonly alertaErrorMobiliario = notificarCambios(this.errorMobiliario, 'error');
   configurando = signal<Habitacion | null>(null);
   private consultaId = 0;
   abrirDetalle(room: Habitacion) {

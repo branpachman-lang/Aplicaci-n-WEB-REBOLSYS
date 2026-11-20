@@ -11,7 +11,8 @@ export function erroresDeValidacion(
 export function mensajeError(error: HttpErrorResponse|Error): string {
   if(error instanceof Error&&!('status' in error))return error.message;
   const err=error as HttpErrorResponse;
-  if (err.status === 0 || err.status === 502 || err.status === 504) {
+  const mensajeServidor = typeof err.error?.message === 'string' ? err.error.message : '';
+  if (err.status === 0 || ((err.status === 502 || err.status === 504) && !mensajeServidor)) {
     return 'No se pudo conectar con REBOLSYS. Comprueba que el backend esté iniciado.';
   }
   const validaciones = Object.values(erroresDeValidacion(err));

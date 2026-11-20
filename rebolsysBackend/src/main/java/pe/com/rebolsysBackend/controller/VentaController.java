@@ -32,7 +32,7 @@ public class VentaController {
   @PreAuthorize("hasRole('GERENTE') or hasAuthority('VENTAS:CREAR_Y_CONFIRMAR')")
   @PostMapping("/confirmadas")
   @ResponseStatus(HttpStatus.CREATED)
-  @Operation(summary = "Registrar y confirmar venta completa en una sola operación")
+  @Operation(summary = "Registrar, confirmar y cobrar el total de la venta en una transacción")
   public VentaResponseDTO registrarConfirmada(@Valid @RequestBody VentaRequestDTO r) {
     return servicio.registrarConfirmada(r);
   }
@@ -60,10 +60,10 @@ public class VentaController {
 
   @PreAuthorize("hasRole('GERENTE') or hasAuthority('VENTAS:CONFIRMAR')")
   @PostMapping("/{id}/confirmacion")
-  @Operation(summary = "Confirmar el carrito y descontar stock de todos sus productos")
+  @Operation(summary = "Confirmar el borrador con pago completo y descuento de stock atómicos")
   public VentaResponseDTO confirmar(
-      @PathVariable Long id, @Valid @RequestBody OperacionUsuarioDTO r) {
-    return servicio.confirmar(id, r);
+      @PathVariable Long id, @Valid @RequestBody VentaConfirmacionDTO r) {
+    return servicio.confirmarCobrada(id, r);
   }
 
   @PreAuthorize("hasRole('GERENTE') or hasAuthority('VENTAS:ANULAR')")

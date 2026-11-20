@@ -21,7 +21,7 @@ public class ReservaController {
   @PreAuthorize("hasRole('GERENTE') or hasAuthority('RESERVAS:CREAR')")
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
-  @Operation(summary = "Registrar reserva asistida con ocupantes opcionales")
+  @Operation(summary = "Registrar reserva con ocupantes opcionales y pago completo en una transacción")
   public ReservaRespuestaDTO registrar(@Valid @RequestBody ReservaRegistroRequestDTO r) {
     return reservaservice.registrar(r);
   }

@@ -3,6 +3,8 @@ package pe.com.rebolsysBackend.service.impl;
 import static pe.com.rebolsysBackend.service.impl.ReglasPropuesta.*;
 
 import java.time.*;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.*;
 
 import lombok.RequiredArgsConstructor;
@@ -31,6 +33,7 @@ public class ReservaServiceImpl implements ReservaService {
     private final ClienteService personas;
     private final ReglasPropuesta reglas;
     private final CuentaReservaGestion cuenta;
+    private final CobroInmediatoService cobroInmediato;
 
     @Override
     @Transactional
@@ -81,13 +84,23 @@ public class ReservaServiceImpl implements ReservaService {
             d.setHabitacion(h);
             d.setFechaIngreso(s.fechaIngreso());
             d.setFechaSalida(s.fechaSalida());
-            d.setCostoEstadia(s.costoEstadia());
+            var tarifa = h.getPrecioPorNoche() == null ? h.getTipoHabitacion().getPrecioBase() : h.getPrecioPorNoche();
+            exigir(tarifa != null && tarifa.signum() > 0, "Configura una tarifa válida para la habitación antes de reservar");
+            var duracion = Duration.between(s.fechaIngreso(), s.fechaSalida());
+            var noches = BigDecimal.valueOf(duracion.getSeconds()).add(BigDecimal.valueOf(duracion.getNano(), 9))
+                .divide(BigDecimal.valueOf(86400), 0, RoundingMode.CEILING);
+            var costo = tarifa.multiply(noches).setScale(2, RoundingMode.HALF_UP);
+            exigir(costo.compareTo(s.costoEstadia()) == 0,
+                "La tarifa o las fechas cambiaron; actualiza el importe de la habitación antes de pagar");
+            d.setCostoEstadia(costo);
             d.setEstadoDetalle(EstadoReserva.CONFIRMADA);
             reserva.agregarDetalle(d);
         }
         reservas.saveAndFlush(reserva);
         for (int i = 0; i < r.detalles().size(); i++)
             guardarOcupantes(reserva.getDetalles().get(i), r.detalles().get(i).ocupantes());
+        var turno = cuenta.turnoOperador(r.idUsuario());
+        cobroInmediato.cobrar(cuenta.principal(reserva, turno), r.cobro(), r.idUsuario(), turno);
         return respuesta(reserva);
     }
 

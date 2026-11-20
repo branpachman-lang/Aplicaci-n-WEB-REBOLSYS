@@ -1,3 +1,4 @@
+import { notificarCambios } from '../../core/services/avisos-formulario';
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { Component, computed, inject, signal } from "@angular/core";
 import { FormsModule, NgForm } from "@angular/forms";
@@ -40,7 +41,9 @@ export class GestionSeguridad {
   readonly confirmacion = signal<Confirmacion | null>(null);
   readonly modo = signal<Modo | null>(null);
   readonly error = signal("");
+  private readonly alertaError = notificarCambios(this.error, 'error');
   readonly aviso = signal("");
+  private readonly alertaAviso = notificarCambios(this.aviso, 'exito');
   readonly ocupado = signal(false);
   readonly seleccionRoles = signal<number[]>([]);
   readonly seleccionPermisos = signal<string[]>([]);

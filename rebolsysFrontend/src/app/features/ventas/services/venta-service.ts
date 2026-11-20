@@ -25,6 +25,7 @@ import { pendienteOperacion } from "../../../core/services/pendiente-operacion";
 import { coincideReserva } from "../utils/buscar-reserva";
 
 export interface VentaPendiente {
+  version?: 2;
   datos: VentaRequest;
   idUsuario?: number;
   idVenta?: number;
@@ -52,7 +53,7 @@ export class VentaService {
       return throwError(
         () => new Error("Recupera la venta pendiente antes de registrar otra."),
       );
-    const trabajo = previo ?? { datos: structuredClone(data) };
+    const trabajo = previo ?? { datos: structuredClone(data), version: 2 as const };
     this.conservar(trabajo);
     return this.sesion.cargar().pipe(
       concatMap((s) => {
@@ -62,15 +63,15 @@ export class VentaService {
           throw Error(
             "El usuario actual necesita un único turno de caja abierto.",
           );
-        if (
-          data.modoVenta === "SEPARADA" &&
-          data.detalles.some((d) => (d.precioEsperado ?? 0) > 0) &&
-          !data.cobro &&
-          !s.idFormaPagoEfectivo
-        )
-          throw Error(
-            "Configura la forma de pago en efectivo antes de registrar la venta.",
-          );
+        const total = data.detalles.reduce((sum, d) =>
+          sum + Math.round((d.precioEsperado ?? 0) * 100) * d.cantidad, 0) / 100;
+        const forma = data.cobro?.idFormaPago ?? s.idFormaPagoEfectivo;
+        if (!forma) throw Error('Selecciona una forma de pago.');
+        if ((!data.cobro || forma === s.idFormaPagoEfectivo) && total > 0 &&
+            (data.efectivoRecibido === null || !Number.isFinite(data.efectivoRecibido) ||
+             data.efectivoRecibido < total ||
+             Math.abs(data.efectivoRecibido * 100 - Math.round(data.efectivoRecibido * 100)) > 1e-6))
+          throw Error('El efectivo recibido debe cubrir el total de la venta.');
         trabajo.idUsuario = s.idUsuario;
         this.conservar(trabajo);
         const solicitud = {
@@ -78,71 +79,21 @@ export class VentaService {
           idUsuario: s.idUsuario,
           idClienteComprador: data.idCliente,
           compradorNombreLibre: data.idCliente ? null : data.compradorNombre,
-          modalidadCobro:
-            data.modoVenta === "CARGO_RESERVA" ? "RESERVA" : "SEPARADA",
+          modalidadCobro: data.idDetalleReserva ? 'RESERVA' : 'SEPARADA',
           idDetalleReserva: data.idDetalleReserva,
           detalles: data.detalles,
+          cobro: { idFormaPago: forma, monto: total,
+            numeroOperacion: data.cobro?.numeroOperacion ?? null },
         };
-        return this.http
-          .post<VentaApi>(this.base + "/confirmadas", solicitud)
-          .pipe(
-            concatMap((v) => {
-              trabajo.idVenta = v.idVenta;
-              this.conservar(trabajo);
-              if (v.modalidadCobro === "RESERVA")
-                return this.presentar(v, data);
-              return this.http
-                .get<CuentaDocumento>(`${this.base}/${v.idVenta}/cuenta`)
-                .pipe(
-                  concatMap((c) => {
-                    if (!trabajo.pago && c.saldo > 0) {
-                      const recibido = data.efectivoRecibido;
-                      const forma =
-                        data.cobro?.idFormaPago ?? s.idFormaPagoEfectivo;
-                      if (!forma)
-                        throw Error(
-                          "No hay una forma de pago disponible para este cobro.",
-                        );
-                      if (
-                        (!data.cobro ||
-                          data.cobro.idFormaPago === s.idFormaPagoEfectivo) &&
-                        (recibido === null ||
-                          !Number.isFinite(recibido) ||
-                          recibido < c.saldo ||
-                          Math.abs(
-                            recibido * 100 - Math.round(recibido * 100),
-                          ) > 1e-6)
-                      )
-                        throw Error(
-                          "El efectivo recibido no cubre el saldo de la venta o tiene un importe inválido.",
-                        );
-                      trabajo.pago = {
-                        claveOperacion: data.claveRegistro + ":pago",
-                        idUsuario: s.idUsuario,
-                        idTurno: s.idTurno!,
-                        idFormaPago: forma,
-                        monto: c.saldo,
-                        numeroOperacion: data.cobro?.numeroOperacion ?? null,
-                      };
-                      this.conservar(trabajo);
-                    }
-                    const pagar = trabajo.pago
-                      ? this.http.post<CuentaDocumento>(
-                          `${this.base}/${v.idVenta}/pagos`,
-                          trabajo.pago,
-                        )
-                      : of(c);
-                    return pagar.pipe(
-                      concatMap((cuenta) => this.presentar(v, data, cuenta)),
-                    );
-                  }),
-                );
-            }),
-          );
+        return this.http.post<VentaApi>(this.base + '/confirmadas', solicitud).pipe(
+          tap(v => { trabajo.idVenta = v.idVenta; this.conservar(trabajo); }),
+          concatMap(v => this.presentar(v, data)),
+        );
       }),
       tap(() => this.conservar(null)),
       catchError((e) => {
-        if (e.status >= 400 && e.status < 500 && !trabajo.idVenta)
+        const rechazoLocal = e instanceof Error && !('status' in e);
+        if (!trabajo.idVenta && (rechazoLocal || (e.status >= 400 && e.status < 500)))
           this.conservar(null);
         return throwError(() => e);
       }),
@@ -150,6 +101,18 @@ export class VentaService {
   }
   recuperar() {
     const p = this.pendiente();
+    // Una confirmación guardada por la versión anterior ya puede haber movido stock.
+    // Consultarla o repetir su pago original evita recrear la venta con una firma diferente.
+    if (p && p.version !== 2 && p.idVenta) {
+      return this.http.get<VentaApi>(`${this.base}/${p.idVenta}`).pipe(
+        concatMap(v => p.pago
+          ? this.http.post<CuentaDocumento>(`${this.base}/${p.idVenta}/pagos`, p.pago).pipe(
+              concatMap(cuenta => this.presentar(v, p.datos, cuenta)),
+            )
+          : this.presentar(v, p.datos)),
+        tap(() => this.conservar(null)),
+      );
+    }
     return p
       ? this.registrar(p.datos)
       : throwError(() => new Error("No hay una venta pendiente."));
@@ -201,8 +164,11 @@ export class VentaService {
         : of([] as ReservaVenta[]),
       cuenta: cuenta
         ? of(cuenta)
-        : v.modalidadCobro === "SEPARADA" && v.estadoVenta === "CONFIRMADA"
-          ? this.http.get<CuentaDocumento>(`${this.base}/${v.idVenta}/cuenta`)
+        : v.estadoVenta === "CONFIRMADA"
+          ? this.http.get<CuentaDocumento>(`${this.base}/${v.idVenta}/cuenta`).pipe(
+              catchError(e => e.status === 409 && v.modalidadCobro === "RESERVA"
+                ? of(null) : throwError(() => e)),
+            )
           : of(null),
       cliente: v.idClienteComprador
         ? this.http.get<{
@@ -230,13 +196,14 @@ export class VentaService {
           saldo = cuenta?.saldo ?? total;
         return {
           idVenta: v.idVenta,
+          idCliente: v.idClienteComprador,
           numero: String(v.idVenta),
           idUsuario: v.idUsuario,
           idReserva: r?.idReserva ?? null,
           fechaVenta: v.fechaRegistro,
           estadoVenta: v.estadoVenta,
           modoVenta:
-            v.modalidadCobro === "RESERVA" ? "CARGO_RESERVA" : "SEPARADA",
+            v.modalidadCobro === "RESERVA" && !cuenta ? "CARGO_RESERVA" : "SEPARADA",
           compradorNombre:
             nombre ||
             v.compradorNombreLibre ||

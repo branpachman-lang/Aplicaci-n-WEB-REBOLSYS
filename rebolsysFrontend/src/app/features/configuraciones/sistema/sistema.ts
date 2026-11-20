@@ -1,3 +1,4 @@
+import { notificarCambios } from '../../../core/services/avisos-formulario';
 import { ImagenProtegida } from '../../../shared/directives/imagen-protegida';
 import { HttpClient } from '@angular/common/http';
 import { Component, DestroyRef, inject, signal } from '@angular/core';
@@ -29,7 +30,9 @@ export class Sistema {
   protected readonly listo = signal(false);
   protected readonly guardando = signal(false);
   protected readonly error = signal('');
+  private readonly alertaError = notificarCambios(this.error, 'error');
   protected readonly aviso = signal('');
+  private readonly alertaAviso = notificarCambios(this.aviso, 'exito');
   protected readonly marca = signal<MarcaHospedaje | null>(null);
   protected readonly tipos = signal<Tipo[]>([]);
   protected readonly seleccionado = signal<Tipo | null>(null);

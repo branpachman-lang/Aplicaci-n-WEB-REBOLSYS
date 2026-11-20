@@ -30,6 +30,15 @@ export class ComprobanteService {
       datos,
     );
   }
+  cuentaVenta(id: number) {
+    return this.http.get<CuentaDocumento>(this.base + '/ventas/' + id + '/cuenta');
+  }
+  emitirVenta(id: number, datos: { idUsuario: number; idTurno: number; tipo: string; idClienteReceptor: number }) {
+    return this.http.post<CuentaDocumento>(this.base + '/ventas/' + id + '/comprobantes', datos);
+  }
+  simular(id: number, datos: PrepararEmision) {
+    return this.http.post<Emision>(this.base + '/comprobantes/' + id + '/simulacion', datos);
+  }
   estado(id: number) {
     return this.http.get<Emision>(
       `${this.base}/comprobantes/${id}/emision-electronica`,

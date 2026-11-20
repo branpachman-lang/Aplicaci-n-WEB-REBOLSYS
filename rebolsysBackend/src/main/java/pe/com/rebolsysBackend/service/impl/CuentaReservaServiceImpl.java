@@ -83,7 +83,7 @@ public class CuentaReservaServiceImpl implements CuentaReservaService {
         total,
         pagado,
         total.subtract(pagado),
-        gestion.admiteCargos(r),
+        false,
         docs);
   }
 
@@ -129,9 +129,8 @@ public class CuentaReservaServiceImpl implements CuentaReservaService {
       return gestion.principal(r, turno);
     }
     var v = ventaDeReserva(r.getIdReserva(), idVenta);
-    exigir(
-        v.getModalidadCobro() == ModalidadCobro.SEPARADA,
-        "Este consumo se paga en la cuenta principal");
+    exigir(cuentas.findByClaveIdempotencia("CUENTA-V-" + v.getIdVenta()).isPresent(),
+        "Este consumo histórico se paga en la cuenta principal");
     return gestion.cuentaVenta(v);
   }
 
@@ -172,9 +171,7 @@ public class CuentaReservaServiceImpl implements CuentaReservaService {
             .filter(d -> d.getIdDetalleReserva().equals(request.idDetalleReserva()))
             .findFirst();
     exigir(detalle.isPresent(), "La habitación del consumo no pertenece a esta reserva");
-    var borrador = ventaService.registrar(request);
-    var v =
-        ventaService.confirmar(borrador.idVenta(), new OperacionUsuarioDTO(request.idUsuario()));
+    var v = ventaService.registrarConfirmada(request);
     return consumo(ventas.findById(v.idVenta()).orElseThrow());
   }
 
@@ -189,16 +186,11 @@ public class CuentaReservaServiceImpl implements CuentaReservaService {
 
   private ConsumoReservaRespuestaDTO consumo(Venta v) {
     Long id = v.getDetalleReserva().getReserva().getIdReserva();
-    Long idCuenta =
-        v.getModalidadCobro() == ModalidadCobro.RESERVA
-            ? gestion
-                .principal(v.getDetalleReserva().getReserva())
-                .map(Comprobante::getIdComprobante)
-                .orElse(null)
-            : cuentas
-                .findByClaveIdempotencia("CUENTA-V-" + v.getIdVenta())
-                .map(Comprobante::getIdComprobante)
-                .orElse(null);
+    Long idCuenta = cuentas.findByClaveIdempotencia("CUENTA-V-" + v.getIdVenta())
+        .map(Comprobante::getIdComprobante)
+        .orElseGet(() -> v.getModalidadCobro() == ModalidadCobro.RESERVA
+            ? gestion.principal(v.getDetalleReserva().getReserva()).map(Comprobante::getIdComprobante).orElse(null)
+            : null);
     return new ConsumoReservaRespuestaDTO(
         id, "R" + id, idCuenta, ventaService.obtener(v.getIdVenta()));
   }

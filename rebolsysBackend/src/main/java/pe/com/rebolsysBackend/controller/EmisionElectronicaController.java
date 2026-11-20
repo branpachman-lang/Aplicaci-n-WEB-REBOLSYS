@@ -31,6 +31,13 @@ public class EmisionElectronicaController {
   public EmisionElectronicaDTO preparar(@PathVariable Long id,@Valid @RequestBody EmisionElectronicaRequestDTO r) {
     return servicio.preparar(id,r);
   }
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('FACTURACION:EMITIR')")
+  @PostMapping("/comprobantes/{id}/simulacion")
+  @ResponseStatus(HttpStatus.CREATED)
+  @Operation(summary="Simular localmente una boleta o factura pagada sin credenciales del proveedor", description="Persiste el desglose de impuesto y el estado PREPARADO en BETA. No envía a SUNAT, no genera CDR ni XML firmado y no declara aceptación fiscal.")
+  public EmisionElectronicaDTO simular(@PathVariable Long id,@Valid @RequestBody EmisionElectronicaRequestDTO r) {
+    return servicio.simular(id,r);
+  }
   @PreAuthorize("hasRole('GERENTE') or hasAuthority('FACTURACION:VER')")
   @GetMapping("/comprobantes/{id}/emision-electronica")
   @Operation(summary="Consultar el estado persistido de la emisión beta")

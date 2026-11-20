@@ -8,6 +8,19 @@ spring:
       accept-float-as-int: false
   application:
     name: rebolsysBackend
+  mail:
+    host: ${MAIL_HOST:}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail.smtp.auth: ${MAIL_AUTH:true}
+      mail.smtp.starttls.enable: ${MAIL_STARTTLS:true}
+      mail.smtp.starttls.required: ${MAIL_STARTTLS:true}
+      mail.smtp.ssl.enable: ${MAIL_SSL:false}
+      mail.smtp.connectiontimeout: 8000
+      mail.smtp.timeout: 8000
+      mail.smtp.writetimeout: 8000
   profiles:
     active: dev
   flyway:
@@ -20,6 +33,9 @@ spring:
         physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
 
 app:
+  correo:
+    habilitado: ${MAIL_ENABLED:false}
+    remitente: ${MAIL_FROM:${MAIL_USERNAME:}}
   jwt:
     secret: ${JWT_SECRET:}
     duracion-maxima: ${JWT_DURACION_MAXIMA:8h}

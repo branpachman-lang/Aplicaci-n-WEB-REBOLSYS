@@ -230,7 +230,7 @@ class AccesoHttpTest {
     mvc.perform(get(API + "/seguridad/usuarios").header("Authorization", "Bearer " + operadora)).andExpect(status().isForbidden());
     // DTO válidos: @PreAuthorize se ejecuta al invocar el método, después de la validación MVC.
     peticion(post(API + "/reservas"), operadora, Map.of("claveRegistro", UUID.randomUUID().toString(),
-        "idCliente", 1, "detalles", List.of(Map.of("idHabitacion", habitacion,
+        "idCliente", 1, "cobro", Map.of("idFormaPago", 1, "monto", 50), "detalles", List.of(Map.of("idHabitacion", habitacion,
             "fechaIngreso", "2026-11-20T14:00:00", "fechaSalida", "2026-11-21T12:00:00", "costoEstadia", 50))))
         .andExpect(status().isForbidden());
     peticion(put(API + "/habitaciones/1"), operadora, Map.of("numeroCuarto", "101", "idTipoHabitacion", 1,

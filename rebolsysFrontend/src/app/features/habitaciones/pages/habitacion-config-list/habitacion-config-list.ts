@@ -1,3 +1,4 @@
+import { notificarCambios } from '../../../../core/services/avisos-formulario';
 import { CommonModule, DecimalPipe } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -40,6 +41,7 @@ export class HabitacionConfigList implements OnInit {
   cargando = signal(true);
 
   error = signal('');
+  private readonly alertaError = notificarCambios(this.error, 'error');
 
   buscar = signal('');
 

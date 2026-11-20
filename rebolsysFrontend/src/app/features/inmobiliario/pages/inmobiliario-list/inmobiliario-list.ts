@@ -1,3 +1,4 @@
+import { notificarCambios } from '../../../../core/services/avisos-formulario';
 import { DatePipe } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -48,6 +49,7 @@ export class InmobiliarioList implements OnInit {
   cargando = signal(true);
 
   error = signal('');
+  private readonly alertaError = notificarCambios(this.error, 'error');
 
   habitacionSeleccionada = signal<HabitacionConfiguracion | null>(null);
 
@@ -132,6 +134,7 @@ export class InmobiliarioList implements OnInit {
   cargandoHistorial = signal(false);
 
   errorHistorial = signal('');
+  private readonly alertaErrorHistorial = notificarCambios(this.errorHistorial, 'error');
 
   ngOnInit(): void {
     this.cargarCatalogosYDatos();

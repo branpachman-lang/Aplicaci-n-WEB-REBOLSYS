@@ -28,9 +28,6 @@ import pe.com.rebolsysBackend.enums.EstadoComprobante;
     name = "comprobante",
     uniqueConstraints = {
       @UniqueConstraint(
-          name = "comprobante_numero_unq",
-          columnNames = {"idTipoComprobante", "serie", "numeroComprobante"}),
-      @UniqueConstraint(
           name = "comprobante_idem_unq",
           columnNames = {"claveIdempotencia"}),
     })

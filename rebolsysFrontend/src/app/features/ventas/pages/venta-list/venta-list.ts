@@ -1,3 +1,4 @@
+import { notificarCambios } from '../../../../core/services/avisos-formulario';
 import { Component, inject, signal } from "@angular/core";
 import { PermisosUi } from "../../../../core/services/permisos-ui";
 import { CurrencyPipe, DatePipe } from "@angular/common";
@@ -18,6 +19,7 @@ export class VentaList {
   private servicio = inject(VentaService);
   respuesta = signal<Pagina<Venta> | null>(null);
   error = signal("");
+  private readonly alertaError = notificarCambios(this.error, 'error');
   cargando = signal(true);
   pagina = 0;
   tamanio = 10;

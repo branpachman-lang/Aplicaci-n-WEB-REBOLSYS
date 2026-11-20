@@ -1,3 +1,9 @@
+import { map } from 'rxjs';
+import { ElementRef } from '@angular/core';
+import { ImpresionService } from '../../../../core/services/impresion-service';
+import { EntregaComprobante } from '../../../../shared/components/entrega-comprobante/entrega-comprobante';
+import { Venta } from '../../../ventas/models/venta.model';
+import { notificarCambios } from '../../../../core/services/avisos-formulario';
 import { generarClaveOperacion } from '../../../../core/utils/clave-operacion';
 import {
   Component,
@@ -28,12 +34,15 @@ import { ComprobanteService } from "../../services/comprobante-service";
 
 @Component({
   selector: "app-comprobante-dialog",
-  imports: [FormsModule, CurrencyPipe, DatePipe, DialogFocus, Icon, MarcaHospedaje],
+  imports: [FormsModule, CurrencyPipe, DatePipe, DialogFocus, Icon, MarcaHospedaje, EntregaComprobante],
   templateUrl: "./comprobante-dialog.html",
   styleUrl: "./comprobante-dialog.css",
 })
 export class ComprobanteDialog implements OnInit {
-  reserva = input.required<ReservaResumen>();
+  reserva = input<ReservaResumen | null>(null);
+  venta = input<Venta | null>(null);
+  private readonly elemento = inject(ElementRef<HTMLElement>);
+  private readonly impresion = inject(ImpresionService);
   catalogos = input.required<Catalogos>();
   cerrar = output<void>();
   actualizado = output<void>();
@@ -48,7 +57,9 @@ export class ComprobanteDialog implements OnInit {
   ocupado = signal(false);
   cargando = signal(true);
   error = signal("");
+  private readonly alertaError = notificarCambios(this.error, 'error');
   aviso = signal("");
+  private readonly alertaAviso = notificarCambios(this.aviso, 'exito');
   estadoConsultado = signal(false);
   configuracion = signal<{
     ambiente: string;
@@ -78,6 +89,7 @@ export class ComprobanteDialog implements OnInit {
   private clave = generarClaveOperacion();
   private solicitudFiscal: PrepararEmision | null = null;
   fiscalFijada = signal(false);
+  modoFiscal = signal<'local' | 'proveedor' | null>(null);
   emisionFijada = signal(false);
   private solicitudInterna: {
     idUsuario: number;
@@ -108,19 +120,27 @@ export class ComprobanteDialog implements OnInit {
   cargar() {
     this.cargando.set(true);
     this.error.set("");
+    const reserva = this.reserva();
+    const venta = this.venta();
+    if (!reserva && !venta) { this.error.set('Selecciona una reserva o venta.'); this.cargando.set(false); return; }
+    const idCliente = reserva?.idCliente ?? venta?.idCliente;
     forkJoin({
-      cuenta: this.reservas.cuenta(this.reserva().idReserva),
-      cliente: this.clientes.obtener(this.reserva().idCliente),
+      cuenta: reserva ? this.reservas.cuenta(reserva.idReserva).pipe(map(c => c.cuentas))
+        : this.servicio.cuentaVenta(venta!.idVenta).pipe(map(c => [c])),
+      cliente: idCliente ? this.clientes.obtener(idCliente) : of(null),
       config: this.servicio.configuracion(),
     })
       .pipe(takeUntilDestroyed(this.destroy))
       .subscribe({
         next: ({ cuenta, cliente, config }) => {
-          this.cuentas.set(cuenta.cuentas);
+          this.cuentas.set(cuenta);
+          this.seleccion.set(venta?.idVenta ?? 0);
           this.configuracion.set(config);
-          this.receptor = { ...cliente.persona };
-          this.idCliente = cliente.idCliente;
-          this.direccion = cliente.persona.direccionFiscal ?? "";
+          if (cliente) {
+            this.receptor = { ...cliente.persona };
+            this.idCliente = cliente.idCliente;
+            this.direccion = cliente.persona.direccionFiscal ?? '';
+          }
           this.cargando.set(false);
           this.cambiarCuenta();
         },
@@ -140,6 +160,7 @@ export class ComprobanteDialog implements OnInit {
     this.solicitudFiscal = null;
     this.emisionFijada.set(false);
     this.fiscalFijada.set(false);
+    this.modoFiscal.set(null);
     this.clave = generarClaveOperacion();
     if (cuenta?.estado === "EMITIDO" && cuenta.idCuenta)
       this.cargarEstado(cuenta.idCuenta);
@@ -272,10 +293,10 @@ export class ComprobanteDialog implements OnInit {
             ...(cuenta.idVenta ? { idVenta: cuenta.idVenta } : {}),
           };
           this.emisionFijada.set(true);
-          return this.servicio.emitir(
-            this.reserva().idReserva,
-            this.solicitudInterna,
-          );
+          const reserva = this.reserva();
+          return reserva
+            ? this.servicio.emitir(reserva.idReserva, this.solicitudInterna)
+            : this.servicio.emitirVenta(this.venta()!.idVenta, this.solicitudInterna);
         }),
         takeUntilDestroyed(this.destroy),
       )
@@ -326,7 +347,7 @@ export class ComprobanteDialog implements OnInit {
   agregarCuota() {
     this.cuotas.push({ fechaPago: this.hoy, monto: 0 });
   }
-  preparar() {
+  preparar(simulada = false) {
     const doc = this.documento();
     if (
       !doc?.idCuenta ||
@@ -336,6 +357,10 @@ export class ComprobanteDialog implements OnInit {
       this.emision()
     )
       return;
+    if (this.fiscalFijada() && this.modoFiscal() !== (simulada ? 'local' : 'proveedor')) {
+      this.error.set('Recupera la preparación pendiente antes de cambiar de modalidad.');
+      return;
+    }
     if (!this.solicitudFiscal) {
       if (
         !Number.isFinite(this.tasaIgv) ||
@@ -384,9 +409,11 @@ export class ComprobanteDialog implements OnInit {
     }
     this.ocupado.set(true);
     this.fiscalFijada.set(true);
+    this.modoFiscal.set(simulada ? 'local' : 'proveedor');
     this.error.set("");
-    this.servicio
-      .preparar(doc.idCuenta, this.solicitudFiscal)
+    (simulada
+      ? this.servicio.simular(doc.idCuenta, this.solicitudFiscal)
+      : this.servicio.preparar(doc.idCuenta, this.solicitudFiscal))
       .pipe(takeUntilDestroyed(this.destroy))
       .subscribe({
         next: (e) => {
@@ -399,6 +426,7 @@ export class ComprobanteDialog implements OnInit {
           if (e.status >= 400 && e.status < 500) {
             this.solicitudFiscal = null;
             this.fiscalFijada.set(false);
+            this.modoFiscal.set(null);
             this.clave = generarClaveOperacion();
           }
           this.error.set(mensajeError(e));
@@ -413,6 +441,10 @@ export class ComprobanteDialog implements OnInit {
     this.operacion("consultar");
   }
   private operacion(accion: "enviar" | "consultar") {
+    if (this.emision()?.codigoRespuesta === 'SIMULACION_LOCAL') {
+      this.error.set('La simulación local no se envía al proveedor ni a SUNAT.');
+      return;
+    }
     const id = this.documento()?.idCuenta;
     if (!id || !this.usuario || this.ocupado()) return;
     if (!this.estadoConsultado()) return;
@@ -477,6 +509,7 @@ export class ComprobanteDialog implements OnInit {
       });
   }
   imprimir() {
-    window.print();
+    void this.impresion.imprimir(this.elemento.nativeElement.querySelector('[data-ticket]'))
+      .catch(e => this.error.set(e.message));
   }
 }

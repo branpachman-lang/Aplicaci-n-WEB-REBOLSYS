@@ -14,6 +14,7 @@ export interface VentaDetalle {
   imagenRuta: string | null;
 }
 export interface Venta {
+  idCliente?: number | null;
   pagado?: number;
   saldo?: number;
   idUsuario?: number;

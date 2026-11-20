@@ -24,7 +24,7 @@ import static pe.com.rebolsysBackend.service.impl.ReglasPropuesta.exigir;
 public class OperacionUsuarioBodyAdvice extends RequestBodyAdviceAdapter implements ResponseBodyAdvice<Object> {
   private final SesionOperacionService sesion;
   private final ObjectMapper mapper;
-  private static final Set<String> ACTOR=Set.of("AjusteStockDTO","ComprobanteCuentaDTO","EmisionElectronicaRequestDTO","GastoRequestDTO","ItemAsignacionDTO","ItemConservacionDTO","OperacionUsuarioDTO","PagoCuentaDTO","ProductoRequestDTO","ReservaComprobanteRegistroDTO","ReservaOcupantesGuardarDTO","ReservaPagoRegistroDTO","ReservaRegistroRequestDTO","VentaEditarDTO","VentaRequestDTO");
+  private static final Set<String> ACTOR=Set.of("AjusteStockDTO","ComprobanteCuentaDTO","EmisionElectronicaRequestDTO","GastoRequestDTO","ItemAsignacionDTO","ItemConservacionDTO","OperacionUsuarioDTO","PagoCuentaDTO","ProductoRequestDTO","ReservaComprobanteRegistroDTO","ReservaOcupantesGuardarDTO","ReservaPagoRegistroDTO","ReservaRegistroRequestDTO","VentaEditarDTO","VentaRequestDTO","VentaConfirmacionDTO");
   @Override public boolean supports(MethodParameter p,Type t,Class<? extends HttpMessageConverter<?>> c){return ACTOR.contains(p.getParameterType().getSimpleName());}
   @Override public HttpInputMessage beforeBodyRead(HttpInputMessage entrada,MethodParameter p,Type t,Class<? extends HttpMessageConverter<?>> c)throws IOException{
     var nodo=mapper.readTree(entrada.getBody());if(!(nodo instanceof ObjectNode datos))return entrada;

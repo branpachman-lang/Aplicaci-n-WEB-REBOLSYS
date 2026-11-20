@@ -348,7 +348,7 @@
       }}</button
     ><a routerLink="/reservas" class="button danger full">Cancelar reserva</a
     ><span class="summary-footer"
-      >Podrás realizar abonos, pagar el total o dejar el cobro pendiente.</span
+      >La reserva se registra con el pago completo.</span
     >
   </aside>
 </form>
@@ -359,7 +359,8 @@
   [catalogos]="catalogos()"
   [idUsuario]="idUsuario()"
   [solicitudFijada]="pagoFijado()"
-  [puedePosponer]="!pagoFijado()"
+  [puedePosponer]="false"
+  [permiteParcial]="false"
   (cerrar)="cerrarPago()"
   (confirmar)="confirmar($event)"
 />

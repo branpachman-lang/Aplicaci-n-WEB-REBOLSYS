@@ -17,7 +17,7 @@ public class AuditoriaOperacionService {
     public void registrar(SesionActualDTO sesion, String tabla, Long id, String metodo, String ruta, String ip) {
         var a = new AuditoriaGeneral();
         a.setNombreTabla(tabla);
-        a.setIdRegistro(id);
+        a.setClaveRegistro("{\"id\":" + id + "}");
         a.setUsuario(em.getReference(Usuario.class, sesion.idUsuario()));
         boolean alta = "POST".equals(metodo) && (
             ruta.matches("/api/v1/[^/]+(?:/confirmadas)?")

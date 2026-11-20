@@ -7,7 +7,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://that-antonio-reproductive-onto.trycloudflare.com/api/:path*"
+      "destination": "https://inf-qualifications-subsequently-zshops.trycloudflare.com/api/:path*"
     },
     {
       "source": "/(.*)",

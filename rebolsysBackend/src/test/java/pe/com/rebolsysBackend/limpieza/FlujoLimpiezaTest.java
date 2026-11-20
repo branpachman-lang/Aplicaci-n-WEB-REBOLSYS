@@ -307,8 +307,8 @@ class FlujoLimpiezaTest {
         .andExpect(jsonPath("$.ticketsGenerados").value(1));
     var auditoria = tx.execute(s -> em.createQuery("""
         select a.accion from AuditoriaGeneral a where a.nombreTabla = 'TICKET_MANTENIMIENTO'
-        and a.idRegistro = :id order by a.idAuditoria
-        """, AccionAuditoria.class).setParameter("id", idTicket).getResultList());
+        and cast(a.claveRegistro as string) = :id order by a.idAuditoria
+        """, AccionAuditoria.class).setParameter("id", "{\"id\":" + idTicket + "}").getResultList());
     assertThat(auditoria).containsExactly(AccionAuditoria.INSERT, AccionAuditoria.UPDATE);
 
     for (String estado : List.of("POR_LIMPIAR", "MANTENIMIENTO")) {

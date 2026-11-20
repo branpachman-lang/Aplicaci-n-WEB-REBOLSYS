@@ -1,3 +1,4 @@
+import { notificarCambios } from '../../core/services/avisos-formulario';
 import { ArchivoProtegido } from '../../shared/directives/archivo-protegido';
 import { Component, DestroyRef, computed, inject, signal } from "@angular/core";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
@@ -66,7 +67,9 @@ export class LimpiezaPanel {
   readonly cargando = signal(false);
   readonly ocupado = signal(false);
   readonly error = signal("");
+  private readonly alertaError = notificarCambios(this.error, 'error');
   readonly aviso = signal("");
+  private readonly alertaAviso = notificarCambios(this.aviso, 'exito');
   readonly tipos = signal<{ id: number; nombre: string }[]>([]);
   readonly pagina = signal(0);
   readonly estadosHabitacion = ["DISPONIBLE", "OCUPADO", "MANTENIMIENTO", "POR_LIMPIAR", "EN_LIMPIEZA"];

@@ -32,9 +32,7 @@ class ModeloPropuestoTest {
       var metadata = (MetadataImplementor) sources.buildMetadata();
       metadata.validate();
       var db = Path.of("src/main/resources/db");
-      String complemento = Files.readString(db.resolve("iteration/V16__mobiliario_sin_detalle_habitacion.sql"));
-      String sql = (Files.readString(db.resolve("schema/DDL_REBOLSYS_V2.sql")) + "\n" + complemento)
-          .replace("\"", "");
+      String sql = Files.readString(db.resolve("schema/DDL_REBOLSYS_ACTUAL.sql")).replace("\"", "");
       var tables =
           Pattern.compile("CREATE TABLE\\s+(\\w+)\\s*\\(([\\s\\S]*?)\\)(?:;|\\]';)", Pattern.CASE_INSENSITIVE)
               .matcher(sql);
@@ -48,10 +46,6 @@ class ModeloPropuestoTest {
         Set<String> nombres = new HashSet<>();
         while (columns.find()) nombres.add(columns.group(1).toUpperCase(Locale.ROOT));
         esperado.put(tables.group(1).toUpperCase(Locale.ROOT), nombres);
-      }
-      var columnasAgregadas = Pattern.compile("agregar_columna\\('([A-Z_]+)', '([A-Z]+)'").matcher(complemento);
-      while (columnasAgregadas.find()) {
-        esperado.get(columnasAgregadas.group(1)).add(columnasAgregadas.group(2));
       }
       Map<String, Set<String>> real = new HashMap<>();
       for (var ns : metadata.getDatabase().getNamespaces())

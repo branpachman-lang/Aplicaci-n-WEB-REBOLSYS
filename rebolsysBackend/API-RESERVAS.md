@@ -1,128 +1,73 @@
-# Reservas asistidas: contrato de esta iteración
+# Reservas con pago completo al registrar
 
-Registro por un operador para atención presencial, llamada o WhatsApp. No existe
-autoservicio web. El titular puede ser persona natural adulta o empresa; los
-ocupantes siempre son personas naturales. No se implementa autenticación.
+El registro lo realiza un operador autenticado mediante JWT. El titular puede ser
+una persona natural adulta o una empresa; los ocupantes son personas naturales.
 
-## Proceso acordado
+## Proceso
 
-1. Crear cliente y reservar una o varias habitaciones. Los ocupantes son opcionales
-   en ese momento. El anticipo también es opcional y se registra después de crear
-   la reserva mediante el endpoint de pagos.
-2. Completar o corregir ocupantes antes del ingreso. Todo menor requiere un adulto
-   responsable en la misma habitación. Menores de siete años pueden no ocupar
-   cama, dentro de los límites de personas y menores sin cama de la habitación.
-   Para el inventario real se confirmó hasta **un menor adicional sin cama por
-   habitación**: dos plazas admiten dos adultos y un menor de siete años que
-   comparta cama con su responsable. `capacidadPersonas` incluye ese cupo;
-   `plazasCama` conserva las plazas originales y `maxMenoresSinCama` admite 0 o 1.
-   Al cumplir siete años se requiere plaza propia. La configuración se aplica
-   mediante V12__menor_adicional_sin_cama.sql, conservando precios y camas.
-   Una edad no obliga por sí sola a contratar una habitación adicional.
-3. Registrar ingreso dentro del periodo reservado. Es obligatorio completar
-   ocupantes; se permite saldo pendiente, según la decisión del usuario.
-4. Registrar consumos confirmados durante una estancia EN_CURSO. RESERVA suma a
-   la cuenta principal solo si tiene saldo y sigue sin emitir. SEPARADA permite
-   pago o comprobante aparte, siempre conservando la referencia a la reserva.
-5. Registrar uno o más pagos, parciales o completos. Una reserva puede tener una
-   cuenta principal y varias cuentas de consumo separadas.
-6. Emitir registro interno BOLETA o FACTURA de una cuenta. Los anticipos no emiten
-   automáticamente boleta/factura: se guardan contra una cuenta interna BORRADOR.
-   Emitir fija sus líneas y receptor; pagos posteriores siguen permitidos.
-7. Antes de la salida se exige saldo cero de todas las cuentas de la reserva.
-   La habitación queda en LIMPIEZA. Pagada y anulada son estados diferentes.
+1. Seleccionar titular, habitaciones, fechas y ocupantes opcionales.
+2. Elegir la forma de pago y confirmar el total del alojamiento. POST
+   /api/v1/reservas requiere cobro: {idFormaPago, monto, numeroOperacion opcional}.
+3. El servicio valida disponibilidad, identidades y ocupantes; guarda reserva,
+   estancias, ocupantes, cuenta, pago e ingreso COBRO_RESERVA en una transacción.
+   Si falla el cobro o no coincide con el total, se revierte toda la reserva.
+4. Completar ocupantes antes del check-in. Cada menor necesita un responsable
+   adulto en su habitación; se mantienen los límites de personas y camas.
+5. Registrar check-in dentro del periodo reservado. La habitación pasa a OCUPADO.
+6. Las ventas a huéspedes se pagan completas al registrarse, en cuentas propias.
+   El alojamiento no recibe cargos nuevos a pagar durante el check-out.
+7. El check-out conserva la comprobación de saldo cero y deja la habitación
+   POR_LIMPIAR. Los saldos históricos deben liquidarse antes de la salida.
 
-## Rutas
+## Contrato
 
-Prefijo /api/v1. Se mantienen POST/GET /reservas y las acciones de detalle.
+Ejemplo de POST /api/v1/reservas (sustituir identificadores y fechas):
 
-| Método y ruta | Uso |
-|---|---|
-| PUT /reservas/detalles/{id}/ocupantes | Reemplazar lista antes del ingreso; idUsuario y ocupantes. |
-| GET /reservas/{id}/cuenta | Totales, pagos, documentos y permiso para nuevos cargos consolidados. Solo lectura. |
-| POST /reservas/{id}/pagos | claveOperacion, idUsuario, idTurno, idFormaPago, monto, numeroOperacion opcional, idVenta opcional. Sin idVenta paga la cuenta principal. |
-| POST /reservas/{id}/consumos | Mismo DTO que ventas; idDetalleReserva obligatorio y perteneciente a esta reserva. Crea y confirma atómicamente. |
-| GET /reservas/{id}/consumos | Consumos, tanto consolidados como separados. |
-| POST /reservas/{id}/comprobantes | tipo BOLETA/FACTURA, idClienteReceptor, idUsuario, idTurno e idVenta opcional. Sin idVenta emite la cuenta principal. |
-| POST /reservas/detalles/{id}/ingreso | Check-in de una habitación; exige ocupantes. |
-| POST /reservas/detalles/{id}/salida | Check-out de una habitación; exige toda la cuenta de la reserva saldada. |
+~~~json
+{
+  "claveRegistro": "reserva-unica-001",
+  "idCliente": 1,
+  "detalles": [{
+    "idHabitacion": 1,
+    "fechaIngreso": "2026-12-01T14:00:00",
+    "fechaSalida": "2026-12-02T12:00:00",
+    "costoEstadia": 80.00,
+    "ocupantes": []
+  }],
+  "cobro": {"idFormaPago": 1, "monto": 80.00, "numeroOperacion": null}
+}
+~~~
 
-Una cuenta borrador sin pagos se materializa al registrar el primer anticipo,
-consumo o comprobante. GET no crea cuentas. idCuenta es el idComprobante interno;
-al emitir se conserva para mantener todos sus pagos y fuentes sin duplicarlos.
+El servidor incorpora el usuario autenticado y resuelve su único turno abierto.
+El servidor recalcula el alojamiento con la tarifa efectiva de cada habitación y
+noches de hasta 24 horas, igual que el formulario. Rechaza tarifas desactualizadas
+e importes manipulados. El monto debe cubrir exactamente ese total. Repetir
+claveRegistro y contenido, incluido cobro, recupera la misma reserva sin otro pago.
+Una clave usada con contenido diferente produce 409.
 
-Pagos repetidos con la misma clave y contenido no duplican caja. La misma clave
-con otro contenido produce 409. Se rechaza el sobrepago. Cada pago aceptado produce
-un ingreso FLUJO_CAJA y requiere turno abierto del operador. El operador confirma
-manualmente el dinero recibido; no se conecta una pasarela de pagos.
+## Rutas conservadas
 
-Los comprobantes son registros internos de desarrollo con series BINT/FINT.
-No son CPE ni se presentan como aceptados por SUNAT. Los precios e IGV cero
-conservan el criterio de esta fase; el tratamiento tributario queda pendiente.
-FACTURA exige receptor con RUC registrado. Una emisión repetida con el mismo
-tipo y receptor devuelve el mismo documento; cambiarlo después se rechaza.
+| Ruta bajo /api/v1 | Función |
+| --- | --- |
+| GET /reservas y /reservas/{id} | Listar y consultar reservas. |
+| GET /reservas/{id}/cuenta | Consultar alojamiento, cuentas propias de ventas y pagos; solo lectura. |
+| PUT /reservas/detalles/{id}/ocupantes | Completar ocupantes antes del ingreso. |
+| POST /reservas/detalles/{id}/ingreso | Check-in con ocupantes y disponibilidad validados. |
+| POST /reservas/detalles/{id}/salida | Check-out después de saldar todas las cuentas. |
+| POST /reservas/{id}/consumos | Registrar venta asociada con cobro completo en la misma transacción. |
+| POST /reservas/{id}/pagos | Regularizar saldos históricos; no se necesita después del nuevo registro. |
+| POST /reservas/{id}/comprobantes | Emitir documento interno de alojamiento o de una venta concreta. |
 
-## Límites deliberados y casos adicionales
+admiteConsumosConsolidados se conserva como campo de respuesta con valor false.
+Las cuentas históricas y sus pagos se mantienen. Una reserva pagada conserva las
+restricciones de cancelación: requiere gestionar devolución o rectificación.
+No se elimina ni devuelve dinero de manera automática.
 
-- Sin devolución implementada, no se permite anular habitaciones con pagos ni
-  documentos emitidos. La cancelación sin pagos sí libera la habitación y ajusta
-  la cuenta borrador. No se borran pagos ni comprobantes para ocultar operaciones.
-- Los consumos contabilizados no se anulan desde ventas: requieren el futuro
-  flujo de devoluciones/rectificación. Ventas sin cuenta conservan su anulación.
-- No-show, reprogramación, prórroga, cambio de habitación, ingreso anticipado,
-  salida tardía, devolución de anticipos y sustitución de ocupantes durante una
-  estancia requieren políticas adicionales. No se aplican penalidades inventadas.
-- Una persona no puede quedar en dos habitaciones coincidentes. Titular,
-  ocupante, comprador y receptor pueden ser personas diferentes.
-- En reservas de varias habitaciones, esta etapa permite ingreso/salida por
-  habitación; la salida exige saldar la reserva completa, incluso sus consumos
-  separados. La llegada escalonada de personas dentro de una habitación y el
-  reparto de alojamiento entre varios receptores no están implementados.
-- Si la cuenta principal está pagada o emitida, los nuevos consumos deben usar
-  SEPARADA; no se reabre el documento ni se vuelve a cobrar el alojamiento.
+## Pruebas
 
-El DDL original se conserva como referencia. Para permitir que SEPARADA mantenga
-idDetalleReserva se aplica únicamente V8__consumos_separados_con_reserva.sql;
-no cambia las tablas ni columnas. La copia consolidada incorpora esa restricción.
-
-## Prueba del recorrido
-
-En la base local ya se aplicó V8 y se prepararon los catálogos mediante
-`src/main/resources/db/schema/DATOS_RESERVAS.sql`. Para otra base se necesita
-también la preparación original `DATOS_INICIALES_PROPUESTA.sql` y COMMIT.
-La prueba de pagos concurrentes usa esos catálogos y limpia únicamente sus
-usuarios, turnos, reserva y cobros creados para la prueba.
-
-Abrir Swagger en `http://localhost:8080/swagger-ui.html`, o importar y ejecutar
-en orden `api/postman/reservas-flujo.postman_collection.json`. La colección genera
-sus propios clientes, habitación y producto y conserva los datos de demostración.
-No hay que proporcionar tokens ni escribir a mano los identificadores.
-
-```powershell
-postman collection run api/postman/reservas-flujo.postman_collection.json --no-report-events
-```
-
-El recorrido HTTP valida S/80 de alojamiento, S/20 de anticipo, S/7 de consumo
-consolidado y dos consumos separados de S/3.50. El resultado final es S/94 de
-cargos, S/94 pagados y saldo cero. El comprobante principal solo incluye S/87;
-los consumos separados conservan el número de reserva y no se cobran dos veces.
-
-Se retiraron del código activo ocho archivos sin referencias: los DTO antiguos
-de responsable de huésped y de pago (solicitud/respuesta), y las enumeraciones
-EstadoCobro, EstadoCargo, TipoConsumo, FormaRegistro y ModoVenta. Se conservan
-las entidades correspondientes al DDL y el historial documental anterior.
-
-## Resultados de validación
-
-- Reconstrucción limpia con Java 21 y Oracle real: 53 pruebas aprobadas, cero
-  fallos. Incluye 34 pruebas funcionales y 3 de concurrencia (reservas, stock y
-  cobro simultáneo del mismo saldo). Las 7 pruebas opcionales de APIs Perú se
-  omitieron porque no forman parte de este flujo.
-- Colección nueva de reservas: 30 solicitudes y 54 comprobaciones aprobadas.
-- Regresión de las colecciones anteriores: 49 solicitudes y 116 comprobaciones
-  aprobadas. Total HTTP: 79 solicitudes y 170 comprobaciones, con código de
-  salida 0 y resultados locales, sin publicar en Postman.
-- Swagger y api/openapi.json actualizados desde la API en ejecución; las nuevas
-  operaciones se agrupan en Reservas.
-- La reserva de demostración R110 quedó FINALIZADA con tres cuentas, S/94 de
-  cargos y saldo cero. Los datos de demostración se conservan para revisión.
+api/postman/reservas-flujo.postman_collection.json usa JWT y una base de pruebas:
+crea alojamiento pagado por S/80, tres consumos pagados por S/14 en cuentas propias,
+registra ingreso y salida y comprueba cuatro cuentas con saldo cero. No ejecutarla
+sobre datos de producción. Las pruebas H2 verifican atomicidad, rechazo de abonos,
+reintentos y check-in/check-out; las pruebas opcionales Oracle requieren revisión
+contra el esquema y los catálogos de la instancia antes de habilitarse.

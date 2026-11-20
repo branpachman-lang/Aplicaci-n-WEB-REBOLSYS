@@ -1,3 +1,4 @@
+import { notificarCambios } from '../../core/services/avisos-formulario';
 import { Component, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { ActivatedRoute, Router } from "@angular/router";
@@ -18,6 +19,7 @@ export class Acceso {
   private readonly router = inject(Router);
   readonly cambio = !!inject(ActivatedRoute).snapshot.data["cambio"];
   readonly error = signal("");
+  private readonly alertaError = notificarCambios(this.error, 'error');
   readonly cargando = signal(false);
   readonly ayuda = signal(false);
   readonly conexionHttps = globalThis.location?.protocol === "https:";

@@ -1,3 +1,4 @@
+import { notificarCambios } from '../../../../core/services/avisos-formulario';
 import { CommonModule, DecimalPipe } from '@angular/common';
 import {
   Component,
@@ -227,6 +228,7 @@ export class HabitacionForm implements OnInit {
   tipos = signal<TipoHabitacion[]>([]);
   cargando = signal(true);
   error = signal('');
+  private readonly alertaError = notificarCambios(this.error, 'error');
   ngOnInit(): void {
     this.cargar();
   }

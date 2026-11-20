@@ -15,5 +15,7 @@ public interface VentaService {
 
   VentaResponseDTO confirmar(Long id, OperacionUsuarioDTO r);
 
+  VentaResponseDTO confirmarCobrada(Long id, VentaConfirmacionDTO r);
+
   VentaResponseDTO anular(Long id, OperacionUsuarioDTO r);
 }

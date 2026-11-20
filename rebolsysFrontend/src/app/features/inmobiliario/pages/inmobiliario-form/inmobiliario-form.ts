@@ -1,3 +1,4 @@
+import { notificarCambios } from '../../../../core/services/avisos-formulario';
 import { Component, OnInit, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -306,6 +307,7 @@ export class InmobiliarioForm implements OnInit {
 
   cargando = signal(true);
   error = signal('');
+  private readonly alertaError = notificarCambios(this.error, 'error');
   private habitacionInicial: number | null = null;
   ngOnInit(): void {
     this.cargar();

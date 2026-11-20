@@ -21,6 +21,7 @@ class OperacionUsuarioBodyAdviceTest {
     @PostMapping("/api/v1/ventas/confirmadas") public VentaRequestDTO venta(@Valid @RequestBody VentaRequestDTO r){return r;}
     @PostMapping("/api/v1/ventas/1/pagos") public PagoCuentaDTO pago(@Valid @RequestBody PagoCuentaDTO r){return r;}
     @PostMapping("/api/v1/productos") public ProductoRequestDTO producto(@Valid @RequestBody ProductoRequestDTO r){return r;}
+    @PostMapping("/api/v1/ventas/1/confirmacion") public VentaConfirmacionDTO confirmar(@Valid @RequestBody VentaConfirmacionDTO r){return r;}
   }
   @BeforeEach void preparar(){
     sesion=mock(SesionOperacionService.class);when(sesion.actual()).thenReturn(new SesionActualDTO(130L,"recepcion.flujo","ACTIVA",101L,1L));
@@ -29,6 +30,20 @@ class OperacionUsuarioBodyAdviceTest {
   @Test void completarUsuarioAntesDeValidarUnaVenta()throws Exception{
     mvc.perform(post("/api/v1/ventas/confirmadas").contentType(MediaType.APPLICATION_JSON).content("{\"claveRegistro\":\"sesion-venta\",\"modalidadCobro\":\"SEPARADA\",\"detalles\":[{\"idProducto\":1,\"cantidad\":2}]}"))
       .andExpect(status().isOk()).andExpect(jsonPath("$.idUsuario").value(130)).andExpect(jsonPath("$.modalidadCobro").value("SEPARADA"));
+  }
+  @Test void confirmacionConCobroUsaActorAutenticadoYValidaDatosAnidados() throws Exception {
+    mvc.perform(post("/api/v1/ventas/1/confirmacion").contentType(MediaType.APPLICATION_JSON)
+        .content("{\"cobro\":{\"idFormaPago\":1,\"monto\":7}}"))
+        .andExpect(status().isOk()).andExpect(jsonPath("$.idUsuario").value(130));
+    mvc.perform(post("/api/v1/ventas/1/confirmacion").contentType(MediaType.APPLICATION_JSON)
+        .content("{\"idUsuario\":999,\"cobro\":{\"idFormaPago\":1,\"monto\":7}}"))
+        .andExpect(status().isConflict());
+    mvc.perform(post("/api/v1/ventas/1/confirmacion").contentType(MediaType.APPLICATION_JSON)
+        .content("{\"cobro\":{\"idFormaPago\":1,\"monto\":-1}}"))
+        .andExpect(status().isBadRequest());
+    mvc.perform(post("/api/v1/ventas/1/confirmacion").contentType(MediaType.APPLICATION_JSON)
+        .content("{}"))
+        .andExpect(status().isBadRequest());
   }
   @Test void rechazarOtroUsuario()throws Exception{
     mvc.perform(post("/api/v1/ventas/confirmadas").contentType(MediaType.APPLICATION_JSON).content("{\"idUsuario\":999,\"claveRegistro\":\"sesion-venta\",\"modalidadCobro\":\"SEPARADA\",\"detalles\":[{\"idProducto\":1,\"cantidad\":2}]}"))

@@ -91,6 +91,7 @@ export interface ClienteDetalle {
 }
 
 export interface RegistroReservaApi {
+  cobro?: { idFormaPago: number; monto: number; numeroOperacion: string | null };
   claveRegistro: string;
   idCliente: number;
   idUsuario: number;

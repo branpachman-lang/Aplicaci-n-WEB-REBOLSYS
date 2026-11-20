@@ -1,14 +1,13 @@
 <router-outlet />
-@if (avisos.actual(); as aviso) {
-  <div class="toast" [class.toast-error]="aviso.error" [attr.role]="aviso.error ? 'alert' : 'status'">
-    <app-icon [name]="aviso.error ? 'info' : 'check'" />
-    <span>{{ aviso.texto }}</span>
-    <button
-      class="icon-button"
-      aria-label="Cerrar aviso"
-      (click)="avisos.actual.set(null)"
-    >
-      <app-icon name="close" />
-    </button>
-  </div>
-}
+<aside class="toast-stack no-print" aria-label="Notificaciones" aria-live="polite" aria-relevant="additions">
+  @for (aviso of avisos.lista(); track aviso.id) {
+    <div class="toast" [class]="'toast toast-' + aviso.tipo"
+      [attr.role]="aviso.error || aviso.tipo === 'advertencia' ? 'alert' : 'status'">
+      <app-icon [name]="aviso.tipo === 'exito' ? 'check' : aviso.tipo === 'error' ? 'close' : 'info'" />
+      <span>{{ aviso.texto }}</span>
+      <button type="button" class="toast-close" aria-label="Cerrar aviso" (click)="avisos.cerrar(aviso.id)">
+        <app-icon name="close" />
+      </button>
+    </div>
+  }
+</aside>

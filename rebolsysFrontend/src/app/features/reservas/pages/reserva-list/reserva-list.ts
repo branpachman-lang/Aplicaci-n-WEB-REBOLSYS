@@ -1,3 +1,4 @@
+import { notificarCambios } from '../../../../core/services/avisos-formulario';
 import { generarClaveOperacion } from '../../../../core/utils/clave-operacion';
 import { PermisosUi } from "../../../../core/services/permisos-ui";
 import { Component, DestroyRef, inject, signal } from "@angular/core";
@@ -55,6 +56,7 @@ export class ReservaList {
   catalogos = signal<Catalogos | null>(null);
   cargando = signal(true);
   error = signal("");
+  private readonly alertaError = notificarCambios(this.error, 'error');
   pagina = 0;
   tamanio = 10;
   busqueda = "";

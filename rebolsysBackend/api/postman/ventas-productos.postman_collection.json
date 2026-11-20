@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "REBOLSYS - venta de varios productos y cobro directo",
-    "description": "Crea dos productos y compradores de demostración. Prueba carrito, edición, confirmación atómica, stock, pagos y boleta/factura internas. Conserva sus datos. Requiere preparación original, de reservas y DATOS_VENTAS.sql. Sin autenticación ni SUNAT.",
+    "description": "Flujo JWT de venta: borrador, confirmación con cobro completo atómico, reintentos, stock y emisión interna. Crea datos de demostración y los conserva; ejecutar solo en una base de pruebas con catálogos preparados.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -288,7 +288,7 @@
       ]
     },
     {
-      "name": "11 - Confirmar carrito completo",
+      "name": "11 - Confirmar y cobrar carrito completo",
       "request": {
         "method": "POST",
         "header": [
@@ -300,7 +300,7 @@
         "url": "{{baseUrl}}/api/v1/ventas/{{idVenta}}/confirmacion",
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"idUsuario\": \"{{idUsuario}}\"\n}"
+          "raw": "{\n  \"idUsuario\": \"{{idUsuario}}\",\n  \"cobro\": {\n    \"idFormaPago\": \"{{idFormaPago}}\",\n    \"monto\": 14.5,\n    \"numeroOperacion\": null\n  }\n}"
         }
       },
       "event": [
@@ -329,7 +329,7 @@
         "url": "{{baseUrl}}/api/v1/ventas/{{idVenta}}/confirmacion",
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"idUsuario\": \"{{idUsuario}}\"\n}"
+          "raw": "{\n  \"idUsuario\": \"{{idUsuario}}\",\n  \"cobro\": {\n    \"idFormaPago\": \"{{idFormaPago}}\",\n    \"monto\": 14.5,\n    \"numeroOperacion\": null\n  }\n}"
         }
       },
       "event": [
@@ -385,7 +385,7 @@
       ]
     },
     {
-      "name": "15 - Consultar cuenta sin materializar documento",
+      "name": "15 - Consultar la cuenta completamente pagada",
       "request": {
         "method": "GET",
         "header": [],
@@ -398,94 +398,7 @@
             "type": "text/javascript",
             "exec": [
               "pm.test('HTTP 200',()=>pm.response.to.have.status(200));",
-              "pm.test('Cuenta virtual pendiente',()=>{const c=pm.response.json();pm.expect(c.idCuenta).to.eql(null);pm.expect(c.saldo).to.eql(14.5);pm.expect(c.idReserva).to.eql(null);});"
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "name": "16 - Registrar abono de venta directa",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "url": "{{baseUrl}}/api/v1/ventas/{{idVenta}}/pagos",
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"claveOperacion\": \"abono-{{clave}}\",\n  \"idUsuario\": \"{{idUsuario}}\",\n  \"idTurno\": \"{{idTurno}}\",\n  \"idFormaPago\": \"{{idFormaPago}}\",\n  \"monto\": 5\n}"
-        }
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('HTTP 201',()=>pm.response.to.have.status(201));",
-              "pm.test('Saldo 9.50',()=>pm.expect(pm.response.json().saldo).to.eql(9.5));"
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "name": "17 - Repetir abono sin duplicar caja",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "url": "{{baseUrl}}/api/v1/ventas/{{idVenta}}/pagos",
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"claveOperacion\": \"abono-{{clave}}\",\n  \"idUsuario\": \"{{idUsuario}}\",\n  \"idTurno\": \"{{idTurno}}\",\n  \"idFormaPago\": \"{{idFormaPago}}\",\n  \"monto\": 5\n}"
-        }
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('HTTP 201',()=>pm.response.to.have.status(201));",
-              "pm.test('Un solo abono',()=>pm.expect(pm.response.json().pagos).to.have.lengthOf(1));"
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "name": "18 - Pagar saldo restante",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "url": "{{baseUrl}}/api/v1/ventas/{{idVenta}}/pagos",
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"claveOperacion\": \"saldo-{{clave}}\",\n  \"idUsuario\": \"{{idUsuario}}\",\n  \"idTurno\": \"{{idTurno}}\",\n  \"idFormaPago\": \"{{idFormaPago}}\",\n  \"monto\": 9.5\n}"
-        }
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('HTTP 201',()=>pm.response.to.have.status(201));",
-              "pm.test('Venta pagada',()=>{const c=pm.response.json();pm.expect(c.saldo).to.eql(0);pm.expect(c.pagado).to.eql(14.5);});"
+              "pm.test('Pago completo',()=>{const c=pm.response.json();pm.expect(c.pagado).to.eql(14.5);pm.expect(c.saldo).to.eql(0);pm.expect(c.pagos).to.have.lengthOf(1);});"
             ]
           }
         }
@@ -618,7 +531,7 @@
         "url": "{{baseUrl}}/api/v1/ventas/confirmadas",
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"claveRegistro\": \"fallida-{{clave}}\",\n  \"idUsuario\": \"{{idUsuario}}\",\n  \"idClienteComprador\": \"{{idCliente}}\",\n  \"modalidadCobro\": \"SEPARADA\",\n  \"detalles\": [\n    {\n      \"idProducto\": \"{{idAgua}}\",\n      \"cantidad\": 1\n    },\n    {\n      \"idProducto\": \"{{idGalletas}}\",\n      \"cantidad\": 99\n    }\n  ]\n}"
+          "raw": "{\n  \"claveRegistro\": \"fallida-{{clave}}\",\n  \"idUsuario\": \"{{idUsuario}}\",\n  \"idClienteComprador\": \"{{idCliente}}\",\n  \"modalidadCobro\": \"SEPARADA\",\n  \"detalles\": [\n    {\n      \"idProducto\": \"{{idAgua}}\",\n      \"cantidad\": 1\n    },\n    {\n      \"idProducto\": \"{{idGalletas}}\",\n      \"cantidad\": 99\n    }\n  ],\n  \"cobro\": {\n    \"idFormaPago\": \"{{idFormaPago}}\",\n    \"monto\": 201.5,\n    \"numeroOperacion\": null\n  }\n}"
         }
       },
       "event": [
@@ -694,111 +607,6 @@
       ]
     },
     {
-      "name": "27 - Registrar y confirmar otra venta en una operación",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "url": "{{baseUrl}}/api/v1/ventas/confirmadas",
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"claveRegistro\": \"rapida-{{clave}}\",\n  \"idUsuario\": \"{{idUsuario}}\",\n  \"idClienteComprador\": \"{{idCliente}}\",\n  \"modalidadCobro\": \"SEPARADA\",\n  \"detalles\": [\n    {\n      \"idProducto\": \"{{idAgua}}\",\n      \"cantidad\": 1\n    },\n    {\n      \"idProducto\": \"{{idGalletas}}\",\n      \"cantidad\": 2\n    }\n  ]\n}"
-        }
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('HTTP 201',()=>pm.response.to.have.status(201));",
-              "pm.collectionVariables.set('idVentaRapida',pm.response.json().idVenta);pm.test('Venta confirmada por 7.50',()=>{const v=pm.response.json();pm.expect(v.estadoVenta).to.eql('CONFIRMADA');pm.expect(v.total).to.eql(7.5);});"
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "name": "28 - Anular venta sin cobros y reponer productos",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "url": "{{baseUrl}}/api/v1/ventas/{{idVentaRapida}}/anulacion",
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"idUsuario\": \"{{idUsuario}}\"\n}"
-        }
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('HTTP 200',()=>pm.response.to.have.status(200));"
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "name": "29 - Repetir anulación sin reponer dos veces",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "url": "{{baseUrl}}/api/v1/ventas/{{idVentaRapida}}/anulacion",
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"idUsuario\": \"{{idUsuario}}\"\n}"
-        }
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('HTTP 200',()=>pm.response.to.have.status(200));"
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "name": "30 - Verificar reposición de galletas",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": "{{baseUrl}}/api/v1/productos/{{idGalletas}}"
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('HTTP 200',()=>pm.response.to.have.status(200));",
-              "pm.test('Stock repuesto una sola vez',()=>pm.expect(pm.response.json().stock).to.eql(8));"
-            ]
-          }
-        }
-      ]
-    },
-    {
       "name": "31 - Rechazar producto duplicado en el carrito",
       "request": {
         "method": "POST",
@@ -839,7 +647,7 @@
         "url": "{{baseUrl}}/api/v1/ventas/confirmadas",
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"claveRegistro\": \"cero-{{clave}}\",\n  \"idUsuario\": \"{{idUsuario}}\",\n  \"idClienteComprador\": \"{{idCliente}}\",\n  \"modalidadCobro\": \"SEPARADA\",\n  \"detalles\": [\n    {\n      \"idProducto\": \"{{idAgua}}\",\n      \"cantidad\": 0\n    },\n    {\n      \"idProducto\": \"{{idGalletas}}\",\n      \"cantidad\": 1\n    }\n  ]\n}"
+          "raw": "{\n  \"claveRegistro\": \"cero-{{clave}}\",\n  \"idUsuario\": \"{{idUsuario}}\",\n  \"idClienteComprador\": \"{{idCliente}}\",\n  \"modalidadCobro\": \"SEPARADA\",\n  \"detalles\": [\n    {\n      \"idProducto\": \"{{idAgua}}\",\n      \"cantidad\": 0\n    },\n    {\n      \"idProducto\": \"{{idGalletas}}\",\n      \"cantidad\": 1\n    }\n  ],\n  \"cobro\": {\n    \"idFormaPago\": \"{{idFormaPago}}\",\n    \"monto\": 2,\n    \"numeroOperacion\": null\n  }\n}"
         }
       },
       "event": [
@@ -896,7 +704,7 @@
         "url": "{{baseUrl}}/api/v1/ventas/confirmadas",
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"claveRegistro\": \"factura-{{clave}}\",\n  \"idUsuario\": \"{{idUsuario}}\",\n  \"idClienteComprador\": \"{{idEmpresa}}\",\n  \"modalidadCobro\": \"SEPARADA\",\n  \"detalles\": [\n    {\n      \"idProducto\": \"{{idAgua}}\",\n      \"cantidad\": 1\n    },\n    {\n      \"idProducto\": \"{{idGalletas}}\",\n      \"cantidad\": 1\n    }\n  ]\n}"
+          "raw": "{\n  \"claveRegistro\": \"factura-{{clave}}\",\n  \"idUsuario\": \"{{idUsuario}}\",\n  \"idClienteComprador\": \"{{idEmpresa}}\",\n  \"modalidadCobro\": \"SEPARADA\",\n  \"detalles\": [\n    {\n      \"idProducto\": \"{{idAgua}}\",\n      \"cantidad\": 1\n    },\n    {\n      \"idProducto\": \"{{idGalletas}}\",\n      \"cantidad\": 1\n    }\n  ],\n  \"cobro\": {\n    \"idFormaPago\": \"{{idFormaPago}}\",\n    \"monto\": 5.5,\n    \"numeroOperacion\": null\n  }\n}"
         }
       },
       "event": [
@@ -907,34 +715,6 @@
             "exec": [
               "pm.test('HTTP 201',()=>pm.response.to.have.status(201));",
               "pm.collectionVariables.set('idVentaFactura',pm.response.json().idVenta);"
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "name": "35 - Cobrar venta para factura",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "url": "{{baseUrl}}/api/v1/ventas/{{idVentaFactura}}/pagos",
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"claveOperacion\": \"pago-factura-{{clave}}\",\n  \"idUsuario\": \"{{idUsuario}}\",\n  \"idTurno\": \"{{idTurno}}\",\n  \"idFormaPago\": \"{{idFormaPago}}\",\n  \"monto\": 5.5\n}"
-        }
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('HTTP 201',()=>pm.response.to.have.status(201));"
             ]
           }
         }

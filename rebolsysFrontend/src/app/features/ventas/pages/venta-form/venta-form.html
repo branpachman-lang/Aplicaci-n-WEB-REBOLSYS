@@ -101,20 +101,6 @@
             <option [value]="h"></option>
             } }
           </datalist></label
-        ><label class="field"
-          >Destino del cobro<select
-            [disabled]="cargandoCuenta() || !cuentaReserva() || guardando() || solicitudFijada() || !!pendiente()"
-            [ngModel]="modoVenta()"
-            (ngModelChange)="modoVenta.set($event)"
-          >
-            <option
-              value="CARGO_RESERVA"
-              [disabled]="!cuentaReserva()?.admiteConsumosConsolidados"
-            >
-              Añadir a la cuenta de la reserva
-            </option>
-            <option value="SEPARADA">Cobrar aparte y emitir comprobante</option>
-          </select></label
         >
       </div>
       @if (!errorReservas() && !reservasVisibles().length) {
@@ -140,32 +126,9 @@
           Registrar ingreso
         </button>
       </div>
-      } @if (cargandoCuenta()) {
-      <p class="buyer-note" role="status">
-        Consultando la cuenta de la reserva…
-      </p>
-      } @else if (errorCuenta()) {
-      <div class="error-box" role="alert">
-        No se pudo consultar la cuenta: {{ errorCuenta() }}
-        <button class="button small" (click)="consultarCuenta()">
-          Reintentar
-        </button>
-      </div>
-      } @else if (cuentaReserva(); as cuenta) { @if
-      (!cuenta.admiteConsumosConsolidados) {
-      <p class="buyer-note">
-        La cuenta de esta reserva ya está pagada o tiene comprobante. Los nuevos
-        consumos se cobran aparte y conservan la referencia a la reserva #{{
-        r.numero }}.
-      </p>
       }
-      <p class="buyer-note">
-        <app-icon name="info" />{{ modoVenta() === "CARGO_RESERVA" ? "El consumo
-        quedará pendiente en la reserva #" + r.numero + ", a cargo de su
-        titular." : "Esta venta tendrá pago y comprobante propios; no aumentará
-        el saldo de la reserva." }}
-      </p>
-      } } } @else {
+      <p class="buyer-note">Esta venta se cobra por completo al confirmar y conserva la referencia a la habitación.</p>
+      } } @else {
       <label class="field external-name"
         >Nombre para el ticket <span class="optional">Opcional</span
         ><input
@@ -320,6 +283,9 @@
   [total]="total()"
   [esNueva]="false"
   [permiteParcial]="false"
+  [puedePosponer]="false"
+  [catalogos]="catalogos()"
+  [idUsuario]="idUsuario()"
   [ocupado]="guardando()"
   [error]="errorPago()"
   [solicitudFijada]="solicitudFijada()"
@@ -341,14 +307,10 @@
       <span class="success-mark"><app-icon name="check" /></span>
       <p class="eyebrow">VENTA #{{ v.numero }}</p>
       <h2 id="venta-exito">
-        {{ v.modoVenta === "SEPARADA" ? "¡Venta registrada con éxito!" :
-        "Consumo añadido a la reserva" }}
+        {{ v.estadoCobro === 'PAGADO' ? '¡Venta registrada y pagada!' : 'Venta anterior recuperada' }}
       </h2>
       <p class="muted">
-        {{ v.modoVenta === "SEPARADA" ? "La venta y su pago quedaron
-        registrados. Puedes imprimir la constancia." : "El importe se añadió a
-        la cuenta de la habitación " + v.habitacion + ". No se registró un
-        pago." }}
+        {{ v.estadoCobro === 'PAGADO' ? 'La venta y su pago quedaron registrados. Puedes imprimir la constancia.' : 'Revisa la cuenta y los pagos de esta operación anterior antes de darla por pagada.' }}
       </p>
       <div class="stock-result">
         <app-icon name="box" />
@@ -365,6 +327,9 @@
       @if (v.modoVenta === "SEPARADA") {
       <p>Vuelto: <strong>{{ v.vuelto | currency: "PEN" : "S/ " }}</strong></p>
       }
+      @if (v.estadoVenta === 'CONFIRMADA' && v.modoVenta === 'SEPARADA' && acceso.permite('VENTAS:EMITIR_COMPROBANTE')) {
+        <button class="button full" (click)="comprobanteAbierto.set(true)">{{ v.comprobante ? 'Ver comprobante y enviar al correo' : 'Generar boleta o factura' }}</button>
+      }
       <button class="button primary full" (click)="imprimir()">
         <app-icon name="print" />{{ v.comprobante ? "Imprimir comprobante" :
         "Imprimir constancia" }}</button
@@ -379,4 +344,9 @@
     </div>
   </section>
 </div>
+}
+
+@if (comprobanteAbierto() && venta() && catalogos()) {
+  <app-comprobante-dialog [venta]="venta()!" [catalogos]="catalogos()!"
+    (cerrar)="comprobanteAbierto.set(false)" (actualizado)="refrescarComprobante()" />
 }

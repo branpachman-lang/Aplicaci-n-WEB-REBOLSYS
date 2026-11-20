@@ -31,8 +31,9 @@ public class CuentaVentaServiceImpl implements CuentaVentaService {
 
   private void validar(Venta v) {
     exigir(v.getEstadoVenta() == EstadoVenta.CONFIRMADA, "Confirma la venta antes de cobrarla");
-    exigir(v.getModalidadCobro() == ModalidadCobro.SEPARADA,
-        "Este consumo se paga en la cuenta principal de la reserva");
+    exigir(v.getModalidadCobro() == ModalidadCobro.SEPARADA
+            || cuentas.findByClaveIdempotencia("CUENTA-V-" + v.getIdVenta()).isPresent(),
+        "Este consumo histórico se paga en la cuenta principal de la reserva");
   }
 
   private Venta bloquear(Long id) {
