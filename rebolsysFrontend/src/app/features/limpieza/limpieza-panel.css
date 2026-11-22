@@ -4,13 +4,13 @@
   --boton-radio: .5rem;
 }
 
-.buc02 { display: grid; gap: 1rem; min-width: 0; }
+.buc02 { display: grid; gap: 1rem; min-width: 0; container-type: inline-size; }
 .modulo-cabecera, .ficha-cabecera, .pie-tabla {
   display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .9rem;
 }
 .modulo-cabecera { padding: 1rem 1.15rem; background: var(--paper); border: 1px solid var(--line); border-radius: .75rem; }
 .modulo-cabecera h2 { color: var(--azul); font-weight: 700; }
-.modulo-cabecera nav { display: flex; flex-wrap: wrap; gap: .35rem; }
+.modulo-cabecera nav { gap: .35rem; }
 .modulo-cabecera nav button {
   gap: .45rem; border: 0;
   background: transparent; color: var(--azul); font-weight: 600;
@@ -29,7 +29,7 @@
   font-size: .875rem;
   line-height: 1.1;
   text-align: center;
-  white-space: normal;
+  white-space: nowrap;
 }
 .modulo-cabecera nav .activa { background: var(--azul); color: white; }
 .ficha-cabecera p { color: var(--muted); }
@@ -46,8 +46,44 @@ textarea { resize: vertical; }
 thead th { background: var(--azul); color: white; }
 td strong { color: var(--azul); }
 .table-scroll { min-width: 0; }
-.acciones, .acciones-final { display: flex; gap: .45rem; align-items: center; flex-wrap: wrap; }
-.acciones-final { justify-content: flex-end; padding-top: .4rem; }
+.acciones-tabla {
+  display: inline-grid;
+  grid-auto-flow: column;
+  grid-auto-columns: var(--boton-ancho);
+  align-items: center;
+  gap: .45rem;
+  inline-size: max-content;
+}
+.acciones-tabla .button { inline-size: 100%; }
+.modulo-cabecera nav, .acciones, .acciones-final, .opciones-estado {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  min-width: 0;
+}
+.modulo-cabecera nav, .pie-tabla .acciones, .acciones-final {
+  max-width: 100%;
+  overflow-x: auto;
+  padding: .4rem;
+}
+.acciones, .acciones-final { gap: .45rem; }
+.acciones > span { white-space: nowrap; }
+.acciones-final { justify-content: safe flex-end; }
+.modulo-cabecera nav button, .pie-tabla .acciones button, .acciones-final button {
+  flex: 0 1 var(--boton-ancho);
+  min-inline-size: 0;
+  white-space: normal;
+}
+.modulo-cabecera nav button { padding-inline: .15rem; }
+.pie-tabla .acciones { flex: 0 1 auto; }
+@container (max-width: 40rem) {
+  .modulo-cabecera nav { flex: 1 1 100%; }
+  .modulo-cabecera nav button { font-size: clamp(.625rem, 2.15cqi, .875rem); }
+  .modulo-cabecera nav app-icon { display: none; }
+}
+.habitacion-responsable .button, .asociado .button {
+  inline-size: min(var(--boton-ancho), 40cqi);
+}
 .estado {
   display: inline-flex; align-items: center; border-radius: 99px; padding: .25rem .65rem;
   font-size: .8rem; font-weight: 700; white-space: nowrap; background: #ededf3; color: #4a4659;
@@ -68,11 +104,10 @@ td strong { color: var(--azul); }
 .habitacion-responsable, .asociado {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  align-items: start;
+  align-items: center;
   gap: .65rem 1rem;
   overflow-wrap: anywhere;
 }
-.habitacion-responsable { align-items: center; }
 .habitacion-responsable strong { display: block; color: var(--azul); }
 .habitacion-items, .habitacion-asociados > section {
   display: grid;
@@ -98,15 +133,12 @@ td strong { color: var(--azul); }
 @container (max-width: 46rem) {
   .habitacion-asociados { grid-template-columns: 1fr; }
 }
-@container (max-width: 30rem) {
-  .habitacion-responsable, .asociado { grid-template-columns: minmax(0, 1fr); }
-}
 .resumen-asociados { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr)); gap: .8rem; }
 .resumen-asociados > div { padding: .8rem; border-radius: .45rem; background: #f4f3f9; }
 h4 { margin: 0 0 .25rem; font-size: .9rem; }
 .tabla-formulario textarea { min-width: 10rem; }
 .tabla-formulario td:last-child { min-width: 9rem; }
-.opciones-estado { display: flex; flex-wrap: wrap; gap: .3rem; min-width: 12rem; }
+.opciones-estado { gap: .3rem; }
 .opcion-estado { background: #f0eef7; color: var(--azul); border: 1px solid transparent; border-radius: .4rem; padding: .3rem .5rem; font-size: .78rem; }
 .opcion-estado.seleccionada { color: white; background: var(--azul); }
 .opcion-estado.seleccionada:disabled { opacity: .8; }

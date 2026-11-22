@@ -331,7 +331,7 @@
                   <td><strong>{{ h.numeroHabitacion }}</strong></td><td>{{ h.tipoHabitacion }}</td>
                   <td>{{ fecha(h.fechaSalida) }}</td><td><span [class]="'estado ' + h.estado">{{ texto(h.estado) }}</span></td>
                   <td>{{ h.responsable?.usuario ?? 'Sin asignar' }}</td>
-                  <td><div class="acciones">
+                  <td><div class="acciones-tabla">
                     @if (permite('INICIAR')) {
                       <button class="button small primary" [disabled]="ocupado() || (!h.puedeIniciarLimpieza && !h.puedeRetomarBorrador)"
                         (click)="iniciar(h)">{{ accionHabitacion(h) }}</button>
@@ -354,7 +354,7 @@
                   <td>{{ !i.tieneIncidencias ? 'Sin incidencias' : i.incidenciasPendientes ? i.incidenciasPendientes + ' pendientes' : 'Incidencias resueltas' }}</td>
                   <td><span [class]="'estado ' + i.estado">{{ texto(i.estado) }}</span></td>
                   <td>{{ i.tieneTickets ? 'Asociados' : '—' }}</td>
-                  <td><div class="acciones">
+                  <td><div class="acciones-tabla">
                     <button class="button small" [disabled]="ocupado()" (click)="verInforme(i.idInformeRevision)">
                       {{ i.incidenciasPendientes && puedeMantenimiento('CREAR_TICKET') ? 'Ver y atender' : 'Ver' }}
                     </button>
@@ -379,7 +379,7 @@
                   <td><strong>{{ t.nombre }}</strong></td><td>{{ t.numeroHabitacion }}</td><td>{{ t.item }}</td>
                   <td><span [class]="'estado ' + t.tipoAccion">{{ texto(t.tipoAccion) }}</span></td>
                   <td><span [class]="'estado ' + t.estado">{{ texto(t.estado) }}</span></td><td>{{ fecha(t.fechaGeneracion) }}</td>
-                  <td><div class="acciones">
+                  <td><div class="acciones-tabla">
                     <button class="button small" [disabled]="ocupado()" (click)="verTicket(t.idTicket)">Ver</button>
                     @if (puedeMantenimiento('EDITAR_TICKET')) {
                       <button class="button small" [disabled]="ocupado() || !t.puedeEditar" (click)="abrirEditarTicket(t.idTicket)">Editar</button>
