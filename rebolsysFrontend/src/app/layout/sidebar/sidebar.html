@@ -2,7 +2,7 @@
   <a
     class="brand"
     routerLink="/inicio"
-    (click)="navegar.emit()"
+    (click)="salirDelMenu()"
     aria-label="Real Bolognesi, inicio"
   >
     <svg
@@ -25,14 +25,18 @@
     <strong>Bolognesi</strong>
     <span>Gestión de hospedaje</span>
   </a>
-  <nav aria-label="Menú principal">
+  <nav aria-label="Menú principal" (scroll)="cerrarConfiguracion()">
     @for (item of menu(); track item.ruta) { @if (item.hijos) {
     <div class="menu-group">
       <button
+        #botonConfiguracion
+        type="button"
         class="menu-group-button"
+        [class.active]="configuracionSeleccionada() || configuracionAbierta()"
         [attr.aria-expanded]="configuracionAbierta()"
         aria-controls="configuracion-submenu"
-        (click)="alternarConfiguracion()"
+        popovertarget="configuracion-submenu"
+        (click)="posicionarSubmenu(botonConfiguracion)"
       >
         <app-icon [name]="item.icono" /><span>{{item.etiqueta}}</span>
         <app-icon
@@ -41,29 +45,56 @@
           name="chevron"
         />
       </button>
-      @if (configuracionAbierta()) {
-      <div id="configuracion-submenu" class="submenu">
-        @for (hijo of item.hijos; track hijo.ruta) {
-        <a
-          [routerLink]="hijo.ruta"
-          routerLinkActive="active"
-          (click)="navegar.emit()"
-          ><app-icon [name]="hijo.icono" /><span>{{hijo.etiqueta}}</span></a
-        >
-        }
-      </div>
-      }
     </div>
     } @else {
     <a
       [routerLink]="item.ruta"
       routerLinkActive="active"
-      (click)="navegar.emit()"
+      (click)="salirDelMenu()"
     >
       <app-icon [name]="item.icono" /><span>{{ item.etiqueta }}</span
       ><app-icon class="chevron" name="chevron" />
     </a>
     } }
   </nav>
-  <p class="sidebar-footer">REBOLSYS · Real Bolognesi<br />Huaraz, Perú</p>
+  <footer class="session-panel">
+    @if (sesion.actual(); as s) {
+      <div class="session-identity">
+        <app-icon name="user" />
+        <div>
+          <strong [title]="s.usuario">{{ s.usuario }}</strong>
+          <span>{{ s.roles?.join(', ') || 'Sesión activa' }}</span>
+          @if (s.idTurno) { <span>Turno #{{ s.idTurno }} abierto</span> }
+        </div>
+      </div>
+      <button class="logout-button" type="button" [disabled]="cerrandoSesion()" (click)="cerrarSesion()">
+        <app-icon name="arrow-right" />
+        <span>{{ cerrandoSesion() ? 'Cerrando sesión…' : 'Cerrar sesión' }}</span>
+      </button>
+    } @else if (sesion.error()) {
+      <p class="session-error" role="alert">{{ sesion.error() }}</p>
+      <button class="logout-button" type="button" (click)="reintentarSesion()">Reintentar sesión</button>
+    }
+    @if (errorSalida()) { <p class="session-error" role="alert">{{ errorSalida() }}</p> }
+    <p class="sidebar-footer">REBOLSYS · Real Bolognesi<br />Huaraz, Perú</p>
+  </footer>
 </aside>
+
+@if (configuracion(); as grupo) {
+  <section #submenu id="configuracion-submenu" class="submenu no-print" popover="auto"
+    aria-labelledby="titulo-configuracion" [style.top.px]="submenuTop()" (toggle)="cambioSubmenu($event)">
+    <header class="submenu-heading">
+      <h2 id="titulo-configuracion">{{ grupo.etiqueta }}</h2>
+      <button type="button" popovertarget="configuracion-submenu" popovertargetaction="hide" aria-label="Cerrar configuraciones">
+        <app-icon name="close" />
+      </button>
+    </header>
+    <nav aria-label="Configuraciones">
+      @for (hijo of grupo.hijos; track hijo.ruta) {
+        <a [routerLink]="hijo.ruta" routerLinkActive="active" (click)="salirDelMenu()">
+          <app-icon [name]="hijo.icono" /><span>{{ hijo.etiqueta }}</span><app-icon class="submenu-chevron" name="chevron" />
+        </a>
+      }
+    </nav>
+  </section>
+}

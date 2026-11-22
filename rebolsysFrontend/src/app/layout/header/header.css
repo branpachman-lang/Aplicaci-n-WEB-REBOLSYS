@@ -1,6 +1,6 @@
 .topbar {
-  min-height: 104px;
-  padding: 24px 30px;
+  min-height: 82px;
+  padding: 18px 30px;
   background: var(--azul);
   color: white;
   display: flex;
@@ -39,21 +39,5 @@ h1 {
 @media (max-width: 550px) {
   h1 {
     font-size: 18px;
-  }
-}
-.session-user {
-  font-size: 13px;
-  text-align: right;
-  overflow-wrap: anywhere;
-}
-.session-user small {
-  display: block;
-  font-size: 11px;
-  opacity: 0.8;
-}
-@media (max-width: 650px) {
-  .session-user {
-    font-size: 11px;
-    max-width: 110px;
   }
 }
