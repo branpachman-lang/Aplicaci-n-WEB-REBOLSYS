@@ -1,7 +1,25 @@
+:host { display: block; }
+.opciones { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.filtros { display: flex; flex-wrap: wrap; align-items: end; gap: .75rem 1rem; margin-block: 1rem; padding: 1rem; }
+.filtros .field { flex: 1 1 145px; }
+.opcion-check { display: flex; align-items: center; gap: .5rem; padding-block: .5rem; }
+.resultado { margin-block: 1rem; }
+.cabecera { padding: 1rem; display: flex; align-items: start; justify-content: space-between; gap: 1rem; }
+.cabecera h3 { margin: .5rem 0; }
+.cabecera p { margin: 0; }
+.numero { text-align: right; white-space: nowrap; }
+.totales { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: .75rem; padding: 0 1rem; }
+.totales div { background: var(--lavanda); border-radius: .5rem; padding: .75rem; }
+.totales dd { margin: .35rem 0 0; font-weight: 700; }
+.alerta { color: var(--danger, #a82319); }
+.paginacion { justify-content: end; padding: 1rem; }
+.solo-impresion { display: none; }
+
 /* ===== BOLETA DE IMPRESIÓN (80 mm) ===== */
 .boleta { display: none; }
 
 @media print {
+  .no-print { display: none !important; }
   .resultado { display: none !important; }
 
   .boleta {
@@ -31,29 +49,4 @@
   .boleta .meta { margin: 3mm 0; padding: 2mm 0; border-top: .2mm dashed #000; border-bottom: .2mm dashed #000; font-size: 7.8pt; }
   .boleta .kv { display: flex; justify-content: space-between; gap: 3mm; padding: .5mm 0; }
   .boleta .kv .k { flex: 0 0 auto; color: #222; }
-  .boleta .kv .v { text-align: right; font-weight: 600; overflow-wrap: anywhere; }
-
-  .boleta .sec { margin: 3.5mm 0 1.5mm; padding-bottom: 1mm; text-align: center; font-size: 7.2pt; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; border-bottom: .2mm solid #000; }
-
-  .boleta .neto { display: flex; justify-content: space-between; align-items: baseline; margin-top: 2mm; padding: 1.8mm 1.5mm; border: .35mm solid #000; outline: .2mm solid #000; outline-offset: .7mm; }
-  .boleta .neto span { font-size: 8pt; font-weight: 700; letter-spacing: .1em; }
-  .boleta .neto strong { font: 700 12pt/1 Georgia, 'Times New Roman', serif; }
-
-  .boleta .th, .boleta .tr { display: grid; grid-template-columns: 1fr 17mm 21mm; gap: 1.5mm; align-items: start; }
-  .boleta .th { padding: 1mm 0; font-size: 7pt; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; border-bottom: .2mm solid #000; }
-  .boleta .tr { padding: 1.2mm 0; font-size: 8pt; border-bottom: .2mm dotted #666; break-inside: avoid; }
-  .boleta .n { text-align: right; white-space: nowrap; }
-  .boleta .m { overflow-wrap: anywhere; }
-
-  .boleta .reg { padding: 2mm 0; border-bottom: .2mm dashed #000; break-inside: avoid; }
-  .boleta .reg-t { display: flex; justify-content: space-between; align-items: baseline; gap: 2mm; margin-bottom: 1mm; }
-  .boleta .reg-t strong { font: 700 9pt/1.2 Georgia, 'Times New Roman', serif; overflow-wrap: anywhere; }
-  .boleta .reg-t span { font-size: 7.5pt; text-align: right; }
-  .boleta .alerta .k, .boleta .alerta .v { font-weight: 800; text-decoration: underline; }
-
-  .boleta .vacio { margin: 0; padding: 4mm 0; text-align: center; font-style: italic; }
-  .boleta .total { margin-top: 3mm; text-align: center; font-size: 7.8pt; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
-  .boleta .pie { margin-top: 3mm; text-align: center; font-size: 7pt; color: #222; }
-  .boleta .pie .fin { margin-bottom: 1.2mm; font-weight: 700; letter-spacing: .3em; }
-  .boleta .pie .firma { margin-top: 1mm; font-family: Georgia, 'Times New Roman', serif; font-style: italic; }
-}
+  .boleta .kv .v { text-align: right; font-weight:
