@@ -22,13 +22,14 @@ describe('Comprobantes de reservas',()=>{
     api['simular']=vi.fn(()=>of({...emision,codigoRespuesta:'SIMULACION_LOCAL',xmlDisponible:false}));
     api['cuentaVenta']=vi.fn(()=>of({...cuenta.cuentas[0],idVenta:4}));
     api['emitirVenta']=vi.fn(()=>of({...doc,idVenta:4}));
-    const clientes={obtener:vi.fn(()=>of({idCliente:1,persona})),registrar:vi.fn(()=>of({idCliente:2,persona})),buscarPorDocumento:vi.fn()};
-    await TestBed.configureTestingModule({imports:[ComprobanteDialog],providers:[provideHttpClient(),{provide:ComprobanteService,useValue:api},{provide:ReservaService,useValue:{cuenta:()=>of(cuenta)}},{provide:ClienteService,useValue:clientes}]}).overrideComponent(ComprobanteDialog,{remove:{imports:[EntregaComprobante]},add:{imports:[EntregaStub]}}).compileComponents();
+    const clientes={obtener:vi.fn(()=>of({idCliente:1,persona})),registrar:vi.fn(()=>of({idCliente:2,persona})),buscarPorDocumento:vi.fn().mockReturnValue(throwError(()=>new HttpErrorResponse({status:404})))};
+    const reservas={cuenta:vi.fn(()=>of(cuenta)),crear:vi.fn()};
+    await TestBed.configureTestingModule({imports:[ComprobanteDialog],providers:[provideHttpClient(),{provide:ComprobanteService,useValue:api},{provide:ReservaService,useValue:reservas},{provide:ClienteService,useValue:clientes}]}).overrideComponent(ComprobanteDialog,{remove:{imports:[EntregaComprobante]},add:{imports:[EntregaStub]}}).compileComponents();
     const f=TestBed.createComponent(ComprobanteDialog);
     if (venta) f.componentRef.setInput('venta',{idVenta:4,idCliente:1});
     else f.componentRef.setInput('reserva',{idReserva:1,idCliente:1,idUsuario:130,titular:'Cliente Simulado',detalles:[],cuenta});
     f.componentRef.setInput('catalogos',{documentos:[{id:1,nombre:'DNI',codigoSunat:'1'},{id:2,nombre:'RUC',codigoSunat:'6'}],pagos:[],ocupantes:[],usuarios:[{id:130,nombre:'Recepción'}],turnosAbiertos:[{idTurno:101,idUsuario:130,usuario:'Recepción'}]});
-    f.detectChanges();return {f,c:f.componentInstance,api,clientes};
+    f.detectChanges();return {f,c:f.componentInstance,api,clientes,reservas};
   }
   it('emite boleta al titular sin registrar otro pago ni crear otro cliente',async()=>{
     const {c,api,clientes}=await fixture();c.emitir();
@@ -41,6 +42,70 @@ describe('Comprobantes de reservas',()=>{
     expect(api.emitir).not.toHaveBeenCalled();expect(c.error()).toContain('RUC');
     c.otroReceptor();c.receptor={...persona,idTipoDocumento:2,numeroDocumento:'20000000001',empresa:true,razonSocial:'Empresa simulada',nombres:null,apellidos:null,direccionFiscal:'Dirección de prueba'};c.emitir();
     expect(clientes.registrar).toHaveBeenCalledTimes(1);expect(api.emitir).toHaveBeenCalledWith(1,expect.objectContaining({tipo:'FACTURA',idClienteReceptor:2}));
+    expect(clientes.registrar).toHaveBeenCalledWith(expect.objectContaining({idTipoDocumento:2,numeroDocumento:'20000000001',empresa:true,razonSocial:'Empresa simulada',nombres:null,apellidos:null}));
+  });
+  it('al elegir factura mantiene al titular con DNI y abre un receptor identificado con RUC',async()=>{
+    const {c,f}=await fixture();
+    c.tipo='FACTURA';c.cambiarTipo();f.detectChanges();
+    expect(c.idCliente).toBeNull();expect(c.receptor.idTipoDocumento).toBe(2);
+    expect(c.receptor.numeroDocumento).toBe('');expect(c.titular()?.persona.numeroDocumento).toBe('12345678');
+    expect(c.reserva()?.idCliente).toBe(1);expect(c.documentosReceptor().map(d=>d.codigoSunat)).toEqual(['6']);
+    expect(f.nativeElement.textContent).toContain('Titular de la reserva');
+    expect(f.nativeElement.textContent).toContain('Datos del receptor de la factura');
+  });
+  it('reutiliza un RUC existente al emitir sin crear otro cliente, reserva o pago',async()=>{
+    const {c,api,clientes,reservas}=await fixture();const original=structuredClone(c.reserva());
+    c.tipo='FACTURA';c.cambiarTipo();c.cambiarNumero('20123456789');
+    c.receptor.razonSocial='Nombre ingresado';
+    clientes.buscarPorDocumento.mockReturnValue(of({idCliente:22,datos:{...c.receptor,razonSocial:'Empresa registrada SAC'}}));
+    c.emitir();
+    expect(clientes.buscarPorDocumento).toHaveBeenCalledWith(2,'20123456789');
+    expect(clientes.registrar).not.toHaveBeenCalled();expect(reservas.crear).not.toHaveBeenCalled();
+    expect(api.emitir).toHaveBeenCalledWith(1,expect.objectContaining({tipo:'FACTURA',idClienteReceptor:22}));
+    expect(c.receptor.razonSocial).toBe('Empresa registrada SAC');expect(c.reserva()).toEqual(original);
+  });
+  it('distingue al contribuyente con RUC 10 y conserva los nombres cuando contiene el DNI del titular',async()=>{
+    const {c}=await fixture();c.tipo='FACTURA';c.cambiarTipo();c.cambiarNumero('10123456789');
+    expect(c.receptor.empresa).toBe(false);expect(c.receptor.nombres).toBe(persona.nombres);
+    expect(c.receptor.apellidos).toBe(persona.apellidos);expect(c.receptor.fechaNacimiento).toBe(persona.fechaNacimiento);
+    expect(c.validarReceptor()).toBe('');expect(c.idCliente).toBeNull();
+    c.cambiarNumero('10987654321');expect(c.receptor.nombres).toBe('');expect(c.receptor.fechaNacimiento).toBeNull();
+  });
+  it('al cambiar de RUC limpia los datos fiscales anteriores y reconoce persona jurídica',async()=>{
+    const {c}=await fixture();c.tipo='FACTURA';c.cambiarTipo();c.cambiarNumero('20123456789');
+    expect(c.receptor.empresa).toBe(true);c.receptor.razonSocial='Receptor anterior';c.receptor.direccionFiscal='Dirección anterior';
+    c.cambiarNumero('20987654321');
+    expect(c.receptor.razonSocial).toBe('');expect(c.receptor.direccionFiscal).toBe('');
+    expect(c.titular()?.persona).toEqual(persona);
+  });
+  it('volver a boleta recupera el DNI original del titular',async()=>{
+    const {c}=await fixture();c.tipo='FACTURA';c.cambiarTipo();c.cambiarNumero('20123456789');
+    c.tipo='BOLETA';c.cambiarTipo();
+    expect(c.idCliente).toBe(1);expect(c.receptor).toEqual(persona);
+  });
+  it('un RUC incompleto no dispara búsquedas ni emisiones',async()=>{
+    const {c,clientes,api}=await fixture();c.tipo='FACTURA';c.cambiarTipo();c.cambiarNumero('20123');c.buscar();c.emitir();
+    expect(c.error()).toContain('11');expect(clientes.buscarPorDocumento).not.toHaveBeenCalled();
+    expect(clientes.registrar).not.toHaveBeenCalled();expect(api.emitir).not.toHaveBeenCalled();
+  });
+  it('un fallo al buscar el receptor no se trata como un receptor nuevo',async()=>{
+    const {c,clientes,api}=await fixture();c.tipo='FACTURA';c.cambiarTipo();c.cambiarNumero('20123456789');c.receptor.razonSocial='Empresa';
+    clientes.buscarPorDocumento.mockReturnValue(throwError(()=>new HttpErrorResponse({status:503})));
+    c.emitir();expect(clientes.registrar).not.toHaveBeenCalled();expect(api.emitir).not.toHaveBeenCalled();
+    expect(c.ocupado()).toBe(false);expect(c.emisionFijada()).toBe(false);
+  });
+  it('una confirmación incierta conserva también al receptor y bloquea su sustitución',async()=>{
+    const {c,api}=await fixture();api.emitir.mockReturnValueOnce(throwError(()=>new HttpErrorResponse({status:503})));
+    c.emitir();c.otroReceptor();c.cambiarNumero('20123456789');
+    expect(c.idCliente).toBe(1);expect(c.receptor).toEqual(persona);c.emitir();
+    expect(api.emitir.mock.calls[1]).toEqual(api.emitir.mock.calls[0]);
+  });
+  it('reintentar una factura para un receptor recién registrado no repite su registro',async()=>{
+    const {c,api,clientes}=await fixture();c.tipo='FACTURA';c.cambiarTipo();c.cambiarNumero('20123456789');
+    c.receptor.razonSocial='Empresa nueva';api.emitir.mockReturnValueOnce(throwError(()=>new HttpErrorResponse({status:503})));
+    c.emitir();expect(c.idCliente).toBe(2);expect(c.emisionFijada()).toBe(true);c.emitir();
+    expect(clientes.registrar).toHaveBeenCalledTimes(1);expect(clientes.buscarPorDocumento).toHaveBeenCalledTimes(1);
+    expect(api.emitir.mock.calls[1]).toEqual(api.emitir.mock.calls[0]);
   });
   it('reutiliza la misma cuenta y receptor después de perder la confirmación interna',async()=>{
     const {c,api}=await fixture();api.emitir.mockReturnValueOnce(throwError(()=>new HttpErrorResponse({status:503})));

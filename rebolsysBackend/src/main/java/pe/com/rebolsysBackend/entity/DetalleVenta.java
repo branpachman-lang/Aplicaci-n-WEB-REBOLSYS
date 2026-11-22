@@ -2,10 +2,8 @@ package pe.com.rebolsysBackend.entity;
 
 import jakarta.persistence.*;
 import java.math.BigDecimal;
-import java.time.*;
 import java.util.*;
 import lombok.*;
-import pe.com.rebolsysBackend.enums.*;
 
 @Entity
 @Table(name = "detalle_venta")

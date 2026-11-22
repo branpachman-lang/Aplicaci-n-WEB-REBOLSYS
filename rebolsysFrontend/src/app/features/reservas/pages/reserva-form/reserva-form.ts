@@ -107,7 +107,6 @@ export class ReservaForm {
   private readonly alertaErrorDisponibilidad = notificarCambios(this.errorDisponibilidad, 'error');
   private consultaDisponibilidad = 0;
   private solicitudApi: RegistroReservaApi | null = null;
-  private clavePago = generarClaveOperacion();
   private pagoEnviado: ConfirmacionPago | null = null;
   form = this.fb.group({
     cliente: this.fb.group({

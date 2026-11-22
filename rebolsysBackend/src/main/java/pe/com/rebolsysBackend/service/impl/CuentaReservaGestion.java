@@ -207,12 +207,15 @@ public class CuentaReservaGestion {
   }
 
   public void validarSalida(Reserva r) {
+    exigir(salidaLiquidada(r), "Liquida el saldo de alojamiento y consumos antes del check-out");
+  }
+
+  public boolean salidaLiquidada(Reserva r) {
     var principal = principal(r);
-    BigDecimal pendiente = principal.map(this::saldo).orElseGet(() -> alojamiento(r));
-    for (var c : cuentas.cuentasReserva(r.getIdReserva()))
-      if (c.getVenta() != null) pendiente = pendiente.add(saldo(c));
-    exigir(
-        pendiente.signum() == 0, "Liquida el saldo de alojamiento y consumos antes del check-out");
+    if (principal.map(this::saldo).orElseGet(() -> alojamiento(r)).signum() != 0) return false;
+    return cuentas.cuentasReserva(r.getIdReserva()).stream()
+        .filter(c -> c.getVenta() != null)
+        .allMatch(c -> saldo(c).signum() == 0);
   }
 
   public void cancelarDetalle(DetalleReserva d) {

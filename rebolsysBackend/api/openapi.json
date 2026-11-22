@@ -4565,6 +4565,8 @@
             "in": "query",
             "required": true,
             "schema": {
+              "minimum": 0,
+              "exclusiveMinimum": true,
               "type": "integer",
               "format": "int64"
             }
@@ -4574,6 +4576,8 @@
             "in": "query",
             "required": true,
             "schema": {
+              "maxLength": 50,
+              "minLength": 1,
               "type": "string"
             }
           }

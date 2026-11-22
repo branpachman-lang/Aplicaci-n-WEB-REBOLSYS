@@ -5,7 +5,6 @@ import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
 import java.time.*;
 import java.util.*;
-import pe.com.rebolsysBackend.enums.*;
 
 public record ReservaDetalleRegistroDTO(
     @NotNull @Positive Long idHabitacion,

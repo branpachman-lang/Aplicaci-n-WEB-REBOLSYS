@@ -112,14 +112,6 @@ td .pending-text {
   background: white;
   padding: 5px;
 }
-.add-reservation {
-  text-align: center;
-  margin: 24px 0 16px;
-}
-.add-reservation .button {
-  padding: 15px 24px;
-  font-size: 17px;
-}
 .list-note {
   text-align: center;
   color: #666;

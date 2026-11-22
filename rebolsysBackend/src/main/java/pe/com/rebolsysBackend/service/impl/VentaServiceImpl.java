@@ -3,7 +3,6 @@ package pe.com.rebolsysBackend.service.impl;
 import static pe.com.rebolsysBackend.service.impl.ReglasPropuesta.*;
 
 import java.math.*;
-import java.time.*;
 import java.util.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
@@ -68,6 +67,7 @@ public class VentaServiceImpl implements VentaService {
           reservas
               .bloquear(venta.idDetalleReserva())
               .orElseThrow(() -> new RecursoNoEncontradoException("La estancia no existe"));
+      entityManager.refresh(d);
       exigir(
           d.getEstadoDetalle() == EstadoReserva.EN_CURSO,
           "La venta a reserva requiere una estancia en curso");

@@ -27,6 +27,7 @@ import { Icon } from "../../../../shared/components/icono/icono";
 import { MarcaHospedaje } from '../../../../shared/components/marca-hospedaje/marca-hospedaje';
 import { ClienteService } from "../../../clientes/services/cliente-service";
 import { ClienteDatos } from "../../../clientes/models/cliente.model";
+import { tipoDocumento } from '../../../clientes/utils/persona-validacion';
 import { CuentaDocumento } from "../../models/reserva-api.model";
 import { Emision, PrepararEmision } from "../../models/emision.model";
 import { ReservaResumen, ReservaService } from "../../services/reserva-service";
@@ -70,6 +71,7 @@ export class ComprobanteDialog implements OnInit {
   turno: number | null = null;
   tipo = "BOLETA";
   idCliente: number | null = null;
+  titular = signal<{ idCliente: number; persona: ClienteDatos } | null>(null);
   receptor: ClienteDatos = {
     idTipoDocumento: null,
     numeroDocumento: "",
@@ -137,6 +139,7 @@ export class ComprobanteDialog implements OnInit {
           this.seleccion.set(venta?.idVenta ?? 0);
           this.configuracion.set(config);
           if (cliente) {
+            this.titular.set({ idCliente: cliente.idCliente, persona: { ...cliente.persona } });
             this.receptor = { ...cliente.persona };
             this.idCliente = cliente.idCliente;
             this.direccion = cliente.persona.direccionFiscal ?? '';
@@ -166,16 +169,15 @@ export class ComprobanteDialog implements OnInit {
       this.cargarEstado(cuenta.idCuenta);
   }
   buscar() {
-    if (
-      !this.receptor.idTipoDocumento ||
-      !this.receptor.numeroDocumento.trim()
-    ) {
-      this.error.set("Selecciona el documento y escribe su número.");
+    if (this.ocupado() || this.emisionFijada()) return;
+    const error = this.validarDocumentoReceptor();
+    if (error) {
+      this.error.set(error);
       return;
     }
     this.ocupado.set(true);
     this.error.set("");
-    const tipo = this.receptor.idTipoDocumento,
+    const tipo = this.receptor.idTipoDocumento!,
       numero = this.receptor.numeroDocumento.trim();
     this.clientes
       .buscarPorDocumento(tipo, numero)
@@ -191,19 +193,20 @@ export class ComprobanteDialog implements OnInit {
         error: (e) => {
           this.ocupado.set(false);
           this.idCliente = null;
-          this.error.set(
-            e.status === 404
-              ? "No existe un receptor con ese documento. Completa sus datos para registrarlo."
-              : mensajeError(e),
-          );
+          if (e.status === 404) this.aviso.set('El receptor aún no está registrado. Completa sus datos para emitir el comprobante.');
+          else this.error.set(mensajeError(e));
         },
       });
   }
   otroReceptor() {
+    if (this.ocupado() || this.emisionFijada()) return;
     this.idCliente = null;
     this.receptor = {
-      ...this.receptor,
+      idTipoDocumento: this.tipo === 'FACTURA'
+        ? this.catalogos().documentos.find(d => d.codigoSunat === '6')?.id ?? null
+        : this.catalogos().documentos.find(d => d.codigoSunat === '1')?.id ?? null,
       numeroDocumento: "",
+      empresa: false,
       nombres: "",
       apellidos: "",
       razonSocial: "",
@@ -213,11 +216,63 @@ export class ComprobanteDialog implements OnInit {
       telefono: null,
     };
     this.direccion = "";
+    this.error.set('');
     this.aviso.set(
       "Completa y busca el documento; si no existe, se registrará al emitir.",
     );
   }
-  validarReceptor() {
+  documentosReceptor() {
+    return this.catalogos().documentos.filter(d => this.tipo !== 'FACTURA' || d.codigoSunat === '6');
+  }
+  esRuc(id = this.receptor.idTipoDocumento) {
+    return tipoDocumento(this.catalogos().documentos.find(d => d.id === id)) === 'RUC';
+  }
+  nombreTitular() {
+    const persona = this.titular()?.persona;
+    return persona?.empresa ? persona.razonSocial : `${persona?.nombres ?? ''} ${persona?.apellidos ?? ''}`.trim();
+  }
+  usarTitular() {
+    const titular = this.titular();
+    if (!titular || this.ocupado() || this.emisionFijada()) return;
+    if (this.tipo === 'FACTURA' && !this.esRuc(titular.persona.idTipoDocumento)) return;
+    this.idCliente = titular.idCliente;
+    this.receptor = { ...titular.persona };
+    this.direccion = titular.persona.direccionFiscal ?? '';
+    this.error.set('');
+    this.aviso.set('El comprobante se emitirá al titular.');
+  }
+  cambiarTipo() {
+    if (this.ocupado() || this.emisionFijada()) return;
+    this.error.set('');
+    if (this.tipo === 'FACTURA' && !this.esRuc()) {
+      this.otroReceptor();
+      this.aviso.set('Ingresa el RUC de quien recibirá la factura. La reserva y sus huéspedes conservan sus documentos.');
+    } else if (this.tipo === 'BOLETA' && this.titular()) this.usarTitular();
+  }
+  cambiarDocumento() {
+    if (this.ocupado() || this.emisionFijada() || this.idCliente !== null) return;
+    this.cambiarNumero('');
+  }
+  cambiarNumero(numero: string) {
+    if (this.ocupado() || this.emisionFijada() || this.idCliente !== null) return;
+    const documento = this.receptor.idTipoDocumento;
+    const empresa = this.esRuc() && numero.startsWith('20');
+    this.receptor = { idTipoDocumento: documento, numeroDocumento: numero, empresa,
+      nombres: '', apellidos: '', fechaNacimiento: null, razonSocial: '', direccionFiscal: '', correo: null, telefono: null };
+    this.direccion = '';
+    this.error.set('');
+    this.aviso.set('');
+    const titular = this.titular()?.persona;
+    // Un RUC 10 que contiene el DNI del titular conserva sus nombres como ayuda de entrada.
+    if (this.esRuc() && /^10\d{9}$/.test(numero) && titular && !titular.empresa
+        && tipoDocumento(this.catalogos().documentos.find(d => d.id === titular.idTipoDocumento)) === 'DNI'
+        && numero.slice(2, 10) === titular.numeroDocumento) {
+      this.receptor.nombres = titular.nombres;
+      this.receptor.apellidos = titular.apellidos;
+      this.receptor.fechaNacimiento = titular.fechaNacimiento;
+    }
+  }
+  private validarDocumentoReceptor() {
     const d = this.catalogos().documentos.find(
       (d) => d.id === this.receptor.idTipoDocumento,
     );
@@ -236,6 +291,12 @@ export class ComprobanteDialog implements OnInit {
         !/^\d{11}$/.test(this.receptor.numeroDocumento.trim()))
     )
       return "Para factura se requiere un receptor con RUC de 11 dígitos.";
+    return '';
+  }
+  validarReceptor() {
+    const error = this.validarDocumentoReceptor();
+    if (error) return error;
+    const d = this.catalogos().documentos.find(d => d.id === this.receptor.idTipoDocumento)!;
     if (this.receptor.empresa && d.codigoSunat !== "6")
       return "Una empresa debe identificarse con RUC.";
     return this.receptor.empresa
@@ -278,10 +339,19 @@ export class ComprobanteDialog implements OnInit {
         : null,
       direccionFiscal: this.receptor.direccionFiscal?.trim() || null,
     };
-    (this.idCliente
-      ? of({ idCliente: this.idCliente })
-      : this.clientes.registrar(persona)
-    )
+    const receptor = this.idCliente ? of({ idCliente: this.idCliente })
+      : this.clientes.buscarPorDocumento(persona.idTipoDocumento!, persona.numeroDocumento).pipe(
+          catchError(e => e.status === 404 ? of(null) : throwError(() => e)),
+          concatMap(existente => {
+            if (existente?.idCliente) {
+              this.receptor = { ...existente.datos };
+              this.direccion = existente.datos.direccionFiscal ?? '';
+              return of({ idCliente: existente.idCliente });
+            }
+            return this.clientes.registrar(persona);
+          }),
+        );
+    receptor
       .pipe(
         concatMap((cliente) => {
           this.idCliente = cliente.idCliente;
