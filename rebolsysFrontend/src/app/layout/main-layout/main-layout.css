@@ -3,7 +3,7 @@
   min-width: 0;
 }
 .app-shell {
-  --sidebar-width: 280px;
+  --sidebar-width: 260px;
   min-height: 100vh;
   min-width: 0;
   display: grid;
@@ -28,7 +28,7 @@ main {
 }
 @media (min-width: 1700px) {
   .app-shell {
-    --sidebar-width: 320px;
+    --sidebar-width: 280px;
   }
   main {
     padding: 32px 38px;

@@ -331,7 +331,7 @@
                   <td><strong>{{ h.numeroHabitacion }}</strong></td><td>{{ h.tipoHabitacion }}</td>
                   <td>{{ fecha(h.fechaSalida) }}</td><td><span [class]="'estado ' + h.estado">{{ texto(h.estado) }}</span></td>
                   <td>{{ h.responsable?.usuario ?? 'Sin asignar' }}</td>
-                  <td><div class="acciones-tabla">
+                  <td><div class="acciones-tabla acciones-tabla-habitacion">
                     @if (permite('INICIAR')) {
                       <button class="button small primary" [disabled]="ocupado() || (!h.puedeIniciarLimpieza && !h.puedeRetomarBorrador)"
                         (click)="iniciar(h)">{{ accionHabitacion(h) }}</button>

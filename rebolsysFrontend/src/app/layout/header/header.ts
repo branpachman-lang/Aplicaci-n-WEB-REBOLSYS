@@ -12,18 +12,9 @@ import { SesionService } from "../../core/services/sesion-service";
   styleUrl: "./header.css",
 })
 export class Header {
-  readonly sesion = inject(SesionService);
+  private readonly sesion = inject(SesionService);
   constructor() {
     this.sesion.cargar().subscribe({ error: () => {} });
-  }
-  reintentarSesion() {
-    this.sesion.cargar().subscribe({ error: () => {} });
-  }
-  cerrarSesion() {
-    this.sesion.cerrar().subscribe({
-      next: () => void this.router.navigateByUrl("/login"),
-      error: () => this.sesion.error.set("No se pudo cerrar la sesión."),
-    });
   }
   readonly menuAbierto = input(false);
   readonly toggleMenu = output<void>();

@@ -1,9 +1,12 @@
 package pe.com.rebolsysBackend.service.impl;
 
 import static pe.com.rebolsysBackend.service.impl.ReglasPropuesta.exigir;
+import static pe.com.rebolsysBackend.config.CacheConfig.TIPOS_HABITACION;
 
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +26,7 @@ public class TipoHabitacionServiceImpl implements TipoHabitacionService {
 
   @Override
   @Transactional
+  @CacheEvict(cacheNames = TIPOS_HABITACION, allEntries = true)
   public TipoHabitacionResponseDTO create(TipoHabitacionRequestDTO r) {
     reglas.validar(r);
     var t = new TipoHabitacion();
@@ -32,6 +36,7 @@ public class TipoHabitacionServiceImpl implements TipoHabitacionService {
 
   @Override
   @Transactional
+  @CacheEvict(cacheNames = TIPOS_HABITACION, allEntries = true)
   public TipoHabitacionResponseDTO update(Long id, TipoHabitacionRequestDTO r) {
     reglas.validar(r);
     var t = bloquear(id);
@@ -42,6 +47,7 @@ public class TipoHabitacionServiceImpl implements TipoHabitacionService {
 
   @Override
   @Transactional
+  @CacheEvict(cacheNames = TIPOS_HABITACION, allEntries = true)
   public TipoHabitacionResponseDTO actualizarParametros(Long id, ParametrosComerciales datos) {
     reglas.validar(datos);
     var tipo = bloquear(id);
@@ -60,12 +66,14 @@ public class TipoHabitacionServiceImpl implements TipoHabitacionService {
 
   @Override
   @Transactional(readOnly = true)
+  @Cacheable(cacheNames = TIPOS_HABITACION, key = "'todos'")
   public List<TipoHabitacionResponseDTO> readAll() {
     return tipos.findAll(Sort.by("nombreTipo")).stream().map(this::respuesta).toList();
   }
 
   @Override
   @Transactional
+  @CacheEvict(cacheNames = TIPOS_HABITACION, allEntries = true)
   public void delete(Long id) {
     var t = bloquear(id);
     exigir(!habitaciones.existsByTipoHabitacionIdTipoHabitacion(id),

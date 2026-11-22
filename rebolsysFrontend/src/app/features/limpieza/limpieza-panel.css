@@ -1,7 +1,7 @@
 :host {
-  --boton-ancho: 10rem;
-  --boton-alto: 2.5rem;
-  --boton-radio: .5rem;
+  --boton-ancho: 7.5rem;
+  --boton-alto: 2rem;
+  --boton-radio: .375rem;
 }
 
 .buc02 { display: grid; gap: 1rem; min-width: 0; container-type: inline-size; }
@@ -26,10 +26,10 @@
   min-block-size: 0;
   border-radius: var(--boton-radio);
   padding: 0 .4rem;
-  font-size: .875rem;
+  font-size: .8125rem;
   line-height: 1.1;
   text-align: center;
-  white-space: nowrap;
+  white-space: normal;
 }
 .modulo-cabecera nav .activa { background: var(--azul); color: white; }
 .ficha-cabecera p { color: var(--muted); }
@@ -46,15 +46,17 @@ textarea { resize: vertical; }
 thead th { background: var(--azul); color: white; }
 td strong { color: var(--azul); }
 .table-scroll { min-width: 0; }
+.buc02 > .table-scroll th, .buc02 > .table-scroll td { padding-block: .65rem; }
 .acciones-tabla {
   display: inline-grid;
   grid-auto-flow: column;
-  grid-auto-columns: var(--boton-ancho);
+  grid-auto-columns: 5.5rem;
   align-items: center;
-  gap: .45rem;
+  gap: .375rem;
   inline-size: max-content;
 }
-.acciones-tabla .button { inline-size: 100%; }
+.acciones-tabla-habitacion { grid-auto-columns: var(--boton-ancho); }
+.acciones-tabla .button { inline-size: 100%; white-space: nowrap; }
 .modulo-cabecera nav, .acciones, .acciones-final, .opciones-estado {
   display: flex;
   flex-wrap: nowrap;

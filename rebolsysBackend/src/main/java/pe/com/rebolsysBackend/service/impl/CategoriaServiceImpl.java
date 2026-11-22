@@ -1,7 +1,11 @@
 package pe.com.rebolsysBackend.service.impl;
 
+import static pe.com.rebolsysBackend.config.CacheConfig.CATEGORIAS;
+
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pe.com.rebolsysBackend.dto.CategoriaRequestDTO;
@@ -23,6 +27,7 @@ public class CategoriaServiceImpl implements CategoriaService {
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = CATEGORIAS, allEntries = true)
     public CategoriaResponseDTO create(CategoriaRequestDTO r) {
         reglas.validar(r);
         if (categoriaRepository.existsByNombreCategoria(r.nombreCategoria().trim())) throw new ReglaNegocioException(
@@ -35,6 +40,7 @@ public class CategoriaServiceImpl implements CategoriaService {
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = CATEGORIAS, allEntries = true)
     public CategoriaResponseDTO update(Long id, CategoriaRequestDTO r) {
         reglas.validar(r);
         var c = buscar(id);
@@ -50,12 +56,14 @@ public class CategoriaServiceImpl implements CategoriaService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CATEGORIAS, key = "'todos'")
     public List<CategoriaResponseDTO> readAll() {
         return categoriaRepository.findAllByOrderByNombreCategoriaAsc().stream().map(this::convertirResponse).toList();
     }
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = CATEGORIAS, allEntries = true)
     public void delete(Long id) {
         var c = buscar(id);
         ReglasPropuesta.exigir(!productos.existsByCategoriaIdCategoria(id),
