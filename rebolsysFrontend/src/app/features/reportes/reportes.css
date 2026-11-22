@@ -1,74 +1,468 @@
-:host { display: block; }
-.opciones { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
-.filtros { display: flex; flex-wrap: wrap; align-items: end; gap: .75rem 1rem; margin-block: 1rem; padding: 1rem; }
-.filtros .field { flex: 1 1 145px; }
-.opcion-check { display: flex; align-items: center; gap: .5rem; padding-block: .5rem; }
-.resultado { margin-block: 1rem; }
-.cabecera { padding: 1rem; display: flex; align-items: start; justify-content: space-between; gap: 1rem; }
-.cabecera h3 { margin: .5rem 0; }
-.cabecera p { margin: 0; }
-.numero { text-align: right; white-space: nowrap; }
-.totales { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: .75rem; padding: 0 1rem; }
-.totales div { background: var(--lavanda); border-radius: .5rem; padding: .75rem; }
-.totales dd { margin: .35rem 0 0; font-weight: 700; }
-.alerta { color: var(--danger, #a82319); }
-.paginacion { justify-content: end; padding: 1rem; }
+/* =====================================================
+   REPORTES - REAL BOLOGNESI MANAGEMENT SUITE
+   Diseño de pantalla e impresión corporativa
+===================================================== */
 
-/* Elementos que solo existen en la hoja impresa */
-.solo-impresion, .banner, .titulo-fila, .pie { display: none; }
+/* ================= ESTILOS DE PANTALLA ================= */
+
+:host {
+  display: block;
+}
+
+.opciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .5rem;
+}
+
+.filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: .75rem 1rem;
+  margin-block: 1rem;
+  padding: 1rem;
+}
+
+.filtros .field {
+  flex: 1 1 145px;
+}
+
+.opcion-check {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding-block: .5rem;
+}
+
+.resultado {
+  margin-block: 1rem;
+}
+
+.cabecera {
+  padding: 1rem;
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.cabecera h3 {
+  margin: .5rem 0;
+}
+
+.cabecera p {
+  margin: 0;
+}
+
+.numero {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.totales {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  gap: .75rem;
+  padding: 0 1rem;
+}
+
+.totales div {
+  background: var(--lavanda);
+  border-radius: .5rem;
+  padding: .75rem;
+}
+
+.totales dd {
+  margin: .35rem 0 0;
+  font-weight: 700;
+}
+
+.alerta {
+  color: var(--danger, #a82319);
+}
+
+.paginacion {
+  justify-content: end;
+  padding: 1rem;
+}
+
+.solo-impresion,
+.print-only {
+  display: none;
+}
+
+/* =====================================================
+   CONFIGURACIÓN DE IMPRESIÓN
+===================================================== */
+
+@page {
+  size: A4 landscape;
+  margin: 9mm;
+}
 
 @media print {
-  @page { size: A4 landscape; margin: 0; }
-  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
-  .no-print { display: none !important; }
-  .solo-impresion { display: inline-block; background: #e6e3fb; color: var(--azul); font-weight: 700;
-    padding: 1mm 3.5mm; border-radius: 3mm; }
-  tr { break-inside: avoid; }
-  .resultado { margin: 0; padding: 0 0 8mm; border: 0; border-radius: 0; box-shadow: none; background: #fff; overflow: visible; }
+  /* CONFIGURACIÓN GENERAL */
 
-  /* ---- Banner superior ---- */
-  .banner { display: flex; position: relative; height: 42mm; overflow: hidden; margin-bottom: 7mm; }
-  .banner::before { content: ''; position: absolute; top: 0; right: 0; bottom: 0; width: 66%; background: #dedaf9;
-    clip-path: polygon(10% 0, 100% 0, 100% 100%, 0 100%); }
-  .banner-marca { position: relative; z-index: 1; padding: 6mm 10mm; }
-  .banner-marca img { height: 24mm; width: auto; display: block; }
-  .banner-marca p { margin: 1mm 0 0; font-size: 11px; color: var(--muted); text-align: center; }
-  .banner-info { position: absolute; z-index: 1; top: 0; right: 0; width: 62%; height: calc(100% - 5mm);
-    background: var(--azul); color: #fff; display: flex; align-items: center; gap: 8mm; padding: 0 12mm 0 22mm;
-    clip-path: polygon(11% 0, 100% 0, 100% 100%, 0 100%); }
-  .banner-info > div { flex: 1; }
-  .banner-info small { display: block; font-size: 13px; }
-  .banner-info strong { display: block; font-size: 20px; line-height: 1.25; }
-  .banner-info ul { margin: 0; padding: 0 0 0 6mm; list-style: none; border-left: 1px solid #ffffff80; font-size: 12px; line-height: 1.6; }
+  :host {
+    display: block !important;
+    color: #191443 !important;
+    background: #fff !important;
+  }
 
-  /* ---- Título + rango de fechas ---- */
-  .titulo-fila { display: flex; align-items: center; justify-content: space-between; margin: 0 10mm 5mm; }
-  .titulo-fila h3 { margin: 0; background: var(--azul); color: #fff; font-size: 18px; padding: 3mm 14mm 3mm 7mm;
-    border-radius: 4mm 14mm 0 0; }
-  .rango { background: #eeecfc; color: var(--azul); font-size: 11px; padding: 2mm 5mm; border-radius: 99px; }
+  *,
+  *::before,
+  *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
 
-  /* ---- Tabla ---- */
-  .table-scroll { overflow: visible; margin: 0 10mm; }
-  table { border-collapse: separate; border-spacing: 0; border: 1px solid #d9d6f3; border-radius: 4mm; font-size: 11px; }
-  thead { display: table-header-group; }
-  th { background: var(--azul); color: #fff; font-size: 11px; padding: 3.5mm 3mm; text-align: center;
-    border-left: 1px solid #ffffff40; }
-  th:first-child { border-left: 0; border-top-left-radius: 3.5mm; }
-  th:last-child { border-top-right-radius: 3.5mm; }
-  tbody th { background: transparent; color: var(--azul); border-left: 0; border-bottom: 1px solid #e7e5f7; }
-  td { padding: 3mm; text-align: center; border-bottom: 1px solid #e7e5f7; border-left: 1px solid #e7e5f7; }
-  td.numero { text-align: right; }
-  tbody tr:nth-child(even) { background: #fff; }
-  tbody tr:last-child > * { border-bottom: 0; }
-  .totales { margin: 0 10mm 5mm; padding: 0; }
-  .totales div { background: #eeecfc; }
+  /* OCULTAR ELEMENTOS DE LA INTERFAZ */
 
-  /* ---- Pie ---- */
-  .pie { display: flex; align-items: center; gap: 4mm; margin: 8mm 10mm 0; break-inside: avoid; }
-  .pie-check { width: 12mm; height: 12mm; border-radius: 50%; background: var(--azul); color: #fff;
-    display: grid; place-items: center; font-size: 18px; }
-  .pie strong { display: block; color: var(--azul); font-size: 14px; }
-  .pie em { display: block; color: var(--azul); font-size: 11px; }
-  .pie::after { content: ''; flex: 1; border-top: 1px solid #cfcbee; }
+  .no-print,
+  .page-heading,
+  nav,
+  form.filtros,
+  .paginacion {
+    display: none !important;
+  }
+
+  .print-only {
+    display: flex !important;
+  }
+
+  /* CONTENEDOR */
+
+  .resultado {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 0 7mm !important;
+    border: 1px solid #d8d2f4 !important;
+    border-radius: 3mm !important;
+    background: #fff !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+  }
+
+  /* =================================================
+     ENCABEZADO CORPORATIVO
+  ================================================= */
+
+  .print-masthead {
+    position: relative !important;
+    isolation: isolate;
+    overflow: hidden !important;
+    min-height: 43mm !important;
+    align-items: center !important;
+    gap: 7mm !important;
+    padding: 7mm 10mm !important;
+    color: #fff !important;
+    background: #fff !important;
+    border-bottom: 3mm solid #dcd5ff !important;
+  }
+
+  /* Ola lavanda y panel azul: colores sólidos, se imprimen gracias a print-color-adjust: exact */
+
+  .print-masthead::before,
+  .print-masthead::after {
+    content: "" !important;
+    position: absolute !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    right: 0 !important;
+    z-index: -1 !important;
+    border-top-left-radius: 35mm 100% !important;
+  }
+
+  .print-masthead::before {
+    left: calc(34% - 8mm) !important;
+    background: #d5ceff !important;
+  }
+
+  .print-masthead::after {
+    left: 34% !important;
+    background: #251777 !important;
+  }
+
+  .print-masthead > * {
+    position: relative !important;
+    z-index: 1 !important;
+  }
+
+  /* LOGO */
+
+  .print-brand {
+    flex: 0 0 34% !important;
+    min-width: 0 !important;
+    padding: 3mm !important;
+    border-radius: 2mm !important;
+    background: #fff !important;
+    color: #20164f !important;
+  }
+
+  .print-brand ::ng-deep .marca {
+    display: flex !important;
+    align-items: center !important;
+    gap: 3mm !important;
+    color: #20164f !important;
+  }
+
+  .print-brand ::ng-deep .marca img {
+    width: 22mm !important;
+    height: 22mm !important;
+    object-fit: contain !important;
+  }
+
+  .print-brand ::ng-deep .marca strong {
+    color: #20164f !important;
+    font-size: 15pt !important;
+  }
+
+  .print-brand ::ng-deep .marca span {
+    color: #625b83 !important;
+    font-size: 8pt !important;
+  }
+
+  /* NOMBRE DEL SISTEMA */
+
+  .print-suite {
+    padding-left: 6mm !important;
+    flex: 1 1 auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 1.5mm !important;
+    color: #fff !important;
+    font-size: 15pt !important;
+    line-height: 1.25 !important;
+  }
+
+  .print-suite strong {
+    color: #fff !important;
+    font-size: 17pt !important;
+    font-weight: 800 !important;
+  }
+
+  /* ACCESOS DECORATIVOS */
+
+  .print-shortcuts {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 2mm !important;
+    padding-left: 6mm !important;
+    border-left: 1px solid #fff !important;
+    color: #fff !important;
+    font-size: 9pt !important;
+  }
+
+  /* =================================================
+     TÍTULO DEL REPORTE
+  ================================================= */
+
+  .cabecera {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 5mm !important;
+    padding: 7mm 9mm 4mm !important;
+    margin: 0 !important;
+  }
+
+  .print-heading-content {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 5mm !important;
+    width: 100% !important;
+  }
+
+  .print-report-title {
+    position: relative !important;
+    isolation: isolate;
+    display: flex !important;
+    align-items: center !important;
+    gap: 4mm !important;
+    min-width: 65mm !important;
+    padding: 4mm 9mm 4mm 5mm !important;
+    color: #fff !important;
+    background: #2c1988 !important;
+    border-radius: 2mm 10mm 0 2mm !important;
+  }
+
+  .print-document-icon {
+    color: #fff !important;
+    font-size: 25pt !important;
+    line-height: 1 !important;
+  }
+
+  .print-report-title h3 {
+    margin: 0 !important;
+    color: #fff !important;
+    font-size: 19pt !important;
+    font-weight: 800 !important;
+  }
+
+  /* PERIODO */
+
+  .print-period {
+    position: relative !important;
+    isolation: isolate;
+    padding: 3mm 6mm !important;
+    color: #29177f !important;
+    background: #eeebff !important;
+    border-radius: 99px !important;
+    font-size: 10pt !important;
+    white-space: nowrap !important;
+  }
+
+  /* =================================================
+     TABLAS
+  ================================================= */
+
+  .table-scroll {
+    overflow: visible !important;
+    width: 100% !important;
+    padding: 0 9mm !important;
+  }
+
+  table {
+    width: 100% !important;
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+    table-layout: auto !important;
+    color: #201a45 !important;
+    font-size: 9pt !important;
+  }
+
+  thead {
+    display: table-header-group !important;
+  }
+
+  /* Encabezados morados */
+
+  thead th {
+    position: relative !important;
+    isolation: isolate;
+    padding: 4mm 3mm !important;
+    color: #fff !important;
+    background: #2c1988 !important;
+    border: 1px solid #fff !important;
+    font-weight: 700 !important;
+    text-align: left !important;
+  }
+
+  tbody td,
+  tbody th {
+    padding: 4mm 3mm !important;
+    border: 1px solid #dedaf3 !important;
+    vertical-align: middle !important;
+    overflow-wrap: anywhere !important;
+    background: #fff !important;
+    color: #201a45 !important;
+  }
+
+  tbody tr:nth-child(even) td,
+  tbody tr:nth-child(even) th {
+    background: #f8f7fd !important;
+  }
+
+  tbody tr {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .solo-impresion {
+    display: inline-block !important;
+    color: #2c1988 !important;
+    font-weight: 800 !important;
+  }
+
+  /* =================================================
+     TOTALES FINANCIEROS
+  ================================================= */
+
+  .totales {
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: 3mm !important;
+    padding: 0 9mm 5mm !important;
+  }
+
+  .totales div {
+    padding: 4mm !important;
+    border: 1px solid #dedaf3 !important;
+    border-radius: 3mm !important;
+    background: #fff !important;
+  }
+
+  .totales dt {
+    color: #514b75 !important;
+    font-size: 8pt !important;
+  }
+
+  .totales dd {
+    color: #251477 !important;
+    font-size: 12pt !important;
+    font-weight: 800 !important;
+  }
+
+  .numero {
+    text-align: right !important;
+    white-space: nowrap !important;
+  }
+
+  /* =================================================
+     PIE DE PÁGINA
+  ================================================= */
+
+  .print-footer {
+    display: flex !important;
+    align-items: center !important;
+    gap: 5mm !important;
+    margin: 14mm 9mm 0 !important;
+    padding: 5mm 0 0 !important;
+    border-top: 1px solid #bcb2f2 !important;
+    color: #2c1988 !important;
+  }
+
+  /* Círculo del pie */
+
+  .print-footer-check {
+    position: relative !important;
+    isolation: isolate;
+    display: grid !important;
+    place-items: center !important;
+    width: 14mm !important;
+    height: 14mm !important;
+    flex: 0 0 14mm !important;
+    color: #fff !important;
+    font-size: 22pt !important;
+    font-weight: 700 !important;
+    background: #2c1988 !important;
+    border-radius: 50% !important;
+  }
+
+  .print-footer-copy {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 1mm !important;
+  }
+
+  .print-footer-copy strong {
+    color: #2c1988 !important;
+    font-size: 13pt !important;
+  }
+
+  .print-footer-copy em {
+    color: #62589d !important;
+    font-size: 9pt !important;
+  }
+
+  /* EVITAR SOMBRAS Y CORTES */
+
+  * {
+    box-shadow: none !important;
+  }
 }
