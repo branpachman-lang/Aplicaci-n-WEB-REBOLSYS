@@ -127,9 +127,8 @@
         <span class="section-number">02</span>
         <div>
           <h2>Habitaciones de la reserva</h2>
-          <p>Agrega los espacios y las fechas de cada estancia.</p>
         </div>
-        <span class="count-chip">{{ habitaciones.length }} seleccionadas</span>
+        <span class="count-chip">{{ habitaciones.length }} {{ habitaciones.length === 1 ? 'habitación' : 'habitaciones' }}</span>
       </div>
       <div formArrayName="habitaciones">
         @for (line of habitaciones.controls; track line; let i = $index) {
@@ -175,9 +174,7 @@
                 <app-icon name="users" />Hasta {{ room.capacidad }} {{
                 room.capacidad === 1 ? "persona" : "personas" }}
                 <span class="separator">·</span> {{ room.tipo }} } @else {
-                <span class="muted"
-                  >Selecciona un espacio para ver sus datos</span
-                >
+                <span class="muted">—</span>
                 }
               </div>
             </div>
@@ -185,6 +182,7 @@
               >Ingreso <span class="required">*</span
               ><input
                 type="datetime-local"
+                [min]="minFechaIngreso()"
                 (change)="avisarErrorHabitacion(i)"
                 formControlName="fechaIngreso" /></label
             ><label class="field"
@@ -209,10 +207,7 @@
                 ><app-icon name="users" />Huéspedes
                 <span class="count-chip">{{ guests(i).length }}</span></strong
               >
-              <p>
-                Puedes registrar los huéspedes ahora o completarlos antes del
-                check-in.
-              </p>
+              <p>Puedes agregarlos ahora o antes del check-in.</p>
             </div>
             <button
               type="button"

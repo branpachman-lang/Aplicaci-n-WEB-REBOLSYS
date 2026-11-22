@@ -43,7 +43,7 @@
   <div class="error-box" role="alert">{{ error() }}</div>
   <button class="button" type="button" (click)="consultar(0)">Reintentar</button>
 } @else if (resultado(); as reporte) {
-  <section class="panel resultado" aria-label="Resultado del reporte">
+  <section class="panel resultado" [class.resultado-financiero]="reporte.vista === 'financiero'" aria-label="Resultado del reporte">
     <div class="cabecera">
       <div>
         <app-marca-hospedaje />
@@ -54,7 +54,13 @@
           <p class="muted">{{ (aplicados().desde | date:'dd/MM/yyyy') || 'Desde el inicio' }}
             · {{ (aplicados().hasta | date:'dd/MM/yyyy') || 'Sin límite final' }}</p>
         }
+        @if (reporte.vista === 'financiero') {
+          <p class="operador">Generado por: <strong>{{ reporte.datos.generadoPor }}</strong></p>
+        }
       </div>
+      @if (reporte.vista === 'financiero') {
+        <span class="moneda">Moneda: PEN</span>
+      }
       <button class="button no-print" type="button" (click)="imprimir()">Imprimir vista</button>
     </div>
     @switch (reporte.vista) {
@@ -76,23 +82,40 @@
       }
       @case ('financiero') {
         <dl class="totales">
-          <div><dt>Cobros de reservas</dt><dd>{{ reporte.datos.cobrosReservas | currency:'PEN':'S/ ' }}</dd></div>
-          <div><dt>Cobros de ventas</dt><dd>{{ reporte.datos.cobrosVentas | currency:'PEN':'S/ ' }}</dd></div>
-          <div><dt>Ingresos manuales</dt><dd>{{ reporte.datos.ingresosManuales | currency:'PEN':'S/ ' }}</dd></div>
-          <div><dt>Egresos</dt><dd>{{ reporte.datos.egresos | currency:'PEN':'S/ ' }}</dd></div>
-          <div><dt>Saldo neto</dt><dd>{{ reporte.datos.neto | currency:'PEN':'S/ ' }}</dd></div>
+          <div class="reserva"><dt>Cobros de reservas</dt><dd>{{ reporte.datos.cobrosReservas | currency:'PEN':'S/ ' }}</dd></div>
+          <div class="venta"><dt>Cobros de ventas</dt><dd>{{ reporte.datos.cobrosVentas | currency:'PEN':'S/ ' }}</dd></div>
+          <div class="ingreso"><dt>Ingresos manuales</dt><dd>{{ reporte.datos.ingresosManuales | currency:'PEN':'S/ ' }}</dd></div>
+          <div class="egreso"><dt>Egresos</dt><dd>{{ reporte.datos.egresos | currency:'PEN':'S/ ' }}</dd></div>
+          <div class="neto"><dt>Flujo neto</dt><dd>{{ reporte.datos.neto | currency:'PEN':'S/ ' }}</dd></div>
         </dl>
+        <div class="subtitulo-financiero">
+          <h4>Todos los movimientos del periodo</h4>
+          <span>{{ reporte.datos.filas.length }} {{ reporte.datos.filas.length === 1 ? 'movimiento' : 'movimientos' }}</span>
+        </div>
         <div class="table-scroll">
-          <table>
-            <thead><tr><th>Concepto</th><th>Medio de pago</th><th class="numero">Importe</th></tr></thead>
+          <table class="tabla-financiera">
+            <thead><tr><th>Fecha</th><th>Hora</th><th>Tipo</th><th>Ref.</th><th>Concepto</th><th>Medio</th>
+              <th class="numero">Ingreso</th><th class="numero">Egreso</th></tr></thead>
             <tbody>
-              @for (fila of reporte.datos.filas; track fila.concepto + fila.medioPago) {
-                <tr><th scope="row">{{ etiqueta(fila.concepto) }}</th><td>{{ fila.medioPago }}</td>
-                  <td class="numero">{{ fila.monto | currency:'PEN':'S/ ' }}</td></tr>
-              } @empty { <tr><td colspan="3">No hay movimientos en el periodo seleccionado.</td></tr> }
+              @for (fila of reporte.datos.filas; track $index) {
+                <tr><td>{{ fila.fecha | date:'dd/MM/yyyy' }}</td><td>{{ fila.fecha | date:'HH:mm' }}</td>
+                  <td [class.alerta]="fila.tipo === 'EGRESOS'">{{ etiquetaMovimiento(fila.tipo) }}</td>
+                  <td>{{ fila.referencia }}</td><td>{{ fila.concepto }}</td><td>{{ fila.medioPago }}</td>
+                  <td class="numero">@if (fila.ingreso > 0) { {{ fila.ingreso | currency:'PEN':'S/ ' }} }</td>
+                  <td class="numero" [class.alerta]="fila.egreso > 0">@if (fila.egreso > 0) { {{ fila.egreso | currency:'PEN':'S/ ' }} }</td></tr>
+              } @empty { <tr><td colspan="8">No hay movimientos en el periodo seleccionado.</td></tr> }
             </tbody>
           </table>
         </div>
+        <div class="resumen-financiero">
+          <div><span>Ingresos totales</span><strong>{{ (reporte.datos.cobrosReservas + reporte.datos.cobrosVentas + reporte.datos.ingresosManuales) | currency:'PEN':'S/ ' }}</strong></div>
+          <div><span>Egresos totales</span><strong class="alerta">{{ reporte.datos.egresos | currency:'PEN':'S/ ' }}</strong></div>
+          <div><span>Flujo neto</span><strong>{{ reporte.datos.neto | currency:'PEN':'S/ ' }}</strong></div>
+        </div>
+        <footer class="pie-impresion">
+          <span>Reporte generado: {{ generadoEn() | date:'dd/MM/yyyy HH:mm' }}</span>
+          <span>Hospedaje Real Bolognesi</span>
+        </footer>
       }
       @case ('cierres-caja') {
         <div class="table-scroll">

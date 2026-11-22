@@ -114,6 +114,12 @@ export class ComprobanteDialog implements OnInit {
   cambiarUsuario() {
     this.turno = this.turnos()[0]?.idTurno ?? null;
   }
+  estadoPago(doc: CuentaDocumento) {
+    return doc.saldo < 0.01 ? 'PAGADO' : 'PENDIENTE DE PAGO';
+  }
+  pagosVerificados(doc: CuentaDocumento) {
+    return doc.pagos.filter(p => p.verificado);
+  }
   ngOnInit() {
     this.usuario = this.catalogos().usuarios?.[0]?.id ?? null;
     this.cambiarUsuario();

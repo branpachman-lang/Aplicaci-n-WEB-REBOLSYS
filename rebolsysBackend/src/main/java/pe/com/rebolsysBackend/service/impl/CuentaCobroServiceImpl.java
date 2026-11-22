@@ -143,11 +143,19 @@ public class CuentaCobroServiceImpl implements CuentaCobroService {
   public CuentaDocumentoDTO documento(Comprobante c) {
     var ps = pagos.findByComprobanteIdComprobante(c.getIdComprobante()).stream()
         .map(p -> new ReservaPagoRespuestaDTO(p.getIdPago(), p.getFormaPago().getIdFormaPago(),
-            p.getTurnoCaja().getIdTurno(), p.getMonto(), p.getNumeroOperacion(), p.getFechaPago())).toList();
+            p.getFormaPago().getNombrePago(), p.getTurnoCaja().getIdTurno(), p.getMonto(),
+            p.getNumeroOperacion(), p.getFechaPago(), Integer.valueOf(1).equals(p.getVerificado()))).toList();
     var ls = lineas.findByComprobanteIdComprobanteOrderByNumeroLinea(c.getIdComprobante()).stream()
         .map(l -> new CuentaLineaDTO(l.getDetalleReserva() == null ? null : l.getDetalleReserva().getIdDetalleReserva(),
             l.getDetalleVenta() == null ? null : l.getDetalleVenta().getIdDetalleVenta(),
             l.getDescripcion(), l.getCantidad(), gestion.total(l))).toList();
+    var detallesEstadia = c.getReserva() != null ? c.getReserva().getDetalles()
+        : c.getVenta() != null && c.getVenta().getDetalleReserva() != null
+            ? java.util.List.of(c.getVenta().getDetalleReserva()) : java.util.List.<DetalleReserva>of();
+    var estadias = detallesEstadia.stream()
+        .filter(d -> d.getEstadoDetalle() != pe.com.rebolsysBackend.enums.EstadoReserva.CANCELADA)
+        .map(d -> new CuentaEstadiaDTO(d.getHabitacion().getNumeroCuarto(), d.getFechaIngreso(), d.getFechaSalida()))
+        .toList();
     var pagado = gestion.pagado(c);
     Long reserva = idReserva(c);
     return new CuentaDocumentoDTO(c.getIdComprobante(), reserva, reserva == null ? null : "R" + reserva,
@@ -155,6 +163,6 @@ public class CuentaCobroServiceImpl implements CuentaCobroService {
         c.getEstadoComprobante(), c.getSerie(), c.getNumeroComprobante(),
         c.getCliente() == null ? null : c.getCliente().getIdPerfil(), c.getReceptorNombre(),
         c.getReceptorNumeroDoc(), c.getFechaEmision(), c.getTotalPagar(), pagado,
-        c.getTotalPagar().subtract(pagado), ls, ps);
+        c.getTotalPagar().subtract(pagado), ls, ps, estadias);
   }
 }

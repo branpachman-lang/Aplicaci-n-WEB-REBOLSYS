@@ -7,17 +7,59 @@
 .cabecera { padding: 1rem; display: flex; align-items: start; justify-content: space-between; gap: 1rem; }
 .cabecera h3 { margin: .5rem 0; }
 .cabecera p { margin: 0; }
+.cabecera .operador { margin-top: .35rem; color: var(--muted); font-size: .92rem; }
+.moneda { margin: 1rem 0 0 auto; color: var(--muted); font-size: .85rem; white-space: nowrap; }
 .numero { text-align: right; white-space: nowrap; }
 .totales { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: .75rem; padding: 0 1rem; }
 .totales div { background: var(--lavanda); border-radius: .5rem; padding: .75rem; }
 .totales dd { margin: .35rem 0 0; font-weight: 700; }
+.totales .egreso { background: #fff4f3; color: #a82319; }
+.totales .neto { background: #eeebff; color: #28177f; }
+.subtitulo-financiero { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; padding: 1.25rem 1rem .6rem; }
+.subtitulo-financiero h4 { margin: 0; }
+.subtitulo-financiero span { color: var(--muted); font-size: .85rem; }
+.tabla-financiera { min-width: 900px; }
+.tabla-financiera th { padding: .8rem .65rem; font-size: .78rem; }
+.tabla-financiera td { padding: .75rem .65rem; font-size: .84rem; }
+.tabla-financiera tbody tr:nth-child(even) { background: #f8f7fc; }
+.resumen-financiero { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin: 1rem; padding: 1rem; border-radius: .6rem; background: #f7f6fc; }
+.resumen-financiero div { display: grid; gap: .4rem; }
+.resumen-financiero span { color: var(--muted); font-size: .85rem; }
+.resumen-financiero strong { font-size: 1.05rem; }
+.pie-impresion { display: none; }
 .alerta { color: var(--danger, #a82319); }
 .paginacion { justify-content: end; padding: 1rem; }
 .solo-impresion { display: none; }
 @media print {
+  @page { size: A4 landscape; margin: 12mm; }
   .no-print { display: none !important; }
   .resultado { margin: 0; overflow: visible; }
+  .resultado-financiero { border: 0; border-radius: 0; box-shadow: none; }
+  .resultado-financiero .cabecera { padding: 0 0 .7rem; border-bottom: 1px solid #dfe0e8; }
+  .resultado-financiero .cabecera h3 { font-size: 18pt; }
+  .resultado-financiero .operador { color: #303044; }
+  .resultado-financiero .moneda { font-size: 8pt; }
+  .resultado-financiero .totales { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .35rem; padding: .6rem 0; }
+  .resultado-financiero .totales div { border: 1px solid #e1deef; border-radius: .35rem; padding: .45rem; font-size: 8pt; }
+  .resultado-financiero .totales dd { font-size: 9pt; }
+  .resultado-financiero .subtitulo-financiero { padding: .65rem 0 .4rem; }
+  .resultado-financiero .tabla-financiera { min-width: 0; table-layout: fixed; }
+  .resultado-financiero .tabla-financiera th { padding: .4rem .3rem; font-size: 8pt; }
+  .resultado-financiero .tabla-financiera td { padding: .38rem .3rem; font-size: 8pt; overflow-wrap: anywhere; }
+  .resultado-financiero .tabla-financiera th:nth-child(1) { width: 12%; }
+  .resultado-financiero .tabla-financiera th:nth-child(2) { width: 7%; }
+  .resultado-financiero .tabla-financiera th:nth-child(3) { width: 10%; }
+  .resultado-financiero .tabla-financiera th:nth-child(4) { width: 11%; }
+  .resultado-financiero .tabla-financiera th:nth-child(5) { width: 20%; }
+  .resultado-financiero .tabla-financiera th:nth-child(6) { width: 12%; }
+  .resultado-financiero .tabla-financiera th:nth-child(7),
+  .resultado-financiero .tabla-financiera th:nth-child(8) { width: 14%; }
+  .resultado-financiero .resumen-financiero { gap: .5rem; margin: .65rem 0; padding: .7rem; }
+  .resultado-financiero .resumen-financiero span { font-size: 7pt; }
+  .resultado-financiero .resumen-financiero strong { font-size: 9pt; }
+  .resultado-financiero .pie-impresion { display: flex; justify-content: space-between; gap: 1rem; margin-top: 1rem; padding-top: .4rem; border-top: 1px solid #e7e7ed; color: #656579; font-size: 7pt; }
   .solo-impresion { display: inline; }
   .table-scroll { overflow: visible; }
+  .tabla-financiera thead { display: table-header-group; }
   tr { break-inside: avoid; }
 }

@@ -69,7 +69,11 @@ public class CuentaReservaServiceImpl implements CuentaReservaService {
               BigDecimal.ZERO,
               gestion.alojamiento(r),
               cargos,
-              List.of()));
+              List.of(),
+              r.getDetalles().stream()
+                  .filter(d -> d.getEstadoDetalle() != EstadoReserva.CANCELADA)
+                  .map(d -> new CuentaEstadiaDTO(d.getHabitacion().getNumeroCuarto(), d.getFechaIngreso(), d.getFechaSalida()))
+                  .toList()));
     }
     cuentas.cuentasReserva(id).forEach(c -> docs.add(documento(c)));
     var total =

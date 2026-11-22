@@ -11,6 +11,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import pe.com.rebolsysBackend.dto.LimpiezaDTO.InformeDetalle;
 import pe.com.rebolsysBackend.dto.ReportesDTO.*;
 import pe.com.rebolsysBackend.enums.EstadoInforme;
+import pe.com.rebolsysBackend.security.SesionOperacionService;
 import pe.com.rebolsysBackend.service.impl.ReportesService;
 import pe.com.rebolsysBackend.service.service.LimpiezaService;
 
@@ -23,6 +24,7 @@ import pe.com.rebolsysBackend.service.service.LimpiezaService;
 public class ReportesController {
   private final ReportesService reportes;
   private final LimpiezaService limpieza;
+  private final SesionOperacionService sesiones;
 
   @GetMapping("/incidencias")
   public Pagina<Incidencia> incidencias(
@@ -44,7 +46,7 @@ public class ReportesController {
   public Financiero financiero(
       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
-    return reportes.financiero(desde, hasta);
+    return reportes.financiero(desde, hasta, sesiones.actual().usuario());
   }
 
   @GetMapping("/cierres-caja")

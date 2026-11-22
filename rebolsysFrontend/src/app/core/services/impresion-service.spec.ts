@@ -1,14 +1,14 @@
 import { TestBed } from '@angular/core/testing';
 import { ImpresionService } from './impresion-service';
 
-describe('Impresión térmica', () => {
+describe('Impresión A4', () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => {
     document.querySelectorAll('iframe').forEach(f => f.remove());
     vi.restoreAllMocks(); vi.clearAllTimers(); vi.useRealTimers();
   });
 
-  it('imprime solo el ticket en un marco de 80 mm y conserva como texto los datos del cliente', async () => {
+  it('imprime solo el comprobante en A4 y conserva como texto los datos del cliente', async () => {
     const imprimir = vi.fn();
     const principal = vi.spyOn(window, 'print').mockImplementation(() => {});
     const agregar = document.body.appendChild.bind(document.body);
@@ -25,7 +25,7 @@ describe('Impresión térmica', () => {
     ticket.textContent = 'Cliente <script>contenido no ejecutable</script>';
     await TestBed.inject(ImpresionService).imprimir(ticket);
     const marco = document.querySelector('iframe')!;
-    expect(marco.contentDocument?.head.textContent).toContain('size:80mm');
+    expect(marco.contentDocument?.head.textContent).toContain('size:A4 portrait');
     expect(marco.contentDocument?.body.textContent).toContain('<script>contenido no ejecutable</script>');
     expect(marco.contentDocument?.scripts).toHaveLength(0);
     expect(imprimir).toHaveBeenCalledTimes(1);

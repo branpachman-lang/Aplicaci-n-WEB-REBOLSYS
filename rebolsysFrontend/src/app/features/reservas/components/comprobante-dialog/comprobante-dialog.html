@@ -43,22 +43,47 @@
       >
     </div>
     @if(documento();as doc){
-    <article class="ticket" data-ticket>
-    <app-marca-hospedaje [mostrarSinConfigurar]="true" />
-    <p class="receipt-number">
-      <strong>{{doc.tipo}} {{doc.serie}}-{{doc.numero}}</strong>
-    </p>
-    <p>{{doc.receptorNombre}} · {{doc.receptorNumeroDoc}}</p>
-    <p class="muted">
-      {{ reserva() ? 'Reserva R' + reserva()!.idReserva : 'Venta V' + venta()!.idVenta }} · {{doc.fechaEmision | date:'dd/MM/yyyy
-      HH:mm'}}
-    </p>
+    <article class="ticket ticket-a4" data-ticket>
+      <div class="factura-encabezado">
+        <app-marca-hospedaje [mostrarSinConfigurar]="true" />
+        <div class="factura-numero">
+          <strong>{{doc.tipo}} INTERNA</strong>
+          <span>{{doc.serie}}-{{doc.numero}}</span>
+          <small>MONEDA: PEN</small>
+        </div>
+      </div>
+      <div class="factura-datos">
+        <section class="factura-receptor">
+          <h3>Datos del {{doc.tipo === 'FACTURA' ? 'receptor' : 'cliente'}}</h3>
+          <strong>{{doc.receptorNombre || 'Consumidor final'}}</strong>
+          @if(doc.receptorNumeroDoc){<span>RUC / documento: {{doc.receptorNumeroDoc}}</span>}
+        </section>
+        <section class="factura-emision">
+          <p><span>Fecha de emisión</span><strong>{{doc.fechaEmision | date:'dd/MM/yyyy HH:mm'}}</strong></p>
+          <p><span>Documento relacionado</span><strong>{{ reserva() ? 'Reserva R' + reserva()!.idReserva : 'Venta V' + venta()!.idVenta }}</strong></p>
+        </section>
+      </div>
+    @if (doc.estadias?.length) {
+      <section class="ticket-seccion ticket-estadia">
+        <h3>Datos de la estadía</h3>
+        @for (estadia of doc.estadias; track $index) {
+          <div class="ticket-estadia-item">
+            <strong>Habitación {{estadia.habitacion}}</strong>
+            <p><span>Check-in</span><span>{{estadia.fechaIngreso | date:'dd/MM/yyyy HH:mm'}}</span></p>
+            <p><span>Check-out</span><span>{{estadia.fechaSalida | date:'dd/MM/yyyy HH:mm'}}</span></p>
+          </div>
+        }
+      </section>
+    }
+    <section class="ticket-seccion ticket-detalle">
+      <h3>Detalle de {{doc.tipo === 'FACTURA' ? 'consumo' : 'servicios'}}</h3>
     <div class="table-scroll">
-      <table>
+      <table class="tabla-comprobante">
         <thead>
           <tr>
             <th>Concepto</th>
             <th>Cant.</th>
+            <th>Precio unitario</th>
             <th>Importe</th>
           </tr>
         </thead>
@@ -67,26 +92,42 @@
           <tr>
             <td>{{l.descripcion}}</td>
             <td>{{l.cantidad}}</td>
+            <td>{{(l.cantidad ? l.total / l.cantidad : l.total) | currency:'PEN':'S/ '}}</td>
             <td>{{l.total | currency:'PEN':'S/ '}}</td>
           </tr>
           }
         </tbody>
       </table>
     </div>
-    @if (emision(); as fiscal) {
-      <p>Valor de venta: {{fiscal.subtotal | currency:'PEN':'S/ '}} · IGV: {{fiscal.igv | currency:'PEN':'S/ '}}</p>
-    }
-    <div class="payment-total">
-      <span>Total con impuesto incluido</span
-      ><strong>{{doc.total | currency:'PEN':'S/ '}}</strong>
+    </section>
+    <div class="payment-total comprobante-totales">
+      @if (doc.tipo === 'FACTURA') {
+        @if (emision(); as fiscal) {
+          <p><span>Valor de venta</span><strong>{{fiscal.subtotal | currency:'PEN':'S/ '}}</strong></p>
+          <p><span>IGV</span><strong>{{fiscal.igv | currency:'PEN':'S/ '}}</strong></p>
+        }
+      }
+      <p class="factura-total-final"><span>{{doc.tipo === 'FACTURA' ? 'Importe total' : 'Total con impuesto incluido'}}</span><strong>{{doc.total | currency:'PEN':'S/ '}}</strong></p>
+      @if (doc.tipo === 'FACTURA' && doc.saldo > 0) {
+        <p><span>Pagado</span><strong>{{doc.pagado | currency:'PEN':'S/ '}}</strong></p>
+        <p><span>Saldo pendiente</span><strong>{{doc.saldo | currency:'PEN':'S/ '}}</strong></p>
+      }
     </div>
-    <p>
-      Pagado: {{doc.pagado | currency:'PEN':'S/ '}} · Saldo: {{doc.saldo |
-      currency:'PEN':'S/ '}}
-    </p>
+    <section class="ticket-seccion ticket-pago">
+      <h3>{{doc.tipo === 'FACTURA' ? 'Condición y medios de pago' : 'Pago'}}</h3>
+      <p class="ticket-estado-pago"><span>Estado</span><strong>{{estadoPago(doc)}}</strong></p>
+      @for (pago of pagosVerificados(doc); track pago.idPago) {
+        <p class="ticket-medio-pago"><span>{{pago.medioPago}}</span>
+          <strong>{{pago.monto | currency:'PEN':'S/ '}}</strong></p>
+      } @empty {
+        <p class="ticket-medio-pago"><span>Medio de pago</span><strong>Por registrar</strong></p>
+      }
+    </section>
     <p class="inline-note">
-      Entorno beta de pruebas. Sin validez tributaria de producción.
+      Documento interno de prueba. Sin validez tributaria de producción.
     </p>
+    <p class="ticket-agradecimiento">Gracias por hospedarse con nosotros.</p>
+    <footer class="factura-pie">Comprobante interno de prueba · Hospedaje Real Bolognesi</footer>
     </article>
     <app-entrega-comprobante [idComprobante]="doc.idCuenta!" />
     <div class="no-print">

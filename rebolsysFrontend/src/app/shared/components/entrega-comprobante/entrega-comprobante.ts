@@ -59,7 +59,7 @@ export class EntregaComprobante {
         const url = URL.createObjectURL(archivo);
         const enlace = document.createElement('a');
         enlace.href = url;
-        enlace.download = `comprobante-${this.idComprobante()}-80mm.pdf`;
+        enlace.download = `comprobante-${this.idComprobante()}-A4.pdf`;
         enlace.click();
         setTimeout(() => URL.revokeObjectURL(url), 30000);
         this.ocupado.set(false);

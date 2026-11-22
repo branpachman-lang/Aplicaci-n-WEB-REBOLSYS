@@ -22,4 +22,5 @@ public record CuentaDocumentoDTO(
     BigDecimal pagado,
     BigDecimal saldo,
     List<CuentaLineaDTO> lineas,
-    List<ReservaPagoRespuestaDTO> pagos) {}
+    List<ReservaPagoRespuestaDTO> pagos,
+    List<CuentaEstadiaDTO> estadias) {}
