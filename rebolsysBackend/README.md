@@ -52,6 +52,15 @@ También se verifican rollback, invalidación al confirmar y continuidad ante fa
 
 ## Comprobantes A4, reportes y correo
 
+La numeración se presenta como `F002-00003848` o `B002-00000001`, respetando la
+serie de comprobantes históricos. Antes de activar F002/B002, registrar las series
+con [V20](src/main/resources/db/iteration/V20__series_f002_b002.sql), sin modificar
+tablas ni documentos emitidos. Consultar [la guía de facturación](API-FACTURACION.md).
+
+Boletas y facturas desglosan IGV de 18% incluido en el precio (S/118 = S/100 +
+S/18), redondeado por línea. El backend valida la tasa y la pantalla la muestra
+antes de preparar la emisión. Se conserva la copia de emisiones ya preparadas.
+
 Las reservas y las ventas permiten generar una boleta o factura interna desde su
 cuenta pagada. El mismo diálogo ofrece **Simular factura o boleta localmente**:
 guarda los importes y el desglose del impuesto en `EMISION_ELECTRONICA`, con estado

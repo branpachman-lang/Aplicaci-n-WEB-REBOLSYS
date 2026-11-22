@@ -66,6 +66,8 @@ export interface CuentaDocumento {
   receptorNumeroDoc?: string | null;
   fechaEmision?: string | null;
   total: number;
+  subtotal?: number;
+  igv?: number;
   pagado: number;
   saldo: number;
   lineas?: {idDetalleReserva:number|null;idDetalleVenta:number|null;descripcion:string;cantidad:number;total:number}[];

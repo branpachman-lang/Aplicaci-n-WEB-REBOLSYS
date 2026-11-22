@@ -1,6 +1,7 @@
 import { Injectable, inject } from "@angular/core";
 import { HttpClient } from "@angular/common/http";
 import { environment } from "../../../../environments/environment";
+import { numeroComprobante } from '../../../core/utils/numero-comprobante';
 import { Pagina } from "../../../core/models/pagina-response";
 import { Venta, VentaRequest, ReservaVenta } from "../models/venta.model";
 import { VentaActualizar } from "../models/venta.model";
@@ -248,7 +249,7 @@ export class VentaService {
           comprobante:
             cuenta?.estado === "EMITIDO"
               ? {
-                  numero: cuenta.serie + "-" + cuenta.numero,
+                  numero: numeroComprobante(cuenta.serie, cuenta.numero),
                   fecha: cuenta.fechaEmision ?? v.fechaRegistro,
                   receptor:
                     cuenta.receptorNombre ??

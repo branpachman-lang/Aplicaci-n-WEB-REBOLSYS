@@ -2,6 +2,13 @@ purpose:
   stands_in_for: API 1.3 de facturación de APIsPerú, exclusivamente los endpoints usados por REBOLSYS.
   unblocks: Verificar autenticación, serialización, beta, envíos, consulta CDR, PDF y fallos sin credenciales reales.
 assumptions:
+  - id: igv-fijo-dieciocho-20261122
+    status: supported
+    claim: En los escenarios ejecutados, boletas y facturas gravadas al 18% conservan el precio final y el cliente recupera el CDR tras timeout sin reenviar.
+    reason: Se ejercitó el cliente HTTP real contra la simulación de Postman y se comprobaron las llamadas registradas.
+    verification: El 2026-11-22 pasaron tres pruebas HTTP con aceptación, rechazo, HTTP 401, PDF y timeout; también pasaron las pruebas de redondeo y comprobantes sobre H2. La emisión externa con la empresa beta configurada permanece sin ejecutar y requiere autorización.
+    source: src/test/java/pe/com/rebolsysBackend/service/impl/FacturacionProveedorHttpTest.java; src/test/java/pe/com/rebolsysBackend/service/impl/DocumentoFiscalBuilderTest.java; .local/facturacion-20261122-sim.ndjson
+    updated_at: '2026-11-22'
   - id: contrato-publico-v1-3
     status: supported
     claim: La especificación pública define bearerAuth, invoice/send con DocumentResponse e invoice/status con StatusResult.

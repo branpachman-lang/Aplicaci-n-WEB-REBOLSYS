@@ -12,6 +12,7 @@ import pe.com.rebolsysBackend.config.FacturacionApisPeruProperties;
 import pe.com.rebolsysBackend.dto.EmisionElectronicaRequestDTO;
 import pe.com.rebolsysBackend.entity.*;
 import tools.jackson.databind.ObjectMapper;
+import pe.com.rebolsysBackend.util.IgvIncluido;
 
 @Service
 @RequiredArgsConstructor
@@ -25,6 +26,8 @@ public class DocumentoFiscalBuilder {
   public Documento construir(Comprobante c,List<ComprobanteDetalle> lineas,BigDecimal saldo,
       EmisionElectronicaRequestDTO request) {
     exigir(!lineas.isEmpty(),"El comprobante no tiene líneas");
+    exigir(request.tasaIgv() != null && request.tasaIgv().compareTo(IgvIncluido.TASA) == 0,
+        "El IGV de boletas y facturas debe ser 18%");
     exigir(c.getReceptorNombre()!=null && !c.getReceptorNombre().isBlank(),"Faltan los datos fijados del receptor");
     exigir(c.getReceptorTipoDoc()!=null && c.getReceptorTipoDoc().matches("[0-9A-Z]"),
         "El receptor necesita un tipo de documento del catálogo SUNAT");
@@ -40,8 +43,8 @@ public class DocumentoFiscalBuilder {
     for (var t:request.tratamientos()) {
       exigir(numeros.contains(t.numeroLinea()),"El tratamiento corresponde a una línea inexistente");
       exigir(impuestos.put(t.numeroLinea(),t)==null,"Hay un tratamiento repetido para la misma línea");
-      exigir("10".equals(t.afectacion()) ? t.tasaIgv().signum()>0 : t.tasaIgv().signum()==0,
-          "Una línea gravada requiere tasa positiva; una exonerada o inafecta requiere tasa cero");
+      exigir("10".equals(t.afectacion()) && t.tasaIgv() != null && t.tasaIgv().compareTo(IgvIncluido.TASA) == 0,
+          "Todas las líneas deben estar gravadas con IGV de 18%");
     }
     var details=new ArrayList<Map<String,Object>>();
     var totales=new HashMap<String,BigDecimal>();
@@ -51,9 +54,8 @@ public class DocumentoFiscalBuilder {
       var tratamiento=impuestos.get(l.getNumeroLinea());
       String afectacion=tratamiento==null?"10":tratamiento.afectacion();
       BigDecimal tasa=tratamiento==null?request.tasaIgv():tratamiento.tasaIgv();
-      BigDecimal bruto=l.getValorUnitario().multiply(l.getCantidad()).add(l.getIgv()).setScale(2,RoundingMode.HALF_UP);
-      BigDecimal base="10".equals(afectacion)
-          ? bruto.divide(BigDecimal.ONE.add(tasa.movePointLeft(2)),2,RoundingMode.HALF_UP) : bruto;
+      BigDecimal bruto=l.getValorUnitario().multiply(l.getCantidad()).setScale(2,RoundingMode.HALF_UP).add(l.getIgv());
+      BigDecimal base=IgvIncluido.base(bruto);
       BigDecimal impuesto=bruto.subtract(base);
       var d=new LinkedHashMap<String,Object>();
       d.put("unidad",l.getDetalleVenta()==null?"ZZ":"NIU");

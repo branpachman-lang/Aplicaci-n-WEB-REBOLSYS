@@ -22,6 +22,13 @@ export class EntregaComprobante {
   readonly abierto = signal(false);
   readonly habilitado = signal(false);
   correo = '';
+  intentoEnvio = signal(false);
+  errorCorreo() {
+    if (!this.intentoEnvio()) return '';
+    return !this.correo.trim() ? 'Ingresa el correo del destinatario.'
+      : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.correo.trim()) || this.correo.length > 254
+        ? 'Ingresa un correo electrónico válido.' : '';
+  }
   private readonly base = environment.apiUrl + '/comprobantes';
 
   constructor() {
@@ -39,6 +46,7 @@ export class EntregaComprobante {
 
   enviar() {
     if (this.ocupado()) return;
+    this.intentoEnvio.set(true);
     if (!this.habilitado()) { this.avisos.mostrar('El envío por correo aún no está habilitado para este hospedaje.', 'advertencia'); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.correo.trim()) || this.correo.length > 254) {
       this.avisos.mostrar('Ingresa un correo válido para recibir el comprobante.', 'advertencia'); return;

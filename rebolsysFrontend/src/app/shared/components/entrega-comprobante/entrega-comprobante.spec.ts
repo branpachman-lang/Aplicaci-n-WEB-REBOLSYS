@@ -50,4 +50,13 @@ describe('Envío de comprobantes', () => {
     expect(TestBed.inject(NotificacionService).actual()?.texto).toContain('Revisa el correo recibido');
     http.expectNone(base + '/correo');
   });
+  it('muestra el error debajo del correo y no envía un destinatario vacío', () => {
+    const f=TestBed.createComponent(EntregaComprobante);f.componentRef.setInput('idComprobante',9);f.detectChanges();
+    http.expectOne(base+'/entrega').flush({correo:'',correoHabilitado:true});
+    f.componentInstance.abierto.set(true);f.componentInstance.enviar();f.detectChanges();
+    const mensaje=f.nativeElement.querySelector('#error-correo-comprobante');
+    expect(mensaje.textContent).toContain('Ingresa el correo');
+    expect(mensaje.parentElement.querySelector('input[type="email"]')).not.toBeNull();
+    http.expectNone(base+'/correo');
+  });
 });

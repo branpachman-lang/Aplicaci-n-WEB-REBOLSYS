@@ -160,7 +160,7 @@ class PropuestaOracleTest {
   }
 
   void prepararCatalogosCuenta() {
-    for (var par : Map.of("CUENTA", "CTA", "BOLETA", "BINT", "FACTURA", "FINT").entrySet()) {
+    for (var par : Map.of("CUENTA", "CTA", "BOLETA", "B002", "FACTURA", "F002").entrySet()) {
       var encontrados =
           em.createQuery("from TipoComprobante where codigo=:codigo", TipoComprobante.class)
               .setParameter("codigo", par.getKey())
@@ -901,7 +901,7 @@ class PropuestaOracleTest {
             new ReservaComprobanteRegistroDTO(
                 usuario, turno, "FACTURA", perfil.getIdPerfil(), null));
     assertThat(doc.tipo()).isEqualTo("FACTURA");
-    assertThat(doc.serie()).isEqualTo("FINT");
+    assertThat(doc.serie()).isEqualTo("F002");
     assertThat(doc.idClienteReceptor()).isEqualTo(perfil.getIdPerfil());
     assertThat(r.detalles().getFirst().ocupantes().getFirst().idCliente()).isEqualTo(adulto);
   }

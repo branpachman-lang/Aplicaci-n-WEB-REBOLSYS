@@ -116,6 +116,34 @@ class ComprobanteEntregaTest {
     return new EmisionElectronicaRequestDTO(UUID.randomUUID().toString(), usuario, new BigDecimal("18"), "Av. Los Álamos 123", List.of(), List.of());
   }
 
+  @Test void facturaYBoletaDesglosanIgvAntesDePrepararLaEmision() throws Exception {
+    for (String codigo : List.of("FACTURA", "BOLETA")) {
+      tx.executeWithoutResult(s -> {
+        var c = em.find(Comprobante.class, comprobante);
+        var existentes = em.createQuery("from TipoComprobante where codigo=:codigo", TipoComprobante.class)
+            .setParameter("codigo", codigo).getResultList();
+        TipoComprobante tipo;
+        if (existentes.isEmpty()) {
+          tipo = new TipoComprobante(); tipo.setCodigo(codigo); tipo.setNombreComprobante(codigo); em.persist(tipo);
+        } else tipo = existentes.getFirst();
+        var idSerie = new SerieComprobanteId(tipo.getIdTipoComprobante(), codigo.equals("FACTURA") ? "F002" : "B002");
+        if (em.find(SerieComprobante.class, idSerie) == null) {
+          var serie = new SerieComprobante(); serie.setTipoComprobante(tipo); serie.setId(idSerie); em.persist(serie);
+        }
+        c.setTipoComprobante(tipo); c.setSerie(idSerie.getSerie());
+      });
+      var respuesta = mvc.perform(get(ruta("/ticket"))).andExpect(status().isOk()).andReturn().getResponse().getContentAsByteArray();
+      try (var pdf = Loader.loadPDF(respuesta)) {
+        String texto = new PDFTextStripper().getText(pdf);
+        assertThat(texto).contains("S/ 100.00", "S/ 18.00", "S/ 118.00");
+        assertThat(texto).containsPattern((codigo.equals("FACTURA") ? "F002" : "B002") + "-[0-9]{8}");
+      }
+      Path destino = Path.of("target/pruebas-comprobantes"); Files.createDirectories(destino);
+      Files.write(destino.resolve(codigo + "-IGV18.pdf"), respuesta);
+    }
+    verifyNoInteractions(proveedor);
+  }
+
   @Test void simulaSinProveedorConImpuestoIncluidoYSinFalsaAceptacionFiscal() throws Exception {
     var solicitud = solicitud();
     var primera = emisiones.simular(comprobante, solicitud);
@@ -127,6 +155,17 @@ class ComprobanteEntregaTest {
     assertThat(primera.xmlDisponible()).isFalse(); assertThat(primera.cdrDisponible()).isFalse();
     assertThatThrownBy(() -> emisiones.enviar(comprobante, new OperacionUsuarioDTO(usuario))).hasMessageContaining("no se puede enviar");
     assertThatThrownBy(() -> emisiones.archivo(comprobante, "xml")).hasMessageContaining("no tiene archivos fiscales");
+    verifyNoInteractions(proveedor);
+  }
+
+  @Test void apiRechazaAlterarLaTasaOExonerarUnaLinea() throws Exception {
+    for (var solicitud : List.of(
+        new EmisionElectronicaRequestDTO(UUID.randomUUID().toString(), usuario, new BigDecimal("19"), null, List.of(), List.of()),
+        new EmisionElectronicaRequestDTO(UUID.randomUUID().toString(), usuario, new BigDecimal("18"), null,
+            List.of(new EmisionElectronicaRequestDTO.TratamientoLinea(1, "20", BigDecimal.ZERO)), List.of()))) {
+      mvc.perform(post(ruta("/simulacion")).contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(solicitud)))
+          .andExpect(status().isBadRequest());
+    }
     verifyNoInteractions(proveedor);
   }
 
@@ -169,6 +208,7 @@ class ComprobanteEntregaTest {
         .andExpect(status().isOk()).andExpect(jsonPath("$.mensaje").value("El servidor de correo aceptó el comprobante para su envío."));
     var enviado = ArgumentCaptor.forClass(MimeMessage.class); verify(smtp).send(enviado.capture());
     var mensaje = enviado.getValue();
+    assertThat(mensaje.getSubject()).containsPattern("FINT-[0-9]{8}");
     assertThat(mensaje.getAllRecipients()).hasSize(1);
     assertThat(mensaje.getAllRecipients()[0].toString()).isEqualTo("destino@example.test");
     var partes = (Multipart) mensaje.getContent();

@@ -486,6 +486,13 @@ td small {
   margin: 14px 0;
   font-size: 14px;
 }
+.field .field-error {
+  margin: .25rem 0 0;
+  padding: 0;
+  background: transparent;
+  font-size: .85rem;
+}
+.field [aria-invalid="true"] { border-color: #a51515; }
 .toast {
   position: fixed;
   bottom: 24px;

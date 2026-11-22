@@ -27,7 +27,7 @@ public class EmisionElectronicaController {
   @PostMapping("/comprobantes/{id}/emision-electronica")
   @ResponseStatus(HttpStatus.CREATED)
   @Operation(summary="Preparar una boleta o factura beta desde un comprobante interno emitido",
-      description="Los precios incluyen impuesto. La tasa se indica como porcentaje; se pueden especificar tratamientos distintos por línea. No envía a APIsPerú todavía.")
+      description="Los precios incluyen IGV de 18% para boletas y facturas. Las líneas son gravadas (afectación 10). No envía a APIsPerú todavía.")
   public EmisionElectronicaDTO preparar(@PathVariable Long id,@Valid @RequestBody EmisionElectronicaRequestDTO r) {
     return servicio.preparar(id,r);
   }
