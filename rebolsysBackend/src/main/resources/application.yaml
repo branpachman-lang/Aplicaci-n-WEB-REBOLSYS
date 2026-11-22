@@ -1,4 +1,15 @@
 spring:
+  data:
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6380}
+      password: ${REDIS_PASSWORD:}
+      connect-timeout: 500ms
+      timeout: 500ms
+      ssl:
+        enabled: ${REDIS_SSL:false}
+      repositories:
+        enabled: false
   servlet:
     multipart:
       max-file-size: 5MB
@@ -33,6 +44,11 @@ spring:
         physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
 
 app:
+  cache:
+    habilitada: ${CACHE_ENABLED:true}
+    prefijo: ${CACHE_PREFIX:rebolsys:dev:v1:}
+    ttl-catalogos: 10m
+    ttl-referencias: 30m
   reservas:
     checkout-automatico:
       habilitado: ${CHECKOUT_AUTOMATICO_HABILITADO:true}
