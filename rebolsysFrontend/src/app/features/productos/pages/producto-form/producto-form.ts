@@ -1,4 +1,4 @@
-import { Component, inject, input, signal } from "@angular/core";
+import { Component, OnInit, inject, input, signal } from "@angular/core";
 import {
   ReactiveFormsModule,
   UntypedFormBuilder,
@@ -28,7 +28,7 @@ import { Catalogo } from "../../../../core/models/catalogo.model";
   templateUrl: "./producto-form.html",
   styleUrl: "./producto-form.css",
 })
-export class ProductoForm {
+export class ProductoForm implements OnInit {
   id = input<string>();
   private productos = inject(ProductoService);
   private categoriasService = inject(CategoriaService);
