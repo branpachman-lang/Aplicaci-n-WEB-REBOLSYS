@@ -232,6 +232,11 @@ export class InmobiliarioList implements OnInit {
     }
   }
 
+  protected cerrarAcciones(menu: HTMLElement, boton: HTMLButtonElement): void {
+    menu.hidePopover();
+    boton.focus({ preventScroll: true });
+  }
+
   abrirAsignacion(item: Item, tipo: 'asignar' | 'trasladar' | 'retirar'): void {
     this.itemParaAsignar.set(item);
     this.tipoOperacionAsignacion.set(tipo);
