@@ -394,6 +394,126 @@ describe("Formulario de reserva", () => {
     c.cliente.patchValue({ numeroDocumento: "20123456789" });
     expect(c.cliente.get("numeroDocumento")!.valid).toBe(true);
   });
+
+  it('muestra los errores debajo de cada campo al guardar y los retira al corregir', async () => {
+    const f = await fixture();
+    const raiz = f.nativeElement as HTMLElement;
+    expect(raiz.querySelector('.field-error')).toBeNull();
+    raiz.querySelector('form.reservation-form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    f.detectChanges();
+    for (const [campo, texto] of [
+      ['numeroDocumento', 'El número de documento es obligatorio'], ['nombres', 'Ingresa los nombres'],
+      ['apellidos', 'Ingresa los apellidos'], ['fechaNacimiento', 'La fecha de nacimiento del titular es obligatoria'],
+    ]) {
+      const input = raiz.querySelector(`[formGroupName="cliente"] [formControlName="${campo}"]`)!;
+      const mensaje = raiz.querySelector('#' + input.getAttribute('aria-describedby'))!;
+      expect(input.getAttribute('aria-invalid')).toBe('true');
+      expect(mensaje.textContent).toContain(texto);
+      expect(input.closest('.field')!.contains(mensaje)).toBe(true);
+    }
+    expect(raiz.querySelector('#habitacion-error-numero-0')?.textContent).toContain('Selecciona una habitación');
+    const nombres = raiz.querySelector('[formGroupName="cliente"] [formControlName="nombres"]') as HTMLInputElement;
+    nombres.value = 'Lucía Elena';
+    nombres.dispatchEvent(new Event('input', { bubbles: true }));
+    f.detectChanges();
+    expect(raiz.querySelector('#cliente-error-nombres')).toBeNull();
+    expect(raiz.querySelector('#cliente-error-apellidos')).not.toBeNull();
+    expect(f.componentInstance.pagoAbierto()).toBe(false);
+  });
+
+  it('muestra errores de DNI, correo y nacimiento al salir del campo, sin exigir contactos opcionales', async () => {
+    const f = await fixture();
+    const c = f.componentInstance;
+    const raiz = f.nativeElement as HTMLElement;
+    const documento = raiz.querySelector('[formGroupName="cliente"] [formControlName="numeroDocumento"]') as HTMLInputElement;
+    documento.value = '1234567';
+    documento.dispatchEvent(new Event('input', { bubbles: true }));
+    documento.dispatchEvent(new Event('blur'));
+    c.cliente.patchValue({ correo: 'correo-invalido', fechaNacimiento: '2999-01-01' });
+    c.cliente.get('correo')!.markAsTouched();
+    c.cliente.get('fechaNacimiento')!.markAsTouched();
+    f.detectChanges();
+    expect(raiz.querySelector('#cliente-error-documento')?.textContent).toContain('8 dígitos');
+    expect(raiz.querySelector('#cliente-error-correo')?.textContent).toContain('correo electrónico válido');
+    expect(raiz.querySelector('#cliente-error-nacimiento')?.textContent).toContain('no puede ser futura');
+    c.cliente.patchValue({ correo: '', telefono: '', fechaNacimiento: '2015-01-01' });
+    c.cliente.get('telefono')!.markAsTouched();
+    f.detectChanges();
+    expect(raiz.querySelector('#cliente-error-nacimiento')?.textContent).toContain('al menos 18 años');
+    expect(raiz.querySelector('#cliente-error-correo')).toBeNull();
+    expect(raiz.querySelector('#cliente-error-telefono')).toBeNull();
+  });
+
+  it('limita DNI y RUC al escribir o pegar y conserva los documentos alfanuméricos', async () => {
+    const f = await fixture();
+    const c = f.componentInstance;
+    const raiz = f.nativeElement as HTMLElement;
+    const documento = raiz.querySelector('[formGroupName="cliente"] [formControlName="numeroDocumento"]') as HTMLInputElement;
+    const pegar = (valor: string) => { documento.value = valor; documento.dispatchEvent(new Event('input', { bubbles: true })); f.detectChanges(); };
+    expect(documento.maxLength).toBe(8);
+    pegar('12a34567890');
+    expect(documento.value).toBe('12345678');
+    expect(c.cliente.get('numeroDocumento')!.value).toBe('12345678');
+    c.cliente.patchValue({ empresa: true });
+    c.validarCliente();
+    c.cliente.markAllAsTouched();
+    f.detectChanges();
+    expect(documento.maxLength).toBe(11);
+    expect(raiz.querySelector('#cliente-error-documento')?.textContent).toContain('11 dígitos');
+    expect(raiz.querySelector('#cliente-error-razon-social')?.textContent).toContain('Ingresa la razón social');
+    expect(raiz.querySelector('#cliente-error-nacimiento')).toBeNull();
+    pegar('20123456789000');
+    expect(c.cliente.get('numeroDocumento')!.value).toBe('20123456789');
+    for (const idTipoDocumento of [2, 4]) {
+      c.cliente.patchValue({ empresa: false, idTipoDocumento });
+      c.validarCliente();
+      f.detectChanges();
+      pegar('AB1234567890');
+      expect(documento.maxLength).toBe(50);
+      expect(c.cliente.get('numeroDocumento')!.value).toBe('AB1234567890');
+    }
+  });
+
+  it('también presenta mensajes bajo los campos del huésped y de sus menores', async () => {
+    const f = await fixture();
+    const c = f.componentInstance;
+    const raiz = f.nativeElement as HTMLElement;
+    c.habitaciones.at(0).patchValue({ idHabitacion: 2 });
+    c.abrirHuesped(0);
+    c.guardarHuesped();
+    f.detectChanges();
+    expect(raiz.querySelector('#huesped-error-documento')?.textContent).toContain('obligatorio');
+    expect(raiz.querySelector('#huesped-error-nombres')?.textContent).toContain('Ingresa los nombres');
+    c.guestForm.patchValue({ numeroDocumento: '12345678', nombres: 'Lucía', apellidos: 'Mendoza', fechaNacimiento: '1990-01-01' });
+    c.cambiarMenores(true);
+    c.guardarHuesped();
+    f.detectChanges();
+    expect(raiz.querySelector('#huesped-error-nombres')).toBeNull();
+    for (const campo of ['documento', 'nombres', 'apellidos', 'nacimiento', 'parentesco']) {
+      expect(raiz.querySelector('#menor-error-' + campo + '-0')?.textContent?.trim()).toBeTruthy();
+    }
+    expect(c.guests(0)).toHaveLength(0);
+  });
+
+  it('explica bajo las fechas de la habitación si el ingreso es pasado o la salida es anterior', async () => {
+    const f = await fixture();
+    const c = f.componentInstance;
+    const raiz = f.nativeElement as HTMLElement;
+    const habitacion = c.habitaciones.at(0);
+    habitacion.patchValue({ fechaIngreso: '2000-01-01T14:00', fechaSalida: '2000-01-01T12:00' });
+    habitacion.markAllAsTouched();
+    f.detectChanges();
+    expect(raiz.querySelector('#habitacion-error-ingreso-0')?.textContent).toContain('no puede estar en el pasado');
+    expect(raiz.querySelector('#habitacion-error-salida-0')?.textContent).toContain('posterior al ingreso');
+    for (const [campo, valor] of [['fechaIngreso', '2090-01-01T14:00'], ['fechaSalida', '2090-01-02T12:00']]) {
+      const input = raiz.querySelector(`[formControlName="${campo}"]`) as HTMLInputElement;
+      input.value = valor;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    f.detectChanges();
+    expect(raiz.querySelector('#habitacion-error-ingreso-0')).toBeNull();
+    expect(raiz.querySelector('#habitacion-error-salida-0')).toBeNull();
+  });
   it("rechaza un titular menor y una fecha de nacimiento futura", async () => {
     const c = (await fixture()).componentInstance;
     c.cliente.patchValue({ fechaNacimiento: "2015-01-01" });

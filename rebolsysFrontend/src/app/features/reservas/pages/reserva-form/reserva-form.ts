@@ -30,6 +30,7 @@ import {
   UntypedFormBuilder,
   FormArray,
   FormGroup,
+  AbstractControl,
   Validators,
 } from "@angular/forms";
 import { CurrencyPipe } from "@angular/common";
@@ -209,6 +210,7 @@ export class ReservaForm {
   buscarMenor(i: number) {
     const grupo = this.grupoMenor(i);
     this.validarDocumento(grupo);
+    this.tocarDocumento(grupo);
     if (grupo.get("idTipoDocumento")!.invalid || grupo.get("numeroDocumento")!.invalid) {
       this.alertar(this.mensajeDocumento(grupo) || "Selecciona el tipo de documento.");
       return;
@@ -508,6 +510,61 @@ export class ReservaForm {
     grupo.get("numeroDocumento")!.updateValueAndValidity();
   }
 
+  limiteDocumento(grupo: FormGroup) {
+    const tipo = this.tipoDocumentoGrupo(grupo);
+    return tipo === 'DNI' ? 8 : tipo === 'RUC' ? 11 : 50;
+  }
+
+  ajustarDocumento(evento: Event, grupo: FormGroup) {
+    const input = evento.target as HTMLInputElement;
+    const tipo = this.tipoDocumentoGrupo(grupo);
+    const numero = (tipo === 'OTRO' ? input.value : input.value.replace(/[^0-9]/g, ''))
+      .slice(0, this.limiteDocumento(grupo));
+    input.value = numero;
+    if (grupo.get('numeroDocumento')!.value !== numero) {
+      grupo.get('numeroDocumento')!.setValue(numero);
+    }
+  }
+
+  private tocarDocumento(grupo: FormGroup) {
+    grupo.get('idTipoDocumento')!.markAsTouched();
+    grupo.get('numeroDocumento')!.markAsTouched();
+  }
+
+  errorCampo(grupo: AbstractControl, campo: string): string {
+    const control = grupo.get(campo);
+    if (!control?.touched || control.disabled) return '';
+    if (campo === 'fechaIngreso' && control.value && control.value < this.minFechaIngreso()) {
+      return 'La fecha de ingreso no puede estar en el pasado.';
+    }
+    if (campo === 'fechaSalida' && grupo.get('fechaIngreso')?.value && control.value &&
+      !noches(grupo.get('fechaIngreso')!.value, control.value)) {
+      return 'La salida debe ser posterior al ingreso.';
+    }
+    if (!control.invalid) return '';
+    if (campo === 'numeroDocumento') return this.mensajeDocumento(grupo as FormGroup);
+    if (campo === 'fechaNacimiento') return this.mensajeNacimiento(grupo as FormGroup, grupo === this.cliente);
+    const etiquetas: Record<string, string> = {
+      nombres: 'Los nombres', apellidos: 'Los apellidos', razonSocial: 'La razón social',
+      direccionFiscal: 'La dirección fiscal', correo: 'El correo electrónico', telefono: 'El teléfono',
+    };
+    if (control.hasError('required')) {
+      const obligatorios: Record<string, string> = {
+        idTipoDocumento: 'Selecciona el tipo de documento.', nombres: 'Ingresa los nombres.',
+        apellidos: 'Ingresa los apellidos.', razonSocial: 'Ingresa la razón social.',
+        parentesco: 'Selecciona el parentesco con el adulto responsable.',
+        idHabitacion: 'Selecciona una habitación.', fechaIngreso: 'Ingresa la fecha y hora de ingreso.',
+        fechaSalida: 'Ingresa la fecha y hora de salida.',
+      };
+      return obligatorios[campo] || 'Completa este campo.';
+    }
+    if (control.hasError('email')) return 'Ingresa un correo electrónico válido.';
+    if (control.hasError('maxlength')) {
+      return `${etiquetas[campo] || 'Este campo'} no debe superar ${control.getError('maxlength').requiredLength} caracteres.`;
+    }
+    return 'Revisa el valor de este campo.';
+  }
+
   mensajeDocumento(grupo: FormGroup): string {
     const error = grupo.get("numeroDocumento")?.errors;
     if (!error) return "";
@@ -569,6 +626,7 @@ export class ReservaForm {
 
   buscarCliente() {
     this.validarDocumento(this.cliente);
+    this.tocarDocumento(this.cliente);
     const { idTipoDocumento, numeroDocumento } = this.cliente.getRawValue();
     if (!idTipoDocumento || this.cliente.get("numeroDocumento")!.invalid) {
       this.alertar(
@@ -616,6 +674,7 @@ export class ReservaForm {
 
   buscarHuesped() {
     this.validarDocumento(this.guestForm);
+    this.tocarDocumento(this.guestForm);
     const { idTipoDocumento, numeroDocumento } = this.guestForm.getRawValue();
     if (!idTipoDocumento || this.guestForm.get("numeroDocumento")!.invalid) {
       this.alertar(
