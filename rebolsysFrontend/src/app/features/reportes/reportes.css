@@ -1,6 +1,6 @@
 /* =====================================================
    REPORTES - REAL BOLOGNESI MANAGEMENT SUITE
-   Diseño de pantalla e impresión tipo boleta
+   Diseño de pantalla e impresión minimalista
 ===================================================== */
 
 /* ================= ESTILOS DE PANTALLA ================= */
@@ -94,13 +94,13 @@
 }
 
 /* =====================================================
-   IMPRESIÓN — boleta sencilla (A4 vertical)
-   Solo texto, líneas y negritas: se ve igual con o sin
-   "Gráficos de fondo". Sin SVG, sin formas, sin colores.
+   IMPRESIÓN — minimalista (A4 horizontal)
+   Solo texto azul/gris y líneas finas. Sin SVG, sin formas
+   y sin fondos: se ve igual aunque no se impriman fondos.
 ===================================================== */
 
 @page {
-  size: A4 portrait;
+  size: A4 landscape;
   margin: 12mm;
 }
 
@@ -108,18 +108,18 @@
 
   :host {
     display: block !important;
-    color: #000 !important;
+    color: #222 !important;
     background: #fff !important;
   }
 
   *,
   *::before,
   *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
     box-shadow: none !important;
-    text-shadow: none !important;
   }
 
-  /* Ocultar la interfaz */
   .no-print,
   .page-heading,
   nav,
@@ -127,7 +127,8 @@
   .paginacion,
   .print-shortcuts,
   .print-document-icon,
-  .print-footer-check {
+  .print-footer-check,
+  .print-suite span {
     display: none !important;
   }
 
@@ -144,59 +145,50 @@
     border-radius: 0 !important;
     background: #fff !important;
     overflow: visible !important;
-    font-size: 9pt !important;
   }
 
-  /* ---------- Encabezado centrado ---------- */
+  /* ---------- Encabezado: logo a la izquierda, sistema a la derecha ---------- */
 
   .print-masthead {
-    flex-direction: column !important;
     align-items: center !important;
-    gap: 1.5mm !important;
+    justify-content: space-between !important;
     padding: 0 0 4mm !important;
-    margin: 0 !important;
-    border-bottom: 1px dashed #000 !important;
-    text-align: center !important;
+    margin: 0 0 8mm !important;
+    border-bottom: 2px solid #2c1988 !important;
   }
 
   .print-brand ::ng-deep .marca {
     display: flex !important;
-    flex-direction: column !important;
     align-items: center !important;
-    gap: 1mm !important;
-    text-align: center !important;
+    gap: 4mm !important;
   }
 
   .print-brand ::ng-deep .marca img {
-    width: 18mm !important;
-    height: 18mm !important;
+    width: 16mm !important;
+    height: 16mm !important;
     object-fit: contain !important;
   }
 
   .print-brand ::ng-deep .marca strong {
-    color: #000 !important;
-    font-size: 13pt !important;
-    text-transform: uppercase !important;
+    color: #2c1988 !important;
+    font-size: 14pt !important;
   }
 
   .print-brand ::ng-deep .marca span {
-    color: #333 !important;
+    color: #777 !important;
     font-size: 8pt !important;
   }
 
   .print-suite {
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    gap: 0 !important;
-    color: #333 !important;
-    font-size: 8pt !important;
+    display: block !important;
+    text-align: right !important;
   }
 
   .print-suite strong {
-    color: #000 !important;
+    color: #777 !important;
     font-size: 9pt !important;
-    font-weight: 600 !important;
+    font-weight: 400 !important;
+    letter-spacing: .5px !important;
   }
 
   /* ---------- Título y periodo ---------- */
@@ -204,18 +196,15 @@
   .cabecera {
     display: block !important;
     padding: 0 !important;
-    margin: 0 !important;
-    border-bottom: 1px dashed #000 !important;
+    margin: 0 0 6mm !important;
   }
 
   .print-heading-content {
     display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    gap: 1mm !important;
-    padding: 4mm 0 !important;
+    align-items: baseline !important;
+    justify-content: space-between !important;
+    gap: 6mm !important;
     width: 100% !important;
-    text-align: center !important;
   }
 
   .print-report-title {
@@ -226,51 +215,51 @@
 
   .print-report-title h3 {
     margin: 0 !important;
-    color: #000 !important;
-    font-size: 14pt !important;
-    font-weight: 700 !important;
-    letter-spacing: 1.5px !important;
-    text-transform: uppercase !important;
+    color: #2c1988 !important;
+    font-size: 22pt !important;
+    font-weight: 300 !important;
+    letter-spacing: .3px !important;
   }
 
   .print-period {
     padding: 0 !important;
     border: 0 !important;
     background: none !important;
-    color: #333 !important;
-    font-size: 9pt !important;
+    color: #777 !important;
+    font-size: 10pt !important;
+    white-space: nowrap !important;
   }
 
-  /* ---------- Totales: una línea por concepto ---------- */
+  /* ---------- Totales (financiero) ---------- */
 
   .totales {
-    display: block !important;
-    padding: 4mm 0 !important;
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: 6mm !important;
+    padding: 0 0 6mm !important;
     margin: 0 !important;
-    border-bottom: 1px dashed #000 !important;
   }
 
   .totales div {
-    display: flex !important;
-    flex-direction: row !important;
-    justify-content: space-between !important;
-    align-items: baseline !important;
-    padding: .8mm 0 !important;
+    padding: 0 0 0 3mm !important;
     border: 0 !important;
+    border-left: 1mm solid #2c1988 !important;
     border-radius: 0 !important;
     background: none !important;
   }
 
   .totales dt {
-    color: #000 !important;
-    font-size: 9pt !important;
+    color: #777 !important;
+    font-size: 8pt !important;
+    text-transform: uppercase !important;
+    letter-spacing: .5px !important;
   }
 
   .totales dd {
-    margin: 0 !important;
-    color: #000 !important;
-    font-size: 9.5pt !important;
-    font-weight: 700 !important;
+    margin: 1mm 0 0 !important;
+    color: #2c1988 !important;
+    font-size: 14pt !important;
+    font-weight: 600 !important;
   }
 
   /* ---------- Tablas ---------- */
@@ -278,14 +267,14 @@
   .table-scroll {
     overflow: visible !important;
     width: 100% !important;
-    padding: 3mm 0 !important;
+    padding: 0 !important;
   }
 
   table {
     width: 100% !important;
     border-collapse: collapse !important;
-    font-size: 8pt !important;
-    color: #000 !important;
+    font-size: 9pt !important;
+    color: #222 !important;
   }
 
   thead {
@@ -293,32 +282,33 @@
   }
 
   thead th {
-    padding: 1.5mm 1.5mm !important;
+    padding: 2mm 3mm !important;
     background: none !important;
-    color: #000 !important;
+    color: #2c1988 !important;
     border: 0 !important;
-    border-top: 1px solid #000 !important;
-    border-bottom: 1px solid #000 !important;
+    border-bottom: 2px solid #2c1988 !important;
     font-size: 8pt !important;
     font-weight: 700 !important;
     text-align: left !important;
     text-transform: uppercase !important;
+    letter-spacing: .5px !important;
   }
 
   tbody th,
   tbody td {
-    padding: 1.8mm 1.5mm !important;
+    padding: 2.5mm 3mm !important;
     background: none !important;
-    color: #000 !important;
+    color: #222 !important;
     border: 0 !important;
-    border-bottom: 1px dotted #888 !important;
+    border-bottom: 1px solid #e5e5ea !important;
     font-weight: 400 !important;
-    vertical-align: top !important;
+    vertical-align: middle !important;
     overflow-wrap: anywhere !important;
   }
 
   tbody th {
-    font-weight: 700 !important;
+    color: #2c1988 !important;
+    font-weight: 600 !important;
   }
 
   tbody tr {
@@ -328,8 +318,8 @@
 
   .solo-impresion {
     display: inline !important;
-    color: #000 !important;
-    font-weight: 700 !important;
+    color: #2c1988 !important;
+    font-weight: 600 !important;
   }
 
   .numero {
@@ -337,33 +327,39 @@
     white-space: nowrap !important;
   }
 
+  .alerta {
+    color: #b3261e !important;
+    font-weight: 600 !important;
+  }
+
   /* ---------- Pie ---------- */
 
   .print-footer {
-    flex-direction: column !important;
-    align-items: center !important;
-    margin: 4mm 0 0 !important;
+    flex-direction: row !important;
+    align-items: baseline !important;
+    justify-content: center !important;
+    gap: 3mm !important;
+    margin: 8mm 0 0 !important;
     padding-top: 3mm !important;
-    border-top: 1px dashed #000 !important;
-    text-align: center !important;
+    border-top: 1px solid #e5e5ea !important;
     break-inside: avoid !important;
     page-break-inside: avoid !important;
   }
 
   .print-footer-copy {
     display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    gap: 0 !important;
+    flex-direction: row !important;
+    align-items: baseline !important;
+    gap: 3mm !important;
   }
 
   .print-footer-copy strong {
-    color: #000 !important;
+    color: #2c1988 !important;
     font-size: 9pt !important;
   }
 
   .print-footer-copy em {
-    color: #444 !important;
+    color: #777 !important;
     font-size: 8pt !important;
   }
 }
