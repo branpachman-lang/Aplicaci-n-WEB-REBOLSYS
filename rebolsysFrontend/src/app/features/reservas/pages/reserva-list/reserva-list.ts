@@ -6,7 +6,7 @@ import { CurrencyPipe, DatePipe } from "@angular/common";
 import { FormsModule } from "@angular/forms";
 import { RouterLink,Router,ActivatedRoute } from "@angular/router";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
-import { forkJoin } from "rxjs";
+import { filter, forkJoin, interval } from 'rxjs';
 import { DialogFocus } from "../../../../shared/directives/dialog-focus";
 import { NotificacionService } from "../../../../core/services/notificacion.service";
 import { CatalogoService } from "../../../../core/services/catalogo-service";
@@ -73,20 +73,31 @@ export class ReservaList {
   private searchTimer?: ReturnType<typeof setTimeout>;
   private requestId = 0;
   private detalleId = 0;
+  private actualizando = false;
   estadoReserva = estadoReserva;
   pagosPendientes = this.servicio.pagosPendientes;
   registroPendiente = this.servicio.registroPendiente;
 
   constructor() {
     this.cargar();
+    interval(30000)
+      .pipe(
+        filter(() => !this.actualizando && !this.ocupado() && !this.detalle()
+          && !this.pagando() && !this.comprobante()),
+        takeUntilDestroyed(this.destroy),
+      )
+      .subscribe(() => this.cargar(false));
   }
   ngOnDestroy() {
     clearTimeout(this.searchTimer);
   }
-  cargar() {
+  cargar(mostrarCarga = true) {
     const id = ++this.requestId;
-    this.error.set("");
-    this.cargando.set(true);
+    this.actualizando = true;
+    if (mostrarCarga) {
+      this.error.set('');
+      this.cargando.set(true);
+    }
     forkJoin({
       pagina: this.servicio.listar(
         this.pagina,
@@ -102,6 +113,8 @@ export class ReservaList {
           if (id !== this.requestId) return;
           this.respuesta.set(pagina);
           this.catalogos.set(catalogos);
+          this.actualizando = false;
+          this.error.set('');
           this.cargando.set(false);
           if(Number.isInteger(this.comprobanteInicial)&&this.comprobanteInicial>0){
             const reservaId=this.comprobanteInicial;this.comprobanteInicial=0;
@@ -112,7 +125,8 @@ export class ReservaList {
         },
         error: (e) => {
           if (id === this.requestId) {
-            this.error.set(mensajeError(e));
+            this.actualizando = false;
+            if (mostrarCarga) this.error.set(mensajeError(e));
             this.cargando.set(false);
           }
         },
@@ -167,12 +181,11 @@ export class ReservaList {
   }
   verDetalle(r: ReservaResumen) {
     const id = ++this.detalleId;
-    this.servicio
-      .cuenta(r.idReserva)
+    forkJoin({ reserva: this.servicio.obtener(r.idReserva), cuenta: this.servicio.cuenta(r.idReserva) })
       .pipe(takeUntilDestroyed(this.destroy))
       .subscribe({
-        next: (cuenta) => {
-          if (id === this.detalleId) this.detalle.set({ ...r, cuenta });
+        next: ({ reserva, cuenta }) => {
+          if (id === this.detalleId) this.detalle.set({ ...reserva, cuenta });
         },
         error: (e) => this.avisos.mostrar(mensajeError(e), true),
       });

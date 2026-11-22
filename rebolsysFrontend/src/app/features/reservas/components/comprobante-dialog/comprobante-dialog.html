@@ -256,6 +256,7 @@
       <label class="field"
         >Tipo de comprobante<select
           [(ngModel)]="tipo"
+          (ngModelChange)="cambiarTipo()"
           [disabled]="ocupado()||emisionFijada()"
         >
           <option value="BOLETA">Boleta</option>
@@ -263,29 +264,47 @@
         </select></label
       >
     </div>
-    <h3 class="spaced-title">Receptor</h3>
-    <button
+    @if(titular(); as titularActual){
+    <div class="receptor-contexto">
+      <strong>{{ reserva() ? 'Titular de la reserva' : 'Comprador de la venta' }}</strong>
+      <span>{{ nombreTitular() }} · {{ titularActual.persona.numeroDocumento }}</span>
+      <p>El comprobante puede tener otro receptor. Se conservan la misma {{ reserva() ? 'reserva' : 'venta' }} y sus pagos.</p>
+    </div>
+    }
+    <h3 class="spaced-title">{{ tipo === 'FACTURA' ? 'Datos del receptor de la factura' : 'Receptor de la boleta' }}</h3>
+    @if(tipo === 'FACTURA'){
+      <p class="inline-note">Ingresa el RUC de la persona o empresa que recibirá la factura. Se buscará antes de registrar un nuevo receptor.</p>
+    }
+    <div class="receptor-acciones">
+    @if(titular() && (tipo !== 'FACTURA' || esRuc(titular()!.persona.idTipoDocumento))){
+      <button class="button small" type="button" [disabled]="ocupado()||emisionFijada()" (click)="usarTitular()">Usar datos del titular</button>
+    }
+    <button type="button"
       class="button small"
       [disabled]="ocupado()||emisionFijada()"
       (click)="otroReceptor()"
     >
-      Usar otro receptor
+      {{ tipo === 'FACTURA' ? 'Usar otro RUC' : 'Usar otro receptor' }}
     </button>
+    </div>
     <div class="form-grid spaced-title">
       <label class="field"
         >Tipo de documento<select
           [(ngModel)]="receptor.idTipoDocumento"
+          (ngModelChange)="cambiarDocumento()"
           [disabled]="ocupado()||emisionFijada()||idCliente!==null"
         >
-          @for(d of catalogos().documentos;track d.id){
+          @for(d of documentosReceptor();track d.id){
           <option [ngValue]="d.id">{{d.nombre}}</option>
           }
         </select></label
       >
       <label class="field"
-        >Número de documento<input
-          maxlength="50"
-          [(ngModel)]="receptor.numeroDocumento"
+        >{{ esRuc() ? 'RUC del receptor' : 'Número de documento' }}<input
+          [maxlength]="esRuc() ? 11 : 50"
+          [attr.inputmode]="esRuc() ? 'numeric' : 'text'"
+          [ngModel]="receptor.numeroDocumento"
+          (ngModelChange)="cambiarNumero($event)"
           [disabled]="ocupado()||emisionFijada()||idCliente!==null"
       /></label>
     </div>
@@ -301,9 +320,10 @@
       ><input
         type="checkbox"
         [(ngModel)]="receptor.empresa"
-        [disabled]="ocupado()||emisionFijada()"
+        [disabled]="ocupado()||emisionFijada()||!esRuc()||receptor.numeroDocumento.startsWith('10')||receptor.numeroDocumento.startsWith('20')"
       />Persona jurídica</label
     >
+    @if(esRuc()) { <p class="inline-note">RUC 10: persona natural. RUC 20: persona jurídica.</p> }
     } @if(receptor.empresa){<label class="field"
       >Razón social<input
         maxlength="250"
@@ -331,8 +351,8 @@
         [disabled]="ocupado()||emisionFijada()||idCliente!==null"
     /></label>
     <p class="inline-note">
-      Emitir fija el tipo, el receptor y las líneas del comprobante. No vuelve a
-      cobrar ni modifica los pagos.
+      El comprobante se vincula a la misma {{ reserva() ? 'reserva' : 'venta' }} y conserva sus pagos.
+      Una vez emitido, su tipo y receptor quedan fijados.
     </p>
     <button
       class="button primary full"

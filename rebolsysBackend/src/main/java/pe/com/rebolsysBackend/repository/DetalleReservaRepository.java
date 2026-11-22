@@ -8,6 +8,15 @@ import org.springframework.data.repository.query.Param;
 import pe.com.rebolsysBackend.entity.*;
 
 public interface DetalleReservaRepository extends JpaRepository<DetalleReserva, Long> {
+  @Query("""
+      select d.idDetalleReserva from DetalleReserva d
+      where d.estadoDetalle = pe.com.rebolsysBackend.enums.EstadoReserva.EN_CURSO
+        and d.fechaSalida <= :ahora and d.idDetalleReserva > :desde
+      order by d.idDetalleReserva
+      """)
+  List<Long> vencidas(@Param("ahora") LocalDateTime ahora, @Param("desde") Long desde,
+      org.springframework.data.domain.Pageable limite);
+
   List<DetalleReserva> findByReservaIdReservaOrderByIdDetalleReserva(Long id);
 
   @Lock(LockModeType.PESSIMISTIC_WRITE)

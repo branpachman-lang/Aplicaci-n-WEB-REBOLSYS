@@ -18,6 +18,7 @@ import org.springframework.security.authorization.AuthorizationDeniedException;
 import pe.com.rebolsysBackend.security.SesionOperacionService;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
@@ -225,6 +226,16 @@ public class GlobalExceptionHandler {
             validationErrors
         );
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<ErrorResponseDTO> handleMissingParameter(
+        MissingServletRequestParameterException ex, HttpServletRequest request
+    ) {
+        var error = new ErrorResponseDTO(LocalDateTime.now(), HttpStatus.BAD_REQUEST.value(),
+            "Bad Request", "Falta un parámetro obligatorio", request.getRequestURI(),
+            Map.of(ex.getParameterName(), "El parámetro " + ex.getParameterName() + " es obligatorio"));
+        return ResponseEntity.badRequest().body(error);
     }
 
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)

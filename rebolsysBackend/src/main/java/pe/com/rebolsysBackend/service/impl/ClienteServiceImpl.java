@@ -66,6 +66,7 @@ public class ClienteServiceImpl implements ClienteService {
   @Override
   @Transactional
   public Perfil guardarPersona(ClienteRegistroRequestDTO datos) {
+    reglas.validar(datos);
     TipoDocumento tipo = tiposDocumento.findById(datos.idTipoDocumento()).orElse(null);
     if (tipo == null || "INTERNO".equalsIgnoreCase(tipo.getNombreDocumento()))
       throw new ReglaNegocioException("Selecciona un tipo de documento válido");
@@ -148,6 +149,7 @@ public class ClienteServiceImpl implements ClienteService {
   @Override
   @Transactional
   public Perfil actualizarPersona(Long idPerfil, ClienteRegistroRequestDTO datos) {
+    reglas.validar(datos);
     Perfil perfil =
         perfiles
             .findById(idPerfil)

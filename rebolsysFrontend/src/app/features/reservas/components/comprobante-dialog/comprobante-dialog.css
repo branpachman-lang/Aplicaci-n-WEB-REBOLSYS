@@ -30,6 +30,28 @@ th {
   width: 18px;
   height: 18px;
 }
+.receptor-contexto {
+  margin-top: 18px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f7f5fc;
+}
+.receptor-contexto strong,
+.receptor-contexto span {
+  display: block;
+  margin-bottom: 5px;
+}
+.receptor-contexto p {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+.receptor-acciones {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
 @media print {
   h2 {
     margin-top: 0;

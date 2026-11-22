@@ -1,6 +1,9 @@
 package pe.com.rebolsysBackend.controller;
 
 import org.springframework.security.access.prepost.PreAuthorize;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,8 +25,8 @@ public class ClienteController {
     @PreAuthorize("hasRole('GERENTE') or hasAuthority('CLIENTES:VER')")
     @GetMapping
     public ResponseEntity<ClienteResumenResponseDTO> buscar(
-        @RequestParam Long tipoDocumento,
-        @RequestParam String numeroDocumento
+        @RequestParam @Positive Long tipoDocumento,
+        @RequestParam @NotBlank @Size(max = 50) String numeroDocumento
     ) {
         return ResponseEntity.ok(clienteService.buscar(tipoDocumento, numeroDocumento));
     }

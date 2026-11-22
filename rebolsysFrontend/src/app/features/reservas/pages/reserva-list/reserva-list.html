@@ -1,3 +1,12 @@
+<div class="page-heading no-print">
+  <div>
+    <h2>Reservas del hospedaje</h2>
+    <p class="muted">Consulta las estancias, sus pagos y comprobantes.</p>
+  </div>
+  @if (acceso.permite('RESERVAS:CREAR')) {
+    <a routerLink="/reservas/nueva" class="button primary"><app-icon name="plus" />Agregar nueva reserva</a>
+  }
+</div>
 @if (acceso.permite('RESERVAS:CREAR') && registroPendiente()) {
 <p class="inline-note" role="status">
   Hay una reserva pendiente de confirmar tras un fallo de conexión.
@@ -206,16 +215,9 @@
   </div>
   }
 </section>
-@if (acceso.permite('RESERVAS:CREAR')) {
-<div class="add-reservation no-print">
-  <a routerLink="/reservas/nueva" class="button primary"
-    ><app-icon name="plus" />Agregar nueva reserva</a
-  >
-</div>
-}
 <p class="list-note no-print">
   <span class="live-dot"></span>Una reserva puede reunir varias habitaciones.
-  Los pagos pendientes se registran desde la misma lista.
+  El receptor del comprobante puede ser distinto al titular.
 </p>
 
 @if (pagando(); as r) {

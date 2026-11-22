@@ -2,7 +2,6 @@ package pe.com.rebolsysBackend.service.impl;
 
 import static pe.com.rebolsysBackend.service.impl.ReglasPropuesta.*;
 
-import java.time.*;
 import java.util.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

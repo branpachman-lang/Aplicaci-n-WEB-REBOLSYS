@@ -33,6 +33,11 @@ spring:
         physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
 
 app:
+  reservas:
+    checkout-automatico:
+      habilitado: ${CHECKOUT_AUTOMATICO_HABILITADO:true}
+      intervalo: ${CHECKOUT_AUTOMATICO_INTERVALO:60000}
+      espera-inicial: ${CHECKOUT_AUTOMATICO_ESPERA_INICIAL:10000}
   correo:
     habilitado: ${MAIL_ENABLED:false}
     remitente: ${MAIL_FROM:${MAIL_USERNAME:}}

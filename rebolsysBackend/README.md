@@ -200,6 +200,10 @@ no ejecuta inserts; los accesos privados permanecen fuera de Git.
 
 ## Pruebas
 
+La [revisión de reservas y validaciones del 21 de noviembre de 2026](REVISION-2026-11-21.md)
+documenta el checkout automático con saldo cero, la depuración de código y las
+pruebas de regresión ejecutadas en backend y frontend.
+
 ```powershell
 # Pruebas de modelo y errores sin conexión a Oracle
 .\mvnw.cmd test

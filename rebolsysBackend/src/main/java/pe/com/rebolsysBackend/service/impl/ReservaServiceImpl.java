@@ -34,6 +34,7 @@ public class ReservaServiceImpl implements ReservaService {
     private final ReglasPropuesta reglas;
     private final CuentaReservaGestion cuenta;
     private final CobroInmediatoService cobroInmediato;
+    private final SalidaReservaGestion salida;
 
     @Override
     @Transactional
@@ -73,6 +74,7 @@ public class ReservaServiceImpl implements ReservaService {
         Set<Long> enSolicitud = new HashSet<>();
         for (var s : r.detalles()) {
             exigir(s.fechaSalida().isAfter(s.fechaIngreso()), "La salida debe ser posterior al ingreso");
+            exigir(s.fechaSalida().isAfter(ahora()), "La salida de una nueva reserva debe estar en el futuro");
             validarTitular(titular, s.fechaIngreso().toLocalDate());
             var h = bloqueadas.get(s.idHabitacion());
             exigir(h.getEstadoHabitacion() == EstadoHabitacion.DISPONIBLE, "La habitación no está disponible físicamente");
@@ -265,13 +267,7 @@ public class ReservaServiceImpl implements ReservaService {
             }
             case "salida" -> {
                 if (d.getEstadoDetalle() == EstadoReserva.FINALIZADA) return respuestaDetalle(d);
-                exigir(
-                        d.getEstadoDetalle() == EstadoReserva.EN_CURSO,
-                        "Solo puede salir una estancia en curso");
-                cuenta.validarSalida(d.getReserva());
-                d.setFechaSalidaReal(ahora);
-                d.setEstadoDetalle(EstadoReserva.FINALIZADA);
-                h.setEstadoHabitacion(EstadoHabitacion.POR_LIMPIAR);
+                salida.finalizar(d, ahora);
             }
             case "cancelacion" -> {
                 if (d.getEstadoDetalle() == EstadoReserva.CANCELADA) return respuestaDetalle(d);

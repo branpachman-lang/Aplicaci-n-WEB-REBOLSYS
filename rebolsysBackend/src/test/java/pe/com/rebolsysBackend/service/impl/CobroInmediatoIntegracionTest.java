@@ -10,6 +10,8 @@ import java.time.*;
 import java.util.*;
 import java.util.concurrent.*;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
@@ -42,8 +44,11 @@ class CobroInmediatoIntegracionTest {
   @Autowired VentaService ventas;
   @Autowired CuentaReservaService cuentasReserva;
   @Autowired CuentaVentaService cuentasVenta;
+  @Autowired ClienteService clientes;
   @Autowired MockMvc mvc;
   @Autowired ObjectMapper json;
+  @Autowired CheckoutVencidoService checkout;
+  @Autowired pe.com.rebolsysBackend.repository.DetalleReservaRepository detalles;
   @MockitoBean(name = "apisPeruRestClient") RestClient consultaDocumentos;
   @MockitoBean ProveedorFacturacionClient facturacion;
   Long usuario, cliente, habitacion, producto, forma, turno;
@@ -121,6 +126,55 @@ class CobroInmediatoIntegracionTest {
     assertThat(cuenta.totalPagado()).isEqualByComparingTo("80");
     assertThat(cuenta.admiteConsumosConsolidados()).isFalse();
     assertThat(cuenta.cuentas().getFirst().pagos()).hasSize(1);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"10", "20"})
+  void facturaConRucConservaReservaConDniHuespedYPago(String prefijo) {
+    Long tipoRuc = tx.execute(s -> {
+      em.find(Perfil.class, cliente).setNumeroDocumento("12345678");
+      var documentos = em.createQuery("from TipoDocumento where codigoSunat='6'", TipoDocumento.class).getResultList();
+      TipoDocumento td;
+      if (documentos.isEmpty()) {
+        td = new TipoDocumento(); td.setNombreDocumento("RUC de facturación"); td.setCodigoSunat("6"); em.persist(td);
+      } else td = documentos.getFirst();
+      var comprobantes = em.createQuery("from TipoComprobante where codigo='FACTURA'", TipoComprobante.class).getResultList();
+      if (comprobantes.isEmpty()) {
+        var tipo = new TipoComprobante(); tipo.setCodigo("FACTURA"); tipo.setNombreComprobante("Factura"); em.persist(tipo);
+        var serie = new SerieComprobante(); serie.setId(new SerieComprobanteId(tipo.getIdTipoComprobante(), "FINT"));
+        serie.setTipoComprobante(tipo); em.persist(serie);
+      }
+      return td.getIdTipoDocumento();
+    });
+    boolean empresa = prefijo.equals("20");
+    var fiscal = new ClienteRegistroRequestDTO(tipoRuc, prefijo + "123456789", empresa,
+        empresa ? null : "Lucía", empresa ? null : "Rojas", null,
+        empresa ? "Operaciones Altiplano SAC" : null, "Av. Los Andes 450", null, null);
+    Long receptor = clientes.guardarCliente(fiscal).getIdPerfil();
+    assertThat(clientes.guardarCliente(fiscal).getIdPerfil()).isEqualTo(receptor);
+
+    var reserva = reservas.registrar(reserva(UUID.randomUUID().toString(), "80.00"));
+    var antes = cuentasReserva.cuenta(reserva.idReserva()).cuentas().getFirst();
+    var solicitud = new ReservaComprobanteRegistroDTO(usuario, turno, "FACTURA", receptor, null);
+    var factura = cuentasReserva.emitir(reserva.idReserva(), solicitud);
+    assertThat(cuentasReserva.emitir(reserva.idReserva(), solicitud).idCuenta()).isEqualTo(factura.idCuenta());
+    assertThat(factura.idCuenta()).isEqualTo(antes.idCuenta());
+    assertThat(factura.idClienteReceptor()).isEqualTo(receptor);
+    assertThat(factura.receptorNumeroDoc()).isEqualTo(fiscal.numeroDocumento());
+    assertThat(factura.tipo()).isEqualTo("FACTURA");
+    assertThat(factura.pagado()).isEqualByComparingTo("80.00");
+    assertThat(factura.saldo()).isZero();
+    assertThat(factura.pagos()).hasSize(1);
+    assertThat(factura.pagos().getFirst().idPago()).isEqualTo(antes.pagos().getFirst().idPago());
+    tx.executeWithoutResult(s -> {
+      var original = em.find(Reserva.class, reserva.idReserva());
+      assertThat(original.getCliente().getIdPerfil()).isEqualTo(cliente);
+      assertThat(original.getCliente().getNumeroDocumento()).isEqualTo("12345678");
+      assertThat(cantidad("Reserva", "idReserva", reserva.idReserva())).isEqualTo(1);
+      assertThat(cantidad("Comprobante", "reserva.idReserva", reserva.idReserva())).isEqualTo(1);
+      assertThat(cantidad("ReservaOcupante", "huesped.perfil.idPerfil", cliente)).isEqualTo(1);
+      assertThat(cantidad("Pago", "comprobante.idComprobante", factura.idCuenta())).isEqualTo(1);
+    });
   }
 
   @Test void pagoParcialOExcesivoRevierteReservaYOcupantes() {
@@ -291,5 +345,267 @@ class CobroInmediatoIntegracionTest {
     tx.executeWithoutResult(s -> em.find(Habitacion.class, habitacion).setPrecioPorNoche(new BigDecimal("90.00")));
     assertThatThrownBy(() -> reservas.registrar(original)).hasMessageContaining("tarifa o las fechas cambiaron");
     tx.executeWithoutResult(s -> assertThat(cantidad("Reserva", "claveRegistro", original.claveRegistro())).isZero());
+  }
+
+  private Long estanciaVencida(LocalDateTime salida) {
+    var r = reservas.registrar(reserva(UUID.randomUUID().toString(), "80.00"));
+    Long id = r.detalles().getFirst().idDetalleReserva();
+    reservas.cambiarEstado(id, "ingreso", new OperacionUsuarioDTO(usuario));
+    tx.executeWithoutResult(s -> {
+      var d = em.find(DetalleReserva.class, id);
+      d.setFechaIngreso(salida.minusDays(1));
+      d.setFechaIngresoReal(salida.minusDays(1));
+      d.setFechaSalida(salida);
+    });
+    return id;
+  }
+
+  private void comprobarEstancia(Long id, EstadoReserva estado, EstadoHabitacion habitacionEsperada) {
+    tx.executeWithoutResult(s -> {
+      var d = em.find(DetalleReserva.class, id);
+      assertThat(d.getEstadoDetalle()).isEqualTo(estado);
+      assertThat(d.getHabitacion().getEstadoHabitacion()).isEqualTo(habitacionEsperada);
+    });
+  }
+
+  @Test void checkoutVencidoFinalizaAlLlegarLaHoraSinDuplicarAuditoriaNiPagos() {
+    var hora = ReglasPropuesta.ahora().withNano(0);
+    Long id = estanciaVencida(hora);
+    assertThat(checkout.finalizar(id, hora.minusNanos(1))).isFalse();
+    assertThat(checkout.finalizar(id, hora)).isTrue();
+    comprobarEstancia(id, EstadoReserva.FINALIZADA, EstadoHabitacion.POR_LIMPIAR);
+    assertThat(checkout.finalizar(id, hora.plusMinutes(1))).isFalse();
+    tx.executeWithoutResult(s -> {
+      var d = em.find(DetalleReserva.class, id);
+      assertThat(d.getFechaSalidaReal()).isEqualTo(hora);
+      var auditorias = em.createQuery("from AuditoriaGeneral a where a.nombreTabla='DETALLE_RESERVA'"
+          + " and a.claveRegistro=:clave", AuditoriaGeneral.class)
+          .setParameter("clave", "{\"id\":" + id + "}").getResultList();
+      assertThat(auditorias).hasSize(1);
+      assertThat(auditorias.getFirst().getUsuario()).isNull();
+      assertThat(auditorias.getFirst().getDatosNuevos()).contains("CHECKOUT_AUTOMATICO");
+      assertThat(cuentasReserva.cuenta(d.getReserva().getIdReserva()).cuentas().getFirst().pagos()).hasSize(1);
+    });
+    // El reintento manual tampoco cambia la hora de salida ni el estado de limpieza.
+    assertThat(reservas.cambiarEstado(id, "salida", new OperacionUsuarioDTO(usuario)).fechaSalidaReal()).isEqualTo(hora);
+  }
+
+  @Test void checkoutRegistraHoraDeProcesamientoAlRecuperarUnaSalidaAntigua() {
+    var ahora = ReglasPropuesta.ahora().withNano(0);
+    Long id = estanciaVencida(ahora.minusDays(2));
+    assertThat(checkout.finalizar(id, ahora)).isTrue();
+    tx.executeWithoutResult(s -> assertThat(em.find(DetalleReserva.class, id).getFechaSalidaReal()).isEqualTo(ahora));
+  }
+
+  @Test void deudaDeAlojamientoImpideCheckoutYSeReintentaTrasLiquidarla() {
+    var ahora = ReglasPropuesta.ahora().withNano(0);
+    Long id = estanciaVencida(ahora);
+    Long pago = tx.execute(s -> {
+      var p = em.createQuery("from Pago p where p.comprobante.reserva.idReserva=:id", Pago.class)
+          .setParameter("id", em.find(DetalleReserva.class, id).getReserva().getIdReserva()).getSingleResult();
+      p.setVerificado(0);
+      return p.getIdPago();
+    });
+    assertThat(checkout.finalizar(id, ahora)).isFalse();
+    comprobarEstancia(id, EstadoReserva.EN_CURSO, EstadoHabitacion.OCUPADO);
+    tx.executeWithoutResult(s -> em.find(Pago.class, pago).setVerificado(1));
+    assertThat(checkout.finalizar(id, ahora.plusMinutes(1))).isTrue();
+  }
+
+  @Test void sobrepagoDeAlojamientoNoOcultaDeudaDeConsumos() {
+    var ahora = ReglasPropuesta.ahora().withNano(0);
+    Long id = estanciaVencida(ahora);
+    var v = ventas.registrarConfirmada(venta(UUID.randomUUID().toString(), id, cobro("7.00")));
+    Long reservaId = tx.execute(s -> {
+      var d = em.find(DetalleReserva.class, id);
+      var pago = em.createQuery("from Pago p where p.comprobante.reserva.idReserva=:id", Pago.class)
+          .setParameter("id", d.getReserva().getIdReserva()).getSingleResult();
+      pago.setMonto(new BigDecimal("81.00"));
+      em.createQuery("from Pago p where p.comprobante.venta.idVenta=:id", Pago.class)
+          .setParameter("id", v.idVenta()).getSingleResult().setMonto(new BigDecimal("6.00"));
+      return d.getReserva().getIdReserva();
+    });
+    assertThat(cuentasReserva.cuenta(reservaId).saldoPendiente()).isEqualByComparingTo("0");
+    assertThat(checkout.finalizar(id, ahora)).isFalse();
+    assertThatThrownBy(() -> reservas.cambiarEstado(id, "salida", new OperacionUsuarioDTO(usuario)))
+        .hasMessageContaining("Liquida el saldo");
+    comprobarEstancia(id, EstadoReserva.EN_CURSO, EstadoHabitacion.OCUPADO);
+  }
+
+  @Test void estanciaSinCuentaNoSeFinalizaSiDebeAlojamiento() {
+    Long id = tx.execute(s -> {
+      var r = new Reserva(); r.setCliente(em.find(Perfil.class, cliente)); r.setUsuario(em.find(Usuario.class, usuario));
+      r.setClaveRegistro(UUID.randomUUID().toString()); r.setFirmaSolicitud("historica-checkout");
+      var ahora = ReglasPropuesta.ahora();
+      var d = new DetalleReserva(); d.setHabitacion(em.find(Habitacion.class, habitacion));
+      d.getHabitacion().setEstadoHabitacion(EstadoHabitacion.OCUPADO);
+      d.setFechaIngreso(ahora.minusDays(2)); d.setFechaIngresoReal(ahora.minusDays(2));
+      d.setFechaSalida(ahora.minusDays(1)); d.setCostoEstadia(new BigDecimal("80"));
+      d.setEstadoDetalle(EstadoReserva.EN_CURSO); r.agregarDetalle(d); em.persist(r); em.flush();
+      return d.getIdDetalleReserva();
+    });
+    assertThat(checkout.finalizar(id, ReglasPropuesta.ahora())).isFalse();
+    comprobarEstancia(id, EstadoReserva.EN_CURSO, EstadoHabitacion.OCUPADO);
+  }
+
+  @Test void dosCheckoutsAutomaticosSimultaneosSoloFinalizanUnaVez() throws Exception {
+    var ahora = ReglasPropuesta.ahora().withNano(0);
+    Long id = estanciaVencida(ahora);
+    var inicio = new CountDownLatch(1);
+    try (var ejecutor = Executors.newFixedThreadPool(2)) {
+      Callable<Boolean> tarea = () -> { inicio.await(); return checkout.finalizar(id, ahora); };
+      var a = ejecutor.submit(tarea); var b = ejecutor.submit(tarea); inicio.countDown();
+      assertThat(List.of(a.get(20, TimeUnit.SECONDS), b.get(20, TimeUnit.SECONDS)))
+          .containsExactlyInAnyOrder(true, false);
+    }
+    comprobarEstancia(id, EstadoReserva.FINALIZADA, EstadoHabitacion.POR_LIMPIAR);
+  }
+
+  @Test void salidaManualYAutomaticaSimultaneasSonIdempotentes() throws Exception {
+    var ahora = ReglasPropuesta.ahora().withNano(0);
+    Long id = estanciaVencida(ahora);
+    var inicio = new CountDownLatch(1);
+    try (var ejecutor = Executors.newFixedThreadPool(2)) {
+      var a = ejecutor.submit(() -> { inicio.await(); return checkout.finalizar(id, ahora); });
+      var b = ejecutor.submit(() -> { inicio.await(); return reservas.cambiarEstado(id, "salida", new OperacionUsuarioDTO(usuario)); });
+      inicio.countDown(); a.get(20, TimeUnit.SECONDS);
+      assertThat(b.get(20, TimeUnit.SECONDS).estadoDetalle()).isEqualTo(EstadoReserva.FINALIZADA);
+    }
+    comprobarEstancia(id, EstadoReserva.FINALIZADA, EstadoHabitacion.POR_LIMPIAR);
+  }
+
+  @Test void falloDeConsistenciaNoModificaHabitacionNiEstancia() {
+    var ahora = ReglasPropuesta.ahora().withNano(0);
+    Long id = estanciaVencida(ahora);
+    tx.executeWithoutResult(s -> em.find(DetalleReserva.class, id).setFechaIngresoReal(ahora.plusHours(1)));
+    assertThatThrownBy(() -> checkout.finalizar(id, ahora)).hasMessageContaining("anterior al ingreso real");
+    comprobarEstancia(id, EstadoReserva.EN_CURSO, EstadoHabitacion.OCUPADO);
+    tx.executeWithoutResult(s -> assertThat(em.find(DetalleReserva.class, id).getFechaSalidaReal()).isNull());
+  }
+
+  @Test void noPisaHabitacionesEnMantenimientoAunqueLaEstanciaSeaInconsistente() {
+    var ahora = ReglasPropuesta.ahora().withNano(0);
+    Long id = estanciaVencida(ahora);
+    tx.executeWithoutResult(s -> em.find(Habitacion.class, habitacion).setEstadoHabitacion(EstadoHabitacion.MANTENIMIENTO));
+    assertThatThrownBy(() -> checkout.finalizar(id, ahora)).hasMessageContaining("debe estar ocupada");
+    comprobarEstancia(id, EstadoReserva.EN_CURSO, EstadoHabitacion.MANTENIMIENTO);
+  }
+
+  @Test void candidataDesaparecidaOConfirmadaNoSeFinalizaYConsultarNoMutaEstados() {
+    assertThat(checkout.finalizar(Long.MAX_VALUE, ReglasPropuesta.ahora())).isFalse();
+    var r = reservas.registrar(reserva(UUID.randomUUID().toString(), "80.00"));
+    Long id = r.detalles().getFirst().idDetalleReserva();
+    assertThat(checkout.finalizar(id, ReglasPropuesta.ahora().plusDays(2))).isFalse();
+    reservas.obtener(r.idReserva()); reservas.listar(0, 100);
+    comprobarEstancia(id, EstadoReserva.CONFIRMADA, EstadoHabitacion.DISPONIBLE);
+  }
+
+  @Test void consultaDeCandidatasRespetaLaHoraYElCursor() {
+    var ahora = ReglasPropuesta.ahora().withNano(0);
+    Long id = estanciaVencida(ahora);
+    var limite = org.springframework.data.domain.PageRequest.of(0, 100);
+    assertThat(detalles.vencidas(ahora.minusSeconds(1), id - 1, limite)).doesNotContain(id);
+    assertThat(detalles.vencidas(ahora, id - 1, limite)).contains(id);
+    assertThat(detalles.vencidas(ahora, id, limite)).doesNotContain(id);
+    checkout.finalizar(id, ahora);
+    assertThat(detalles.vencidas(ahora, id - 1, limite)).doesNotContain(id);
+  }
+
+  @Test void reservaConCheckoutPasadoSeRechazaSinInsertarNiCobrar() {
+    var ahora = ReglasPropuesta.ahora();
+    var solicitud = new ReservaRegistroRequestDTO(UUID.randomUUID().toString(), cliente, usuario,
+        List.of(new ReservaDetalleRegistroDTO(habitacion, ahora.minusDays(2), ahora.minusDays(1),
+            new BigDecimal("80.00"), List.of())), cobro("80.00"));
+    assertThatThrownBy(() -> reservas.registrar(solicitud)).hasMessageContaining("debe estar en el futuro");
+    tx.executeWithoutResult(s -> assertThat(cantidad("Reserva", "claveRegistro", solicitud.claveRegistro())).isZero());
+  }
+
+  @Test void noCreaConsumosConUnaEstanciaEnCacheQueElCheckoutYaFinalizo() {
+    var ahora = ReglasPropuesta.ahora().withNano(0);
+    Long id = estanciaVencida(ahora);
+    var solicitud = venta(UUID.randomUUID().toString(), id, null);
+    assertThatThrownBy(() -> tx.execute(s -> {
+      assertThat(em.find(DetalleReserva.class, id).getEstadoDetalle()).isEqualTo(EstadoReserva.EN_CURSO);
+      assertThat(checkout.finalizar(id, ahora)).isTrue();
+      return ventas.registrar(solicitud);
+    })).hasMessageContaining("requiere una estancia en curso");
+    sinVenta(solicitud.claveRegistro());
+    comprobarEstancia(id, EstadoReserva.FINALIZADA, EstadoHabitacion.POR_LIMPIAR);
+  }
+
+  @Test void rechazaFechasInvertidasHabitacionesDuplicadasYOcupantesRepetidos() {
+    var original = reserva(UUID.randomUUID().toString(), "80.00");
+    var d = original.detalles().getFirst();
+    var invertida = new ReservaDetalleRegistroDTO(habitacion, d.fechaSalida(), d.fechaIngreso(), d.costoEstadia(), d.ocupantes());
+    var repetidos = new ReservaDetalleRegistroDTO(habitacion, d.fechaIngreso(), d.fechaSalida(), d.costoEstadia(),
+        List.of(d.ocupantes().getFirst(), d.ocupantes().getFirst()));
+    for (var caso : List.of(List.of(invertida), List.of(d, d), List.of(repetidos))) {
+      var solicitud = new ReservaRegistroRequestDTO(UUID.randomUUID().toString(), cliente, usuario, caso, cobro("80.00"));
+      assertThatThrownBy(() -> reservas.registrar(solicitud)).isInstanceOf(pe.com.rebolsysBackend.exception.ReglaNegocioException.class);
+      tx.executeWithoutResult(s -> assertThat(cantidad("Reserva", "claveRegistro", solicitud.claveRegistro())).isZero());
+    }
+  }
+
+  @Test void checkoutDejaHabitacionBloqueadaHastaCompletarLimpieza() {
+    var ahora = ReglasPropuesta.ahora().withNano(0);
+    Long id = estanciaVencida(ahora);
+    assertThat(checkout.finalizar(id, ahora)).isTrue();
+    var solicitud = reserva(UUID.randomUUID().toString(), "80.00");
+    assertThatThrownBy(() -> reservas.registrar(solicitud)).hasMessageContaining("disponible físicamente");
+    comprobarEstancia(id, EstadoReserva.FINALIZADA, EstadoHabitacion.POR_LIMPIAR);
+  }
+
+  @Test void reservaConfirmadaSuperpuestaNoPermiteOtraReservaNiPagosHuerfanos() {
+    reservas.registrar(reserva(UUID.randomUUID().toString(), "80.00"));
+    var segunda = reserva(UUID.randomUUID().toString(), "80.00");
+    assertThatThrownBy(() -> reservas.registrar(segunda)).hasMessageContaining("ya tiene una reserva");
+    tx.executeWithoutResult(s -> assertThat(cantidad("Reserva", "claveRegistro", segunda.claveRegistro())).isZero());
+  }
+
+  @Test void menoresExigenAdultoEnLaMismaHabitacionYCamaDesdeLosSieteAnios() {
+    Long menor = tx.execute(s -> {
+      var p = new Perfil(); p.setTipoDocumento(em.find(Perfil.class, cliente).getTipoDocumento());
+      p.setNumeroDocumento(UUID.randomUUID().toString().substring(0, 8)); p.setEsCliente(1); em.persist(p);
+      var n = new PersonaNatural(); n.setPerfil(p); n.setNombres("Menor"); n.setApellidos("Prueba");
+      n.setFechaNacimiento(ReglasPropuesta.ahora().toLocalDate().minusYears(6)); em.persist(n);
+      var h = em.find(Habitacion.class, habitacion); h.setCapacidadPersonas(2); h.setPlazasCama(1); h.setMaxMenoresSinCama(1);
+      return p.getIdPerfil();
+    });
+    var original = reserva(UUID.randomUUID().toString(), "80.00");
+    var d = original.detalles().getFirst();
+    for (var ocupantes : List.of(
+        List.of(new ReservaOcupanteRegistroDTO(menor, null, null, false)),
+        List.of(new ReservaOcupanteRegistroDTO(menor, cliente, ParentescoResponsable.MADRE, false)),
+        List.of(new ReservaOcupanteRegistroDTO(cliente, null, null, true), new ReservaOcupanteRegistroDTO(menor, null, null, false)),
+        List.of(new ReservaOcupanteRegistroDTO(cliente, null, null, false)))) {
+      var solicitud = new ReservaRegistroRequestDTO(UUID.randomUUID().toString(), cliente, usuario,
+          List.of(new ReservaDetalleRegistroDTO(habitacion, d.fechaIngreso(), d.fechaSalida(), d.costoEstadia(), ocupantes)), cobro("80.00"));
+      assertThatThrownBy(() -> reservas.registrar(solicitud)).isInstanceOf(pe.com.rebolsysBackend.exception.ReglaNegocioException.class);
+    }
+    var familia = List.of(new ReservaOcupanteRegistroDTO(cliente, null, null, true),
+        new ReservaOcupanteRegistroDTO(menor, cliente, ParentescoResponsable.MADRE, false));
+    var solicitud = new ReservaRegistroRequestDTO(UUID.randomUUID().toString(), cliente, usuario,
+        List.of(new ReservaDetalleRegistroDTO(habitacion, d.fechaIngreso(), d.fechaSalida(), d.costoEstadia(), familia)), cobro("80.00"));
+    tx.executeWithoutResult(s -> em.find(PersonaNatural.class, menor).setFechaNacimiento(d.fechaIngreso().toLocalDate().minusYears(7)));
+    assertThatThrownBy(() -> reservas.registrar(solicitud)).hasMessageContaining("menor de siete años");
+    tx.executeWithoutResult(s -> em.find(PersonaNatural.class, menor).setFechaNacimiento(d.fechaIngreso().toLocalDate().minusYears(6)));
+    assertThat(reservas.registrar(solicitud).detalles().getFirst().ocupantes()).hasSize(2);
+  }
+
+  @Test void titularMenorDeEdadSeRechazaAunqueNoSeCarguenOcupantes() {
+    tx.executeWithoutResult(s -> em.find(PersonaNatural.class, cliente).setFechaNacimiento(ReglasPropuesta.ahora().toLocalDate().minusYears(17)));
+    var original = reserva(UUID.randomUUID().toString(), "80.00");
+    var d = original.detalles().getFirst();
+    var solicitud = new ReservaRegistroRequestDTO(original.claveRegistro(), cliente, usuario,
+        List.of(new ReservaDetalleRegistroDTO(habitacion, d.fechaIngreso(), d.fechaSalida(), d.costoEstadia(), List.of())), cobro("80.00"));
+    assertThatThrownBy(() -> reservas.registrar(solicitud)).hasMessageContaining("mayor de edad");
+  }
+
+  @Test void identidadInvalidaSeRechazaTambienAlInvocarDirectamenteElServicio() {
+    var datos = new ClienteRegistroRequestDTO(0L, "x", false, "", "",
+        LocalDate.now().plusYears(1), null, null, "correo-invalido", null);
+    assertThatThrownBy(() -> clientes.guardarPersona(datos)).isInstanceOf(jakarta.validation.ConstraintViolationException.class);
+    assertThatThrownBy(() -> clientes.actualizarPersona(cliente, datos)).isInstanceOf(jakarta.validation.ConstraintViolationException.class);
+    tx.executeWithoutResult(s -> assertThat(em.find(PersonaNatural.class, cliente).getNombres()).isEqualTo("Lucía"));
   }
 }

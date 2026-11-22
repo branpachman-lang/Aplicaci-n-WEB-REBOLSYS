@@ -163,6 +163,32 @@ Los datos provienen de Oracle a través de la API. Los mensajes de validación d
 
 `app.config.ts` configura los proveedores y `app.routes.ts` carga las rutas por funcionalidad. `layout` contiene la estructura principal; cada módulo en `features` separa `models`, `services`, `pages` y sus componentes. Cada pantalla conserva sus archivos TypeScript, HTML y CSS. `core` agrupa servicios y utilidades; `shared` reúne componentes y directivas comunes.
 
-La autenticación, pasarela de pagos, carga de imágenes y paso de facturación a producción se implementarán posteriormente. La versión está destinada al desarrollo local y a la facturación beta.
+La autenticación usa JWT y permisos por funcionalidad. El paso de facturación a
+producción y una pasarela de pagos requieren configuración e integración adicionales.
+La versión está destinada al desarrollo local y a la facturación beta.
 
-Este repositorio contiene los archivos del sistema. Documentación de trabajo, Postman, pruebas, capturas, compilaciones y dependencias instaladas se mantienen fuera de Git.
+Las reservas se actualizan cada 30 segundos para reflejar el checkout automático
+del backend, sin interrumpir los diálogos activos. La [revisión de noviembre de 2026](../rebolsysBackend/REVISION-2026-11-21.md)
+documenta las reglas, las pruebas y la eliminación de la pantalla de configuración
+antigua, sustituida por las rutas específicas de habitaciones y mobiliario.
+
+Las pruebas de regresión de reservas y otras pruebas indicadas en `.gitignore`
+están versionadas. Parte de las pruebas locales anteriores sigue excluida de Git.
+Compilaciones, capturas y dependencias instaladas se mantienen fuera de Git.
+
+## Factura para una reserva registrada con DNI
+
+Desde **Reservas → Boleta / Factura**, elegir **Factura** abre el formulario del
+receptor con documento RUC. El titular y los huéspedes conservan sus documentos.
+Buscar el RUC reutiliza al receptor existente; si falta, se completan sus datos y
+se registra al emitir. También se busca antes de registrar cuando se omite la
+búsqueda manual. RUC 10 muestra nombres y apellidos; RUC 20, razón social.
+
+La emisión usa `idClienteReceptor` del comprobante y conserva la misma reserva,
+cuenta y pago. Los reintentos mantienen el receptor y la solicitud originales;
+un comprobante ya emitido conserva su tipo y receptor. Volver a **Boleta** recupera
+los datos del titular. Este formulario se comparte con los comprobantes de ventas.
+
+**Agregar nueva reserva** se encuentra en el encabezado, antes de la tabla y de
+la paginación. Los encabezados de los listados acomodan sus acciones en varias
+líneas cuando el ancho de la pantalla lo requiere.

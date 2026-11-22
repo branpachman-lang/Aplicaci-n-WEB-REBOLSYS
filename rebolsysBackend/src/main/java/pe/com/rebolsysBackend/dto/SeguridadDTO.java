@@ -1,6 +1,5 @@
 package pe.com.rebolsysBackend.dto;
 
-import pe.com.rebolsysBackend.security.CredencialesService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import java.time.LocalDate;
