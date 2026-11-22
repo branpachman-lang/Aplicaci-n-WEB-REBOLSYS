@@ -213,6 +213,13 @@
                   </button>
 
                   @if (item.estadoItem !== "Inactivo") {
+                    @let enHabitacion = item.estadoItem === "En habitacion";
+                    @let enAlmacen = item.estadoItem === "Activo";
+                    @let puedeAsignar = sesion.permite("MOBILIARIO:ASIGNAR");
+                    @let puedeMover = enHabitacion && puedeAsignar;
+                    @let puedeDarDeBaja =
+                      (enHabitacion || enAlmacen) && sesion.permite("MOBILIARIO:ELIMINAR");
+
                     @if (sesion.permite("MOBILIARIO:EDITAR")) {
                       <button
                         class="button small"
@@ -222,62 +229,86 @@
                         <app-icon name="edit" />Editar
                       </button>
                     }
-                    @if (item.estadoItem === "En habitacion") {
-                      @if (sesion.permite("MOBILIARIO:CONSERVACION")) {
-                        <button
-                          class="button small subtle"
-                          (click)="abrirConservacion(item)"
-                          title="Actualizar estado de conservación"
-                        >
-                          <app-icon name="check" />Conservación
-                        </button>
-                      }
-                      @if (sesion.permite("MOBILIARIO:ASIGNAR")) {
-                        <button
-                          class="button small subtle"
-                          (click)="abrirAsignacion(item, 'trasladar')"
-                          title="Trasladar a otra habitación"
-                        >
-                          Trasladar
-                        </button>
-                      }
-                      @if (sesion.permite("MOBILIARIO:ASIGNAR")) {
-                        <button
-                          class="button small subtle"
-                          (click)="abrirAsignacion(item, 'retirar')"
-                          title="Retirar a almacén"
-                        >
-                          Retirar
-                        </button>
-                      }
-                      @if (sesion.permite("MOBILIARIO:ELIMINAR")) {
-                        <button
-                          class="button small danger"
-                          (click)="abrirBaja(item)"
-                          title="Dar de baja por daño o pérdida"
-                        >
-                          Dar de baja
-                        </button>
-                      }
-                    } @else if (item.estadoItem === "Activo") {
-                      @if (sesion.permite("MOBILIARIO:ASIGNAR")) {
-                        <button
-                          class="button small subtle"
-                          (click)="abrirAsignacion(item, 'asignar')"
-                          title="Asignar a habitación"
-                        >
-                          Asignar
-                        </button>
-                      }
-                      @if (sesion.permite("MOBILIARIO:ELIMINAR")) {
-                        <button
-                          class="button small danger"
-                          (click)="abrirBaja(item)"
-                          title="Dar de baja unidad"
-                        >
-                          Dar de baja
-                        </button>
-                      }
+                    @if (enHabitacion && sesion.permite("MOBILIARIO:CONSERVACION")) {
+                      <button
+                        class="button small subtle"
+                        (click)="abrirConservacion(item)"
+                        title="Actualizar estado de conservación"
+                      >
+                        <app-icon name="check" />Conservación
+                      </button>
+                    } @else if (enAlmacen && puedeAsignar) {
+                      <button
+                        class="button small subtle"
+                        (click)="abrirAsignacion(item, 'asignar')"
+                        title="Asignar a habitación"
+                      >
+                        Asignar
+                      </button>
+                    }
+
+                    @if (puedeMover || puedeDarDeBaja) {
+                      @let idAcciones = 'acciones-mobiliario-' + item.idItem;
+                      <button
+                        #botonAcciones
+                        type="button"
+                        class="button small subtle boton-acciones"
+                        [attr.popovertarget]="idAcciones"
+                        [attr.aria-label]="'Más acciones para ' + item.nombreItem"
+                        title="Más acciones"
+                      >
+                        <app-icon name="more-horizontal" />
+                      </button>
+                      <div
+                        #menuAcciones
+                        [id]="idAcciones"
+                        class="menu-acciones"
+                        popover="auto"
+                        role="group"
+                        aria-label="Acciones adicionales"
+                      >
+                        @if (puedeMover) {
+                          <button
+                            type="button"
+                            class="button small subtle"
+                            autofocus
+                            (click)="
+                              cerrarAcciones(menuAcciones, botonAcciones);
+                              abrirAsignacion(item, 'trasladar')
+                            "
+                            title="Trasladar a otra habitación"
+                          >
+                            Trasladar
+                          </button>
+                          <button
+                            type="button"
+                            class="button small subtle"
+                            (click)="
+                              cerrarAcciones(menuAcciones, botonAcciones);
+                              abrirAsignacion(item, 'retirar')
+                            "
+                            title="Retirar a almacén"
+                          >
+                            Retirar
+                          </button>
+                        }
+                        @if (puedeDarDeBaja) {
+                          <button
+                            type="button"
+                            class="button small danger"
+                            [attr.autofocus]="puedeMover ? null : ''"
+                            (click)="
+                              cerrarAcciones(menuAcciones, botonAcciones);
+                              abrirBaja(item)
+                            "
+                            [title]="
+                              enHabitacion ? 'Dar de baja por daño o pérdida' : 'Dar de baja unidad'
+                            "
+                          >
+                            Dar de baja
+                          </button>
+                        }
+                      </div>
                     }
                   }
                 </div>
