@@ -87,10 +87,10 @@ BEGIN
   retirar_restriccion('MOVIMIENTO_INVENTARIO', 'PN_MI_ITEM_HABITACION_FK');
 
   agregar_restriccion('ITEM_CONDICION_V2_CHK',
-    q'[ALTER TABLE item ADD CONSTRAINT item_condicion_v2_chk CHECK (condicionItem IN ('OPTIMO','DANADO','FALTANTE','EN_REPARACION'))]');
+    q'[ALTER TABLE item ADD CONSTRAINT item_condicion_v2_chk CHECK (condicionItem IN ('OPTIMO','DANADO','FALTANTE'))]');
   retirar_restriccion('ITEM', 'ITEM_CONDICION_CHK');
   agregar_restriccion('DI_ESTADO_V2_CHK',
-    q'[ALTER TABLE detalle_informe ADD CONSTRAINT di_estado_v2_chk CHECK (estadoEncontrado IN ('OPTIMO','DANADO','FALTANTE','EN_REPARACION'))]');
+    q'[ALTER TABLE detalle_informe ADD CONSTRAINT di_estado_v2_chk CHECK (estadoEncontrado IN ('OPTIMO','DANADO','FALTANTE'))]');
   retirar_restriccion('DETALLE_INFORME', 'DI_ESTADO_ENCONTRADO_CHK');
   agregar_restriccion('INFORME_ESTADO_V2_CHK',
     q'[ALTER TABLE informe_revision ADD CONSTRAINT informe_estado_v2_chk CHECK (estadoInforme IN ('BORRADOR','POR_APROBAR','APROBADO','INVALIDADO'))]');

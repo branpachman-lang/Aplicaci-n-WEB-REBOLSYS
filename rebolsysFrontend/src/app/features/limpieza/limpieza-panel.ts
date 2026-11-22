@@ -38,7 +38,7 @@ const ETIQUETAS: Record<string, string> = {
   DISPONIBLE: "Disponible", OCUPADO: "Ocupada", MANTENIMIENTO: "En mantenimiento", POR_LIMPIAR: "Por limpiar",
   EN_LIMPIEZA: "En limpieza", POR_APROBAR: "Por aprobar", APROBADO: "Aprobado", INVALIDADO: "Invalidado",
   BUENO: "Óptimo", DANADO: "Dañado",
-  FALTANTE: "Faltante", EN_REPARACION: "En reparación", SIN_REGISTRAR: "Sin registrar", SIN_INFORME: "Sin informe",
+  FALTANTE: "Faltante", SIN_REGISTRAR: "Sin registrar", SIN_INFORME: "Sin informe",
   SIN_TICKET: "Sin ticket", CON_TICKETS: "Con tickets", REPARACION: "Reparación", REPOSICION: "Reposición",
   RESUELTO: "Resuelto", PENDIENTE: "Pendiente", CANCELADO: "Cancelado", EN_PROCESO: "En proceso", ASIGNADO: "Asignado",
   ACCESO_RESTRINGIDO: "Acceso restringido",
@@ -73,7 +73,7 @@ export class LimpiezaPanel {
   readonly tipos = signal<{ id: number; nombre: string }[]>([]);
   readonly pagina = signal(0);
   readonly estadosHabitacion = ["DISPONIBLE", "OCUPADO", "MANTENIMIENTO", "POR_LIMPIAR", "EN_LIMPIEZA"];
-  readonly estadosItem: EstadoItem[] = ["BUENO", "DANADO", "FALTANTE", "EN_REPARACION"];
+  readonly estadosItem: EstadoItem[] = ["BUENO", "DANADO", "FALTANTE"];
   readonly acciones: TipoAccion[] = ["REPARACION", "REPOSICION"];
   readonly filas = signal<Fila[]>([]);
   readonly puedeGuardarInforme = computed(() =>

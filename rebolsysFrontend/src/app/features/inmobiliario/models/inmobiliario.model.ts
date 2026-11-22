@@ -1,7 +1,7 @@
 export type EstadoItem = 'Activo' | 'Inactivo' | 'En habitacion';
 
 export type EstadoConservacion =
-  'BUENO' | 'DANADO' | 'FALTANTE' | 'EN_REPARACION';
+  'BUENO' | 'DANADO' | 'FALTANTE';
 
 export interface Item {
   idItem: number;

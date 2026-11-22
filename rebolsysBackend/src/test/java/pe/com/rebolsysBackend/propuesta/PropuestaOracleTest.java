@@ -557,7 +557,7 @@ class PropuestaOracleTest {
         items.asignar(
             i.idItem(),
             new ItemAsignacionDTO(
-                "retirar", usuario, null, EstadoConservacion.EN_REPARACION, "Revisión"));
+                "retirar", usuario, null, EstadoConservacion.DANADO, "Revisión"));
     assertThat(retirado.estadoItem()).isEqualTo(EstadoItem.ACTIVO);
     assertThat(retirado.idHabitacion()).isNull();
     assertThat(items.movimientos(i.idItem())).hasSize(3);
@@ -1415,9 +1415,9 @@ class PropuestaOracleTest {
     assertThat(items.historial(i.idItem())).anyMatch(evento -> evento.estadoConservacion() == EstadoConservacion.BUENO);
     var h2 = habitaciones.create(habitacionDTO("NUEVOTV", 2, 2, 0));
     items.asignar(i.idItem(), new ItemAsignacionDTO("trasladar", usuario, h2.idHabitacion(), EstadoConservacion.DANADO, "Taller"));
-    var retirada = items.asignar(i.idItem(), new ItemAsignacionDTO("retirar", usuario, null, EstadoConservacion.EN_REPARACION, "Enviar reparación"));
+    var retirada = items.asignar(i.idItem(), new ItemAsignacionDTO("retirar", usuario, null, EstadoConservacion.DANADO, "Enviar reparación"));
     assertThat(retirada.idHabitacion()).isNull();
-    assertThat(retirada.estadoActualItem()).isEqualTo(EstadoConservacion.EN_REPARACION);
+    assertThat(retirada.estadoActualItem()).isEqualTo(EstadoConservacion.DANADO);
     assertThat(habitaciones.mobiliario(habitacion)).isEmpty();
     assertThat(habitaciones.mobiliario(h2.idHabitacion())).isEmpty();
     var historial = items.historial(i.idItem());
@@ -1446,11 +1446,11 @@ class PropuestaOracleTest {
           .andExpect(status().isOk()).andExpect(jsonPath("$.totalElementos").value(1))
           .andExpect(jsonPath("$.contenido[0].idItem").value(i.idItem()));
     }
-    items.asignar(i.idItem(), new ItemAsignacionDTO("retira", usuario, null, EstadoConservacion.EN_REPARACION, "Taller"));
+    items.asignar(i.idItem(), new ItemAsignacionDTO("retira", usuario, null, EstadoConservacion.DANADO, "Taller"));
     mvc.perform(get("/api/v1/items/configuracion").param("idHabitacion", habitacion.toString()))
         .andExpect(status().isOk()).andExpect(jsonPath("$.totalElementos").value(0));
     mvc.perform(get("/api/v1/items/configuracion").param("idTipoItem", tipoItem.toString())
-        .param("sinAsignar", "true").param("estadoConservacion", "EN_REPARACION"))
+        .param("sinAsignar", "true").param("estadoConservacion", "DANADO"))
         .andExpect(status().isOk()).andExpect(jsonPath("$.totalElementos").value(1));
   }
 

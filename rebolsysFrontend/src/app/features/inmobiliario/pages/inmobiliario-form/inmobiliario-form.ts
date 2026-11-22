@@ -359,8 +359,6 @@ export class InmobiliarioForm implements OnInit {
         return 'Dañado';
       case 'FALTANTE':
         return 'Perdido/faltante';
-      case 'EN_REPARACION':
-        return 'En reparación';
       default:
         return 'No registrada';
     }

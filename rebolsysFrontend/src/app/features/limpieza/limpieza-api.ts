@@ -3,7 +3,7 @@ import { Injectable, inject } from "@angular/core";
 import { environment } from "../../../environments/environment";
 import { Pagina } from "../../core/models/pagina-response";
 
-export type EstadoItem = "BUENO" | "DANADO" | "FALTANTE" | "EN_REPARACION";
+export type EstadoItem = "BUENO" | "DANADO" | "FALTANTE";
 export type EstadoHabitacion = "DISPONIBLE" | "OCUPADO" | "MANTENIMIENTO" | "POR_LIMPIAR" | "EN_LIMPIEZA";
 export type EstadoInforme = "POR_APROBAR" | "APROBADO" | "INVALIDADO";
 export type TipoAccion = "REPARACION" | "REPOSICION";

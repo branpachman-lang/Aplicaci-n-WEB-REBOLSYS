@@ -35,7 +35,7 @@ td strong { color: var(--azul); }
 .estado.EN_LIMPIEZA, .estado.APROBADO, .estado.RESUELTO { background: #c9eef0; color: #084f58; }
 .estado.DANADO, .estado.FALTANTE, .estado.MANTENIMIENTO, .estado.REPARACION { background: #f7d8d8; color: #7e282b; }
 .estado.DISPONIBLE, .estado.BUENO { background: #d7efdc; color: #195832; }
-.estado.REPOSICION, .estado.OCUPADO, .estado.EN_REPARACION { background: #e7e1f8; color: #473781; }
+.estado.REPOSICION, .estado.OCUPADO { background: #e7e1f8; color: #473781; }
 .vacio { text-align: center; color: var(--muted); padding: 1.7rem 1rem; }
 .ficha-cabecera { padding: 1rem 1.15rem; border-bottom: 1px solid var(--line); }
 .ficha-cabecera h3, h4 { color: var(--azul); }
