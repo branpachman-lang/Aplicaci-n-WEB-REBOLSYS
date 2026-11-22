@@ -12,6 +12,6 @@ public record MovimientoRespuestaDTO(
     String tipo,
     int signo,
     int cantidad,
-    int stockResultante,
+    Integer stockResultante,
     LocalDateTime fechaMovimiento,
     String observacion) {}
