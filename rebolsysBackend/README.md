@@ -1,5 +1,55 @@
 # REBOLSYS Backend — propuesta de siete casos de uso
 
+## Redis para catálogos
+
+Redis se ejecuta separado de Pharma; Oracle y Angular mantienen sus contratos.
+Desde `rebolsysBackend/`, con Docker Desktop activo en modo Linux:
+
+```powershell
+docker compose up -d --wait redis
+docker compose exec -T redis redis-cli ping
+.\mvnw.cmd spring-boot:run
+```
+
+`ping` debe responder `PONG`. Si usas IntelliJ, recarga Maven y vuelve a ejecutar
+`RebolsysBackendApplication`. Redis queda en `127.0.0.1:6380`; el contenedor usa
+internamente `6379`. No necesita cambiar el puerto de Pharma ni la base Oracle.
+Para detener solo este Redis: `docker compose stop redis`.
+
+Se cachean listas de categorías, tipos de habitación y tipos de mobiliario durante
+10 minutos; documentos, formas de pago y tipos de gasto durante 30 minutos.
+Los cambios de categorías/tipos, incluyendo tarifas y capacidad, invalidan su
+catálogo después del commit. Las escrituras e invalidaciones Redis se completan
+de forma síncrona para evitar leer antes de que termine la invalidación.
+Los catálogos de recepción reutilizan estas listas, pero usuarios y turnos
+abiertos se consultan en vivo. Productos, reservas, pagos,
+disponibilidad, credenciales y permisos quedan fuera de esta primera etapa.
+
+La configuración admite `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`, `REDIS_SSL`,
+`CACHE_ENABLED` y `CACHE_PREFIX`. Cambia el prefijo por entorno, por ejemplo
+`rebolsys:prod:v1:`. Para desactivar la caché: `CACHE_ENABLED=false` o
+`app.cache.habilitada=false` en la configuración privada.
+
+La caché guarda DTO como JSON con tipos explícitos, sin entidades ni sesiones.
+Ante un fallo Redis, las consultas continúan en Oracle y se esperan cinco segundos
+antes de reintentar por catálogo. Cada proceso descarta el catálogo afectado antes
+de reutilizarlo al recuperarse, incluso si falló una invalidación tras el commit.
+La caché no garantiza lecturas estrictamente simultáneas entre varios procesos:
+si se despliegan múltiples backends, se requiere una estrategia compartida de
+recuperación/invalidez. Los cambios SQL externos se reflejan al vencer el TTL;
+reiniciar únicamente el backend no borra Redis. No usar `FLUSHALL` para refrescarlo.
+
+Las pruebas normales no necesitan Redis ni Oracle. Para comprobar Redis local real:
+
+```powershell
+$env:RUN_REDIS_TESTS = 'true'
+.\mvnw.cmd test '-Dtest=CacheCatalogosTest,CacheToleranteTest,RedisCatalogosIntegracionTest'
+Remove-Item Env:RUN_REDIS_TESTS
+```
+
+Las pruebas de Redis usan un prefijo aleatorio y solo eliminan sus propias claves.
+También se verifican rollback, invalidación al confirmar y continuidad ante fallos.
+
 ## Comprobantes, ticket de 80 mm y correo
 
 Las reservas y las ventas permiten generar una boleta o factura interna desde su
