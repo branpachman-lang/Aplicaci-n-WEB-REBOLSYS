@@ -67,6 +67,15 @@ import {
   styleUrl: "./reserva-form.css",
 })
 export class ReservaForm {
+  private readonly formatoFechaHoraLima = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Lima",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  });
   private readonly catalogoService = inject(CatalogoService);
   private readonly clienteService = inject(ClienteService);
   private readonly documentoConsultaService = inject(DocumentoConsultaService);
@@ -94,7 +103,7 @@ export class ReservaForm {
   private consultaClienteId = 0;
   private consultaHuespedId = 0;
   tick = signal(0);
-  hoy = fechaLocal(new Date());
+  hoy = this.fechaHoraLima(new Date()).slice(0, 10);
   nombre = nombre;
   private clave = generarClaveOperacion();
   private solicitud: Registro | null = null;
@@ -593,7 +602,7 @@ export class ReservaForm {
           this.clienteMensaje.set(
             resultado.origen === "local"
               ? "Cliente encontrado en el hospedaje. Revisa sus datos."
-              : "Datos obtenidos de APIs Perú. Revisa los datos y completa la fecha de nacimiento si corresponde.",
+              : "Datos consultados en APIs Perú.",
           );
         },
         error: (error) => {
@@ -655,18 +664,21 @@ export class ReservaForm {
 
   agregarHabitacion(line?: Estancia) {
     const primera = this.habitaciones.at(0)?.getRawValue() as Estancia | undefined;
-    const today = this.hoy,
-      next = new Date();
-    next.setDate(next.getDate() + 1);
+    const today = this.fechaHoraLima(new Date()).slice(0, 10);
+    const [anio, mes, dia] = today.split("-").map(Number);
+    const manana = new Date(Date.UTC(anio, mes - 1, dia + 1)).toISOString().slice(0, 10);
+    const minimoIngreso = this.minFechaIngreso();
+    const ingresoSugerido = `${today}T14:00`;
+    const ingresoPredeterminado = ingresoSugerido >= minimoIngreso ? ingresoSugerido : minimoIngreso;
     this.habitaciones.push(
       this.fb.group({
         idHabitacion: [line?.idHabitacion || null, Validators.required],
         fechaIngreso: [
-          line?.fechaIngreso?.slice(0, 16) || primera?.fechaIngreso || today + "T14:00",
+          line?.fechaIngreso?.slice(0, 16) || primera?.fechaIngreso || ingresoPredeterminado,
           Validators.required,
         ],
         fechaSalida: [
-          line?.fechaSalida?.slice(0, 16) || primera?.fechaSalida || fechaLocal(next) + "T12:00",
+          line?.fechaSalida?.slice(0, 16) || primera?.fechaSalida || `${manana}T12:00`,
           Validators.required,
         ],
         huespedes: [line?.huespedes || []],
@@ -702,8 +714,19 @@ export class ReservaForm {
       this.catalogos()?.ocupantes.find((t) => t.id === id)?.nombre || "Huésped"
     );
   }
+  private fechaHoraLima(fecha: Date) {
+    const partes = this.formatoFechaHoraLima.formatToParts(fecha);
+    const valor = (tipo: string) => partes.find((parte) => parte.type === tipo)?.value ?? "";
+    return `${valor("year")}-${valor("month")}-${valor("day")}T${valor("hour")}:${valor("minute")}`;
+  }
+  minFechaIngreso() {
+    const siguienteMinuto = new Date(Math.floor(Date.now() / 60_000) * 60_000 + 60_000);
+    return this.fechaHoraLima(siguienteMinuto);
+  }
   lineError(i: number) {
     const line = this.habitaciones.at(i).value;
+    if (line.fechaIngreso && line.fechaIngreso < this.minFechaIngreso())
+      return "La fecha de ingreso no puede estar en el pasado.";
     if (line.fechaIngreso && line.fechaSalida && this.nochesLinea(i) === 0)
       return "La salida debe ser posterior al ingreso.";
     const room = this.roomFor(i);

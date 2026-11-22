@@ -100,8 +100,16 @@ class CobroInmediatoIntegracionTest {
   private ReservaRegistroRequestDTO reserva(String clave, String monto) {
     var ahora = ReglasPropuesta.ahora();
     return new ReservaRegistroRequestDTO(clave, cliente, usuario,
-        List.of(new ReservaDetalleRegistroDTO(habitacion, ahora.minusHours(1), ahora.plusHours(22),
+        List.of(new ReservaDetalleRegistroDTO(habitacion, ahora.plusHours(1), ahora.plusDays(1),
             new BigDecimal("80.00"), List.of(new ReservaOcupanteRegistroDTO(cliente, null, null, true)))), cobro(monto));
+  }
+  private void prepararIngresoAhora(Long id) {
+    var ahora = ReglasPropuesta.ahora();
+    tx.executeWithoutResult(s -> {
+      var detalle = em.find(DetalleReserva.class, id);
+      detalle.setFechaIngreso(ahora.minusMinutes(1));
+      detalle.setFechaSalida(ahora.plusHours(22));
+    });
   }
   private VentaRequestDTO venta(String clave, Long estancia, CobroInmediatoDTO pago) {
     return new VentaRequestDTO(clave, usuario, cliente, null,
@@ -218,6 +226,7 @@ class CobroInmediatoIntegracionTest {
   @Test void consumoPagadoNoAumentaDeudaDeReservaYPermiteCheckout() {
     var r = reservas.registrar(reserva(UUID.randomUUID().toString(), "80.00"));
     Long d = r.detalles().getFirst().idDetalleReserva();
+    prepararIngresoAhora(d);
     reservas.cambiarEstado(d, "ingreso", new OperacionUsuarioDTO(usuario));
     var v = ventas.registrarConfirmada(venta(UUID.randomUUID().toString(), d, cobro("7.00")));
     var cuenta = cuentasReserva.cuenta(r.idReserva());
@@ -350,6 +359,7 @@ class CobroInmediatoIntegracionTest {
   private Long estanciaVencida(LocalDateTime salida) {
     var r = reservas.registrar(reserva(UUID.randomUUID().toString(), "80.00"));
     Long id = r.detalles().getFirst().idDetalleReserva();
+    prepararIngresoAhora(id);
     reservas.cambiarEstado(id, "ingreso", new OperacionUsuarioDTO(usuario));
     tx.executeWithoutResult(s -> {
       var d = em.find(DetalleReserva.class, id);
@@ -517,6 +527,16 @@ class CobroInmediatoIntegracionTest {
         List.of(new ReservaDetalleRegistroDTO(habitacion, ahora.minusDays(2), ahora.minusDays(1),
             new BigDecimal("80.00"), List.of())), cobro("80.00"));
     assertThatThrownBy(() -> reservas.registrar(solicitud)).hasMessageContaining("debe estar en el futuro");
+    tx.executeWithoutResult(s -> assertThat(cantidad("Reserva", "claveRegistro", solicitud.claveRegistro())).isZero());
+  }
+
+  @Test void reservaConIngresoPasadoYCheckoutFuturoSeRechazaSinInsertarNiCobrar() {
+    var ahora = ReglasPropuesta.ahora();
+    var solicitud = new ReservaRegistroRequestDTO(UUID.randomUUID().toString(), cliente, usuario,
+        List.of(new ReservaDetalleRegistroDTO(habitacion, ahora.minusDays(1), ahora.plusDays(1),
+            new BigDecimal("160.00"), List.of())), cobro("160.00"));
+    assertThatThrownBy(() -> reservas.registrar(solicitud))
+        .hasMessageContaining("fecha de ingreso").hasMessageContaining("pasado");
     tx.executeWithoutResult(s -> assertThat(cantidad("Reserva", "claveRegistro", solicitud.claveRegistro())).isZero());
   }
 

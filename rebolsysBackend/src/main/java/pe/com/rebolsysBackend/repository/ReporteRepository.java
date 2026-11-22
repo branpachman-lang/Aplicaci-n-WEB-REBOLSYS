@@ -36,23 +36,35 @@ public class ReporteRepository {
             rs.getObject(8, Long.class), rs.getString(9)));
   }
 
-  public List<Importe> financiero(LocalDateTime desde, LocalDateTime hasta) {
+  public List<MovimientoFinanciero> movimientosFinancieros(LocalDateTime desde, LocalDateTime hasta) {
     return jdbc.query("""
-        select concepto, medio, sum(monto)
+        select fecha, tipo, referencia, concepto, medio, ingreso, egreso
         from (
-          select case when c.idReserva is null then 'VENTAS' else 'RESERVAS' end concepto, f.nombrePago medio, p.monto
+          select p.fechaPago fecha,
+                 case when c.idReserva is null then 'VENTAS' else 'RESERVAS' end tipo,
+                 case when c.idReserva is not null then 'R-' || c.idReserva
+                      when c.idVenta is not null then 'V-' || c.idVenta
+                      else coalesce(c.numeroComprobante, p.numeroOperacion, 'P-' || p.idPago) end referencia,
+                 case when c.idReserva is null then 'Cobro de venta' else 'Cobro de reserva' end concepto,
+                 f.nombrePago medio, p.monto ingreso, 0 egreso, p.idPago orden
           from pago p join comprobante c on c.idComprobante = p.idComprobante
           join forma_pago f on f.idFormaPago = p.idFormaPago
           where p.verificado = 1 and (:desde is null or p.fechaPago >= :desde)
             and (:hasta is null or p.fechaPago < :hasta)
           union all
-          select case when t.signo = -1 then 'EGRESOS' else 'INGRESOS_MANUALES' end, 'EFECTIVO', f.monto
+          select f.fechaHora,
+                 case when t.signo = -1 then 'EGRESOS' else 'INGRESOS_MANUALES' end,
+                 'FC-' || f.idFlujo, f.concepto, 'EFECTIVO',
+                 case when t.signo = 1 then f.monto else 0 end,
+                 case when t.signo = -1 then f.monto else 0 end, f.idFlujo
           from flujo_caja f join tipo_movimiento_caja t on t.idTipoMovimiento = f.idTipoMovimiento
           where f.idPago is null and (t.signo = -1 or (t.signo = 1 and t.nombreMovimiento = 'INGRESO_MANUAL'))
             and (:desde is null or f.fechaHora >= :desde) and (:hasta is null or f.fechaHora < :hasta)
         ) movimientos
-        group by concepto, medio order by concepto, medio
-        """, fechas(desde, hasta), (rs, n) -> new Importe(rs.getString(1), rs.getString(2), rs.getBigDecimal(3)));
+        order by fecha, tipo, referencia
+        """, fechas(desde, hasta), (rs, n) -> new MovimientoFinanciero(
+            rs.getObject(1, LocalDateTime.class), rs.getString(2), rs.getString(3), rs.getString(4),
+            rs.getString(5), rs.getBigDecimal(6), rs.getBigDecimal(7)));
   }
 
   public Pagina<Cierre> cierres(LocalDateTime desde, LocalDateTime hasta, String usuario, int pagina, int tamanio) {

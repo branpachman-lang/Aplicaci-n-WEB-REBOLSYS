@@ -233,6 +233,7 @@ class PropuestaOracleTest {
   }
 
   ReservaRegistroRequestDTO reserva(String clave, boolean incluirMenor) {
+    var ahora = LocalDateTime.now(ZoneId.of("America/Lima"));
     var ocupantes = new ArrayList<ReservaOcupanteRegistroDTO>();
     ocupantes.add(new ReservaOcupanteRegistroDTO(adulto, null, null, true));
     if (incluirMenor)
@@ -245,10 +246,17 @@ class PropuestaOracleTest {
         List.of(
             new ReservaDetalleRegistroDTO(
                 habitacion,
-                LocalDateTime.now().minusHours(1),
-                LocalDateTime.now().plusDays(1),
+                ahora.plusHours(1),
+                ahora.plusDays(1),
                 new BigDecimal("80.00"),
                 ocupantes)));
+  }
+
+  private void prepararIngresoAhora(Long idDetalle) {
+    var ahora = LocalDateTime.now(ZoneId.of("America/Lima"));
+    var detalle = em.find(DetalleReserva.class, idDetalle);
+    detalle.setFechaIngreso(ahora.minusMinutes(1));
+    detalle.setFechaSalida(ahora.plusHours(22));
   }
 
   VentaRequestDTO venta(String clave, int cantidad) {
@@ -352,6 +360,7 @@ class PropuestaOracleTest {
     assertThat(em.find(Habitacion.class, habitacion).getEstadoHabitacion())
         .isEqualTo(EstadoHabitacion.DISPONIBLE);
     var id = r.detalles().getFirst().idDetalleReserva();
+    prepararIngresoAhora(id);
     reservas.cambiarEstado(id, "ingreso", new OperacionUsuarioDTO(usuario));
     assertThat(
             habitaciones.estado(LocalDate.now(), LocalDate.now().plusDays(2)).stream()
@@ -498,6 +507,7 @@ class PropuestaOracleTest {
   void ventaConCargoAReservaRequiereEstanciaEnCurso() {
     var r = reservas.registrar(reserva("venta-reserva", false));
     var d = r.detalles().getFirst().idDetalleReserva();
+    prepararIngresoAhora(d);
     reservas.cambiarEstado(d, "ingreso", new OperacionUsuarioDTO(usuario));
     stock(2);
     var v =
@@ -723,6 +733,7 @@ class PropuestaOracleTest {
         .andExpect(jsonPath("$.ocupantes.length()").value(2));
     // Reemplazar una lista con responsables no deja referencias a IDs eliminados.
     reservas.guardarOcupantes(id, new ReservaOcupantesGuardarDTO(usuario, ocupantes));
+    prepararIngresoAhora(id);
     reservas.cambiarEstado(id, "ingreso", new OperacionUsuarioDTO(usuario));
     assertThat(cuentasReserva.cuenta(r.idReserva()).saldoPendiente()).isEqualByComparingTo("80");
     mvc.perform(
@@ -738,6 +749,7 @@ class PropuestaOracleTest {
     var r = reservas.registrar(reserva("flujo-completo", true));
     Long id = r.idReserva(), detalle = r.detalles().getFirst().idDetalleReserva();
     cuentasReserva.pagar(id, pago("anticipo", "20", null));
+    prepararIngresoAhora(detalle);
     reservas.cambiarEstado(detalle, "ingreso", new OperacionUsuarioDTO(usuario));
     stock(10);
     var cargo = cuentasReserva.consumir(id, consumo("cargo", detalle, ModalidadCobro.RESERVA, 2));
@@ -774,6 +786,7 @@ class PropuestaOracleTest {
     var r = reservas.registrar(reserva("pagada", false));
     Long id = r.idReserva(), detalle = r.detalles().getFirst().idDetalleReserva();
     cuentasReserva.pagar(id, pago("alojamiento", "80", null));
+    prepararIngresoAhora(detalle);
     reservas.cambiarEstado(detalle, "ingreso", new OperacionUsuarioDTO(usuario));
     stock(3);
     assertThatThrownBy(
@@ -803,6 +816,7 @@ class PropuestaOracleTest {
     em.flush();
     em.clear();
     assertThat(em.find(Comprobante.class, doc.idCuenta()).getFechaEmision()).isNotNull();
+    prepararIngresoAhora(detalle);
     reservas.cambiarEstado(detalle, "ingreso", new OperacionUsuarioDTO(usuario));
     stock(2);
     assertThatThrownBy(
@@ -846,6 +860,7 @@ class PropuestaOracleTest {
   void consumoRepetidoNoDuplicaStockCuentaNiImporteYNoSeAnulaPorVentas() {
     var r = reservas.registrar(reserva("consumo-repetido", false));
     var detalle = r.detalles().getFirst().idDetalleReserva();
+    prepararIngresoAhora(detalle);
     reservas.cambiarEstado(detalle, "ingreso", new OperacionUsuarioDTO(usuario));
     stock(5);
     var req = consumo("una-vez", detalle, ModalidadCobro.RESERVA, 2);
@@ -1038,6 +1053,7 @@ class PropuestaOracleTest {
   void unaReservaNoPuedePagarNiFacturarElConsumoDeOtra() {
     var r = reservas.registrar(reserva("origen", false));
     var d = r.detalles().getFirst().idDetalleReserva();
+    prepararIngresoAhora(d);
     reservas.cambiarEstado(d, "ingreso", new OperacionUsuarioDTO(usuario));
     stock(2);
     var c =
@@ -1270,6 +1286,7 @@ class PropuestaOracleTest {
     var segundo = productoAdicional("2", 10);
     var reserva = reservas.registrar(reserva("venta-huesped", false));
     var detalle = reserva.detalles().getFirst().idDetalleReserva();
+    prepararIngresoAhora(detalle);
     reservas.cambiarEstado(detalle, "ingreso", new OperacionUsuarioDTO(usuario));
     var base = carrito("consumo-separado-multiple", segundo, 2, 3);
     var consumo = cuentasReserva.consumir(reserva.idReserva(), new VentaRequestDTO(base.claveRegistro(), usuario,
@@ -1290,6 +1307,7 @@ class PropuestaOracleTest {
     var segundo = productoAdicional("2", 10);
     var reserva = reservas.registrar(reserva("consolidado-multiple", false));
     var detalle = reserva.detalles().getFirst().idDetalleReserva();
+    prepararIngresoAhora(detalle);
     reservas.cambiarEstado(detalle, "ingreso", new OperacionUsuarioDTO(usuario));
     var base = carrito("consumo-principal", segundo, 2, 3);
     var c = cuentasReserva.consumir(reserva.idReserva(), new VentaRequestDTO(base.claveRegistro(), usuario,
@@ -1397,7 +1415,9 @@ class PropuestaOracleTest {
   @Test
   void configuracionNoPuedeLiberarHabitacionConEstanciaEnCurso() throws Exception {
     var r = reservas.registrar(reserva("estado-config", false));
-    reservas.cambiarEstado(r.detalles().getFirst().idDetalleReserva(), "ingreso", new OperacionUsuarioDTO(usuario));
+    var detalle = r.detalles().getFirst().idDetalleReserva();
+    prepararIngresoAhora(detalle);
+    reservas.cambiarEstado(detalle, "ingreso", new OperacionUsuarioDTO(usuario));
     mvc.perform(patch("/api/v1/habitaciones/" + habitacion + "/estado")
         .contentType(MediaType.APPLICATION_JSON).content("{\"estadoHabitacion\":\"DISPONIBLE\"}"))
         .andExpect(status().isConflict());

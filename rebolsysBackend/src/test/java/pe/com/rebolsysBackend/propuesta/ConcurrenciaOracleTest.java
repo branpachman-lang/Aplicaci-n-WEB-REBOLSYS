@@ -149,6 +149,7 @@ class ConcurrenciaOracleTest {
                 em.persist(f);
                 forma[0] = f.getIdFormaPago();
               });
+      var inicioReserva = LocalDateTime.now(ZoneId.of("America/Lima")).plusHours(1);
       var r =
           reservas.registrar(
               new ReservaRegistroRequestDTO(
@@ -158,8 +159,8 @@ class ConcurrenciaOracleTest {
                   List.of(
                       new ReservaDetalleRegistroDTO(
                           d.habitacion(),
-                          LocalDateTime.now(),
-                          LocalDateTime.now().plusDays(1),
+                          inicioReserva,
+                          inicioReserva.plusDays(1),
                           BigDecimal.TEN,
                           List.of()))));
       assertThat(

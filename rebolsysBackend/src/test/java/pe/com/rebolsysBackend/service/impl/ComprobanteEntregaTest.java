@@ -130,18 +130,35 @@ class ComprobanteEntregaTest {
     verifyNoInteractions(proveedor);
   }
 
-  @Test void ticketPdfDe80mmContieneReceptorTotalesYAdvertencia() throws Exception {
+  @Test void ticketPdfA4ContieneReceptorTotalesYAdvertencia() throws Exception {
     emisiones.simular(comprobante, solicitud());
     var respuesta = mvc.perform(get(ruta("/ticket"))).andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.APPLICATION_PDF)).andExpect(header().string("Cache-Control", "no-store"))
         .andReturn().getResponse().getContentAsByteArray();
     try (var pdf = Loader.loadPDF(respuesta)) {
-      assertThat(pdf.getPage(0).getMediaBox().getWidth() * 25.4 / 72).isCloseTo(80, within(0.01));
+      assertThat(pdf.getPage(0).getMediaBox().getWidth() * 25.4 / 72).isCloseTo(210, within(0.01));
+      assertThat(pdf.getPage(0).getMediaBox().getHeight() * 25.4 / 72).isCloseTo(297, within(0.01));
       String texto = new PDFTextStripper().getText(pdf);
       assertThat(texto).contains("FACTURA INTERNA", "Comercial Española SAC", "S/ 118.00", "S/ 18.00", "SIN VALIDEZ TRIBUTARIA");
       Path destino = Path.of("target/pruebas-comprobantes"); Files.createDirectories(destino);
-      Files.write(destino.resolve("ticket-80mm.pdf"), respuesta);
-      ImageIO.write(new PDFRenderer(pdf).renderImageWithDPI(0, 150), "png", destino.resolve("ticket-80mm.png").toFile());
+      Files.write(destino.resolve("comprobante-A4.pdf"), respuesta);
+      ImageIO.write(new PDFRenderer(pdf).renderImageWithDPI(0, 150), "png", destino.resolve("comprobante-A4.png").toFile());
+    }
+  }
+
+  @Test void ticketPdfA4MuestraSaldoPendienteEnElResumen() throws Exception {
+    tx.executeWithoutResult(s -> {
+      var pago = em.createQuery("from Pago p where p.comprobante.idComprobante=:id", Pago.class)
+          .setParameter("id", comprobante).getSingleResult();
+      pago.setMonto(new BigDecimal("20.00"));
+    });
+    var respuesta = mvc.perform(get(ruta("/ticket"))).andExpect(status().isOk())
+        .andReturn().getResponse().getContentAsByteArray();
+    try (var pdf = Loader.loadPDF(respuesta)) {
+      String texto = new PDFTextStripper().getText(pdf);
+      assertThat(texto).contains("Saldo pendiente", "S/ 20.00", "S/ 98.00", "PENDIENTE DE PAGO");
+      Path destino = Path.of("target/pruebas-comprobantes"); Files.createDirectories(destino);
+      ImageIO.write(new PDFRenderer(pdf).renderImageWithDPI(0, 150), "png", destino.resolve("comprobante-A4-pendiente.png").toFile());
     }
   }
 

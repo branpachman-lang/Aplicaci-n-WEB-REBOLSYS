@@ -12,10 +12,12 @@ public final class ReportesDTO {
   public record Incidencia(Long idInforme, String habitacion, LocalDateTime fecha, String estadoInforme,
       String mueble, String condicion, String observacion, Long idTicket, String estadoTicket) {}
 
-  public record Importe(String concepto, String medioPago, BigDecimal monto) {}
+  public record MovimientoFinanciero(LocalDateTime fecha, String tipo, String referencia,
+      String concepto, String medioPago, BigDecimal ingreso, BigDecimal egreso) {}
 
-  public record Financiero(List<Importe> filas, BigDecimal cobrosReservas, BigDecimal cobrosVentas,
-      BigDecimal ingresosManuales, BigDecimal egresos, BigDecimal neto) {}
+  public record Financiero(List<MovimientoFinanciero> filas, String generadoPor,
+      BigDecimal cobrosReservas, BigDecimal cobrosVentas, BigDecimal ingresosManuales,
+      BigDecimal egresos, BigDecimal neto) {}
 
   public record Cierre(Long idTurno, String usuario, LocalDateTime apertura, LocalDateTime cierre,
       String medioPago, BigDecimal esperado, BigDecimal declarado, BigDecimal diferencia) {}

@@ -33,10 +33,12 @@ export interface ReservaApi {
 export interface PagoReserva {
   idPago: number;
   idFormaPago: number;
+  medioPago: string;
   idTurno: number;
   monto: number;
   numeroOperacion: string | null;
   fechaPago: string;
+  verificado: boolean;
 }
 
 export interface CuentaReserva {
@@ -68,6 +70,7 @@ export interface CuentaDocumento {
   saldo: number;
   lineas?: {idDetalleReserva:number|null;idDetalleVenta:number|null;descripcion:string;cantidad:number;total:number}[];
   pagos: PagoReserva[];
+  estadias?: { habitacion: string; fechaIngreso: string; fechaSalida: string }[];
 }
 
 export interface CobroReserva {

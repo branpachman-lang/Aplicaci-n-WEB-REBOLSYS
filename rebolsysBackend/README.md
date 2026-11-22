@@ -50,7 +50,7 @@ Remove-Item Env:RUN_REDIS_TESTS
 Las pruebas de Redis usan un prefijo aleatorio y solo eliminan sus propias claves.
 También se verifican rollback, invalidación al confirmar y continuidad ante fallos.
 
-## Comprobantes, ticket de 80 mm y correo
+## Comprobantes A4, reportes y correo
 
 Las reservas y las ventas permiten generar una boleta o factura interna desde su
 cuenta pagada. El mismo diálogo ofrece **Simular factura o boleta localmente**:
@@ -59,11 +59,12 @@ guarda los importes y el desglose del impuesto en `EMISION_ELECTRONICA`, con est
 hospedaje, pero no credenciales de APIsPerú. Esa simulación no se puede enviar al
 proveedor, no crea XML firmado ni CDR y no acredita aceptación de SUNAT.
 
-**Imprimir comprobante** abre el diálogo del navegador con solo el ticket de
-80 mm. Elegir la impresora térmica y su papel de 80 mm en ese diálogo; la página
-web no selecciona una impresora ni imprime silenciosamente. **Descargar ticket PDF**
-genera una representación local del mismo ancho. Todos los documentos de prueba
-conservan el aviso de que no tienen validez tributaria de producción.
+**Imprimir comprobante** abre el diálogo del navegador con el comprobante en
+formato A4. La descarga y el adjunto por correo también usan A4. La pantalla de
+reportes ofrece impresión A4 horizontal o ticket de 80 mm; el usuario elige la
+impresora y el papel en el diálogo del navegador. La página no selecciona una
+impresora ni imprime silenciosamente. Todos los documentos de prueba conservan
+el aviso de que no tienen validez tributaria de producción.
 
 **Enviar al correo** sugiere el correo del receptor y permite corregir el destino
 antes de confirmar. Adjunta el PDF y conserva los pagos y la numeración. Utiliza

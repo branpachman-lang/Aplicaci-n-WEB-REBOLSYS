@@ -7,7 +7,6 @@ import static pe.com.rebolsysBackend.service.impl.ReglasPropuesta.patronBusqueda
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.HashMap;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,16 +27,24 @@ public class ReportesService {
         estado == null ? null : estado.name(), pagina, tamanio);
   }
 
-  public Financiero financiero(LocalDate desde, LocalDate hasta) {
+  public Financiero financiero(LocalDate desde, LocalDate hasta, String generadoPor) {
     var periodo = periodo(desde, hasta);
-    var filas = reportes.financiero(periodo.desde(), periodo.hasta());
-    var totales = new HashMap<String, BigDecimal>();
-    filas.forEach(fila -> totales.merge(fila.concepto(), fila.monto(), BigDecimal::add));
-    var reservas = totales.getOrDefault("RESERVAS", BigDecimal.ZERO);
-    var ventas = totales.getOrDefault("VENTAS", BigDecimal.ZERO);
-    var manuales = totales.getOrDefault("INGRESOS_MANUALES", BigDecimal.ZERO);
-    var egresos = totales.getOrDefault("EGRESOS", BigDecimal.ZERO);
-    return new Financiero(filas, reservas, ventas, manuales, egresos, reservas.add(ventas).add(manuales).subtract(egresos));
+    var filas = reportes.movimientosFinancieros(periodo.desde(), periodo.hasta());
+    var reservas = BigDecimal.ZERO;
+    var ventas = BigDecimal.ZERO;
+    var manuales = BigDecimal.ZERO;
+    var egresos = BigDecimal.ZERO;
+    for (var fila : filas) {
+      switch (fila.tipo()) {
+        case "RESERVAS" -> reservas = reservas.add(fila.ingreso());
+        case "VENTAS" -> ventas = ventas.add(fila.ingreso());
+        case "INGRESOS_MANUALES" -> manuales = manuales.add(fila.ingreso());
+        case "EGRESOS" -> egresos = egresos.add(fila.egreso());
+        default -> throw new IllegalStateException("Tipo de movimiento financiero no reconocido");
+      }
+    }
+    return new Financiero(filas, generadoPor, reservas, ventas, manuales, egresos,
+        reservas.add(ventas).add(manuales).subtract(egresos));
   }
 
   public Pagina<Cierre> cierres(LocalDate desde, LocalDate hasta, String usuario, int pagina, int tamanio) {

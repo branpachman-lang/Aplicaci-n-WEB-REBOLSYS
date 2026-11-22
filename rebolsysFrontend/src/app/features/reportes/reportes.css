@@ -1,59 +1,65 @@
-/* ===== BOLETA DE IMPRESIÓN (80 mm) ===== */
-.boleta { display: none; }
-
+:host { display: block; }
+.opciones { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.filtros { display: flex; flex-wrap: wrap; align-items: end; gap: .75rem 1rem; margin-block: 1rem; padding: 1rem; }
+.filtros .field { flex: 1 1 145px; }
+.opcion-check { display: flex; align-items: center; gap: .5rem; padding-block: .5rem; }
+.resultado { margin-block: 1rem; }
+.cabecera { padding: 1rem; display: flex; align-items: start; justify-content: space-between; gap: 1rem; }
+.cabecera h3 { margin: .5rem 0; }
+.cabecera p { margin: 0; }
+.cabecera .operador { margin-top: .35rem; color: var(--muted); font-size: .92rem; }
+.moneda { margin: 1rem 0 0 auto; color: var(--muted); font-size: .85rem; white-space: nowrap; }
+.numero { text-align: right; white-space: nowrap; }
+.totales { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: .75rem; padding: 0 1rem; }
+.totales div { background: var(--lavanda); border-radius: .5rem; padding: .75rem; }
+.totales dd { margin: .35rem 0 0; font-weight: 700; }
+.totales .egreso { background: #fff4f3; color: #a82319; }
+.totales .neto { background: #eeebff; color: #28177f; }
+.subtitulo-financiero { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; padding: 1.25rem 1rem .6rem; }
+.subtitulo-financiero h4 { margin: 0; }
+.subtitulo-financiero span { color: var(--muted); font-size: .85rem; }
+.tabla-financiera { min-width: 900px; }
+.tabla-financiera th { padding: .8rem .65rem; font-size: .78rem; }
+.tabla-financiera td { padding: .75rem .65rem; font-size: .84rem; }
+.tabla-financiera tbody tr:nth-child(even) { background: #f8f7fc; }
+.resumen-financiero { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin: 1rem; padding: 1rem; border-radius: .6rem; background: #f7f6fc; }
+.resumen-financiero div { display: grid; gap: .4rem; }
+.resumen-financiero span { color: var(--muted); font-size: .85rem; }
+.resumen-financiero strong { font-size: 1.05rem; }
+.pie-impresion { display: none; }
+.alerta { color: var(--danger, #a82319); }
+.paginacion { justify-content: end; padding: 1rem; }
+.solo-impresion { display: none; }
 @media print {
-  .resultado { display: none !important; }
-
-  .boleta {
-    display: block;
-    width: 100%;
-    color: #000;
-    background: #fff;
-    font: 8.5pt/1.35 'Segoe UI', Arial, Helvetica, sans-serif;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
-  .boleta * { box-sizing: border-box; }
-
-  /* Marca del hospedaje (componente hijo) */
-  .boleta .cab { text-align: center; }
-  :host ::ng-deep .boleta .marca { flex-direction: column; justify-content: center; text-align: center; gap: 2mm; }
-  :host ::ng-deep .boleta .marca img { width: auto; height: auto; max-width: 30mm; max-height: 18mm; filter: grayscale(1) contrast(1.2); }
-  :host ::ng-deep .boleta .marca strong { font: 700 12pt/1.15 Georgia, 'Times New Roman', serif; letter-spacing: .14em; text-transform: uppercase; }
-  :host ::ng-deep .boleta .marca span { display: block; font-size: 7.5pt; margin-top: .8mm; color: #222; }
-
-  .boleta .regla { border: 0; border-top: .35mm solid #000; border-bottom: .35mm solid #000; height: 1mm; margin: 3mm 0; }
-
-  .boleta .doc { text-align: center; }
-  .boleta .doc .t { font: 700 10.5pt/1.2 Georgia, 'Times New Roman', serif; letter-spacing: .18em; text-transform: uppercase; }
-  .boleta .doc .s { font-size: 7pt; letter-spacing: .2em; text-transform: uppercase; margin-top: .8mm; color: #333; }
-
-  .boleta .meta { margin: 3mm 0; padding: 2mm 0; border-top: .2mm dashed #000; border-bottom: .2mm dashed #000; font-size: 7.8pt; }
-  .boleta .kv { display: flex; justify-content: space-between; gap: 3mm; padding: .5mm 0; }
-  .boleta .kv .k { flex: 0 0 auto; color: #222; }
-  .boleta .kv .v { text-align: right; font-weight: 600; overflow-wrap: anywhere; }
-
-  .boleta .sec { margin: 3.5mm 0 1.5mm; padding-bottom: 1mm; text-align: center; font-size: 7.2pt; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; border-bottom: .2mm solid #000; }
-
-  .boleta .neto { display: flex; justify-content: space-between; align-items: baseline; margin-top: 2mm; padding: 1.8mm 1.5mm; border: .35mm solid #000; outline: .2mm solid #000; outline-offset: .7mm; }
-  .boleta .neto span { font-size: 8pt; font-weight: 700; letter-spacing: .1em; }
-  .boleta .neto strong { font: 700 12pt/1 Georgia, 'Times New Roman', serif; }
-
-  .boleta .th, .boleta .tr { display: grid; grid-template-columns: 1fr 17mm 21mm; gap: 1.5mm; align-items: start; }
-  .boleta .th { padding: 1mm 0; font-size: 7pt; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; border-bottom: .2mm solid #000; }
-  .boleta .tr { padding: 1.2mm 0; font-size: 8pt; border-bottom: .2mm dotted #666; break-inside: avoid; }
-  .boleta .n { text-align: right; white-space: nowrap; }
-  .boleta .m { overflow-wrap: anywhere; }
-
-  .boleta .reg { padding: 2mm 0; border-bottom: .2mm dashed #000; break-inside: avoid; }
-  .boleta .reg-t { display: flex; justify-content: space-between; align-items: baseline; gap: 2mm; margin-bottom: 1mm; }
-  .boleta .reg-t strong { font: 700 9pt/1.2 Georgia, 'Times New Roman', serif; overflow-wrap: anywhere; }
-  .boleta .reg-t span { font-size: 7.5pt; text-align: right; }
-  .boleta .alerta .k, .boleta .alerta .v { font-weight: 800; text-decoration: underline; }
-
-  .boleta .vacio { margin: 0; padding: 4mm 0; text-align: center; font-style: italic; }
-  .boleta .total { margin-top: 3mm; text-align: center; font-size: 7.8pt; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
-  .boleta .pie { margin-top: 3mm; text-align: center; font-size: 7pt; color: #222; }
-  .boleta .pie .fin { margin-bottom: 1.2mm; font-weight: 700; letter-spacing: .3em; }
-  .boleta .pie .firma { margin-top: 1mm; font-family: Georgia, 'Times New Roman', serif; font-style: italic; }
+  @page reporte-a4 { size: A4 landscape; margin: 12mm; }
+  .no-print { display: none !important; }
+  .resultado { page: reporte-a4; margin: 0; overflow: visible; }
+  .resultado-financiero { border: 0; border-radius: 0; box-shadow: none; }
+  .resultado-financiero .cabecera { padding: 0 0 .7rem; border-bottom: 1px solid #dfe0e8; }
+  .resultado-financiero .cabecera h3 { font-size: 18pt; }
+  .resultado-financiero .operador { color: #303044; }
+  .resultado-financiero .moneda { font-size: 8pt; }
+  .resultado-financiero .totales { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .35rem; padding: .6rem 0; }
+  .resultado-financiero .totales div { border: 1px solid #e1deef; border-radius: .35rem; padding: .45rem; font-size: 8pt; }
+  .resultado-financiero .totales dd { font-size: 9pt; }
+  .resultado-financiero .subtitulo-financiero { padding: .65rem 0 .4rem; }
+  .resultado-financiero .tabla-financiera { min-width: 0; table-layout: fixed; }
+  .resultado-financiero .tabla-financiera th { padding: .4rem .3rem; font-size: 8pt; }
+  .resultado-financiero .tabla-financiera td { padding: .38rem .3rem; font-size: 8pt; overflow-wrap: anywhere; }
+  .resultado-financiero .tabla-financiera th:nth-child(1) { width: 12%; }
+  .resultado-financiero .tabla-financiera th:nth-child(2) { width: 7%; }
+  .resultado-financiero .tabla-financiera th:nth-child(3) { width: 10%; }
+  .resultado-financiero .tabla-financiera th:nth-child(4) { width: 11%; }
+  .resultado-financiero .tabla-financiera th:nth-child(5) { width: 20%; }
+  .resultado-financiero .tabla-financiera th:nth-child(6) { width: 12%; }
+  .resultado-financiero .tabla-financiera th:nth-child(7),
+  .resultado-financiero .tabla-financiera th:nth-child(8) { width: 14%; }
+  .resultado-financiero .resumen-financiero { gap: .5rem; margin: .65rem 0; padding: .7rem; }
+  .resultado-financiero .resumen-financiero span { font-size: 7pt; }
+  .resultado-financiero .resumen-financiero strong { font-size: 9pt; }
+  .resultado-financiero .pie-impresion { display: flex; justify-content: space-between; gap: 1rem; margin-top: 1rem; padding-top: .4rem; border-top: 1px solid #e7e7ed; color: #656579; font-size: 7pt; }
+  .solo-impresion { display: inline; }
+  .table-scroll { overflow: visible; }
+  .tabla-financiera thead { display: table-header-group; }
+  tr { break-inside: avoid; }
 }

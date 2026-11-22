@@ -75,6 +75,7 @@ public class ReservaServiceImpl implements ReservaService {
         for (var s : r.detalles()) {
             exigir(s.fechaSalida().isAfter(s.fechaIngreso()), "La salida debe ser posterior al ingreso");
             exigir(s.fechaSalida().isAfter(ahora()), "La salida de una nueva reserva debe estar en el futuro");
+            exigir(!s.fechaIngreso().isBefore(ahora()), "La fecha de ingreso de una nueva reserva no puede estar en el pasado");
             validarTitular(titular, s.fechaIngreso().toLocalDate());
             var h = bloqueadas.get(s.idHabitacion());
             exigir(h.getEstadoHabitacion() == EstadoHabitacion.DISPONIBLE, "La habitación no está disponible físicamente");

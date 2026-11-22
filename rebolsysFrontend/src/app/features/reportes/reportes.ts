@@ -1,7 +1,7 @@
 import { notificarCambios } from '../../core/services/avisos-formulario';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { Component, DestroyRef, Injector, afterNextRender, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { Observable, Subscription, finalize, map } from 'rxjs';
@@ -17,7 +17,8 @@ interface Incidencia {
   mueble: string; condicion: string; observacion: string | null; idTicket: number | null; estadoTicket: string | null;
 }
 interface Financiero {
-  filas: { concepto: string; medioPago: string; monto: number }[];
+  filas: { fecha: string; tipo: string; referencia: string; concepto: string; medioPago: string; ingreso: number; egreso: number }[];
+  generadoPor: string;
   cobrosReservas: number; cobrosVentas: number; ingresosManuales: number; egresos: number; neto: number;
 }
 interface Cierre {
@@ -54,11 +55,13 @@ const ETIQUETAS: Record<string, string> = {
 @Component({
   imports: [CurrencyPipe, DatePipe, ReactiveFormsModule, MarcaHospedaje, DialogFocus],
   templateUrl: './reportes.html',
-  styleUrl: './reportes.css',
+  styleUrls: ['./reportes.css', './reportes-ticket.css'],
+  host: { '[class.formato-ticket]': 'formatoImpresion() === "ticket"' },
 })
 export class Reportes {
   private readonly http = inject(HttpClient);
   private readonly destroy = inject(DestroyRef);
+  private readonly injector = inject(Injector);
   private readonly base = environment.apiUrl + '/reportes/';
   private solicitud?: Subscription;
   private solicitudInforme?: Subscription;
@@ -66,6 +69,8 @@ export class Reportes {
   protected readonly vista = signal<Vista>('incidencias');
   protected readonly resultado = signal<Resultado | null>(null);
   protected readonly cargando = signal(false);
+  protected readonly generadoEn = signal(new Date());
+  protected readonly formatoImpresion = signal<'a4' | 'ticket'>('a4');
   protected readonly error = signal('');
   private readonly alertaError = notificarCambios(this.error, 'error');
   protected readonly errorRango = signal('');
@@ -108,8 +113,19 @@ export class Reportes {
     return codigo ? (ETIQUETAS[codigo] ?? codigo) : '—';
   }
 
-  protected imprimir() {
-    window.print();
+  protected etiquetaMovimiento(tipo: string) {
+    switch (tipo) {
+      case 'RESERVAS': return 'Reserva';
+      case 'VENTAS': return 'Venta';
+      case 'INGRESOS_MANUALES': return 'Ingreso manual';
+      case 'EGRESOS': return 'Egreso';
+      default: return tipo;
+    }
+  }
+
+  protected imprimir(formato: 'a4' | 'ticket' = 'a4') {
+    this.formatoImpresion.set(formato);
+    afterNextRender(() => window.print(), { injector: this.injector });
   }
 
   protected verInforme(id: number) {
@@ -147,7 +163,10 @@ export class Reportes {
     if (vista !== 'financiero') params = params.set('pagina', pagina);
     this.solicitud = this.obtener(vista, params)
       .pipe(takeUntilDestroyed(this.destroy), finalize(() => this.cargando.set(false))).subscribe({
-        next: resultado => this.resultado.set(resultado),
+        next: resultado => {
+          this.generadoEn.set(new Date());
+          this.resultado.set(resultado);
+        },
         error: error => this.error.set(mensajeError(error)),
       });
   }

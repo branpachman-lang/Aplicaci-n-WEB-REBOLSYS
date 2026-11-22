@@ -10,6 +10,7 @@ import { ReservaForm } from "./reserva-form";
 import { ReservaService } from "../../services/reserva-service";
 import { ClienteService } from "../../../clientes/services/cliente-service";
 import { DocumentoConsultaService } from "../../../clientes/services/documento-consulta-service";
+import { fechaLocal } from "../../../../core/utils/fechas";
 import { Subject, throwError } from "rxjs";
 describe("Formulario de reserva", () => {
   const rooms = [
@@ -204,6 +205,29 @@ describe("Formulario de reserva", () => {
     expect(c.pagoAbierto()).toBe(false);
     expect(TestBed.inject(NotificacionService).actual()?.error).toBe(true);
   });
+  it("rechaza un ingreso pasado aunque la salida siga en el futuro", async () => {
+    const c = (await fixture()).componentInstance;
+    const ayer = new Date();
+    ayer.setDate(ayer.getDate() - 1);
+    const manana = new Date();
+    manana.setDate(manana.getDate() + 1);
+    c.cliente.patchValue({
+      idTipoDocumento: 3,
+      numeroDocumento: "20123456789",
+      empresa: true,
+      razonSocial: "Empresa de prueba",
+    });
+    c.validarCliente();
+    c.habitaciones.at(0).patchValue({
+      idHabitacion: 2,
+      fechaIngreso: `${fechaLocal(ayer)}T14:00`,
+      fechaSalida: `${fechaLocal(manana)}T12:00`,
+    });
+    expect(c.lineError(0)).toContain("fecha de ingreso");
+    expect(c.lineError(0)).toContain("pasado");
+    c.revisar();
+    expect(c.pagoAbierto()).toBe(false);
+  });
   it.each([
     [1, '10101010', '10101010'],
     [2, '000123456', '000123456'],
@@ -339,6 +363,10 @@ describe("Formulario de reserva", () => {
   it("permite empresas y solo abre el pago después de revisar datos completos", async () => {
     const f = await fixture();
     const c = f.componentInstance;
+    const ingreso = new Date();
+    ingreso.setDate(ingreso.getDate() + 1);
+    const salida = new Date(ingreso);
+    salida.setDate(salida.getDate() + 1);
     c.cliente.patchValue({
       idTipoDocumento: 3,
       numeroDocumento: "20123456789",
@@ -348,8 +376,8 @@ describe("Formulario de reserva", () => {
     c.validarCliente();
     c.habitaciones.at(0).patchValue({
       idHabitacion: 2,
-      fechaIngreso: "2026-10-25T14:00",
-      fechaSalida: "2026-10-26T12:00",
+      fechaIngreso: `${fechaLocal(ingreso)}T14:00`,
+      fechaSalida: `${fechaLocal(salida)}T12:00`,
     });
     c.revisar();
     expect(c.pagoAbierto()).toBe(true);

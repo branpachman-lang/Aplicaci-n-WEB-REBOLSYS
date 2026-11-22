@@ -58,9 +58,13 @@ public class CuentaVentaServiceImpl implements CuentaVentaService {
             d.getDescripcion(), BigDecimal.valueOf(d.getCantidad()), d.getValorUnitario()
             .multiply(BigDecimal.valueOf(d.getCantidad())).setScale(2, RoundingMode.HALF_UP).add(d.getIgv()))).toList();
     var total = lineas.stream().map(CuentaLineaDTO::total).reduce(BigDecimal.ZERO, BigDecimal::add);
+    var estadias = v.getDetalleReserva() == null || v.getDetalleReserva().getEstadoDetalle() == EstadoReserva.CANCELADA
+        ? List.<CuentaEstadiaDTO>of()
+        : List.of(new CuentaEstadiaDTO(v.getDetalleReserva().getHabitacion().getNumeroCuarto(),
+            v.getDetalleReserva().getFechaIngreso(), v.getDetalleReserva().getFechaSalida()));
     return new CuentaDocumentoDTO(null, reserva, reserva == null ? null : "R" + reserva, id, "CUENTA",
             EstadoComprobante.BORRADOR, "CTA", null, v.getClienteComprador() == null ? null : v.getClienteComprador().getIdPerfil(),
-            null, null, null, total, BigDecimal.ZERO, total, lineas, List.of());
+            null, null, null, total, BigDecimal.ZERO, total, lineas, List.of(), estadias);
   }
 
   @Override
