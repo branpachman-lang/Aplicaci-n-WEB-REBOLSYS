@@ -45,7 +45,7 @@ const FILTROS = { desde: '', hasta: '', habitacion: '', estado: '', usuario: '',
 const ETIQUETAS: Record<string, string> = {
   POR_APROBAR: 'Por aprobar', APROBADO: 'Aprobado', INVALIDADO: 'Invalidado',
   EMITIDO: 'Resuelto', RESUELTO: 'Resuelto', OPTIMO: 'Óptimo', BUENO: 'Óptimo', DANADO: 'Dañado',
-  FALTANTE: 'Faltante', EN_REPARACION: 'En reparación', EN_HABITACION: 'Asignado',
+  FALTANTE: 'Faltante', EN_HABITACION: 'Asignado',
   ACTIVO: 'Activo', INACTIVO: 'Inactivo', RESERVAS: 'Cobros de reservas', VENTAS: 'Cobros de ventas',
   INGRESOS_MANUALES: 'Ingresos manuales', EGRESOS: 'Egresos',
 };

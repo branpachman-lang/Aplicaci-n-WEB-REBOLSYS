@@ -568,8 +568,6 @@ export class InmobiliarioList implements OnInit {
         return 'Dañado';
       case 'FALTANTE':
         return 'Perdido/faltante';
-      case 'EN_REPARACION':
-        return 'En reparación';
       default:
         return 'No registrada';
     }
@@ -583,8 +581,6 @@ export class InmobiliarioList implements OnInit {
         return 'badge-danado';
       case 'FALTANTE':
         return 'badge-faltante';
-      case 'EN_REPARACION':
-        return 'badge-reparacion';
       default:
         return 'badge-default';
     }

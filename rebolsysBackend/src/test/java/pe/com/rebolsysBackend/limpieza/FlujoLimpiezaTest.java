@@ -150,6 +150,11 @@ class FlujoLimpiezaTest {
         .andExpect(status().isCreated()));
     mvc.perform(get(foto.path("evidenciaRuta").asText())).andExpect(status().isOk())
         .andExpect(content().bytes(bytes.toByteArray()));
+    var estadoRetirado = Map.of("items", List.of(Map.of("idItem", item,
+        "estadoEncontrado", "EN_REPARACION", "observaciones", "Pata suelta", "evidencia", foto)));
+    mvc.perform(post(enviar).contentType(MediaType.APPLICATION_JSON)
+        .content(json.writeValueAsBytes(estadoRetirado))).andExpect(status().isBadRequest());
+    assertEstadoPersistido(EstadoHabitacion.EN_LIMPIEZA);
     var reporte = Map.of("items", List.of(Map.of("idItem", item, "estadoEncontrado", "DANADO",
         "observaciones", "Pata suelta", "evidencia", foto)));
     var enviado = respuesta(mvc.perform(post(enviar).contentType(MediaType.APPLICATION_JSON)

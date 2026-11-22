@@ -61,6 +61,8 @@ vacía, ejecuta estos archivos en orden desde una sesión de ese esquema.
 
 6. [V17](src/main/resources/db/iteration/V17__estados_limpieza_explicitos.sql) sincroniza los estados explícitos de limpieza y garantiza un solo informe activo por habitación. Ejecutar con la aplicación detenida, revisar el resultado y confirmar con `COMMIT`.
 
+7. [V18](src/main/resources/db/iteration/V18__condiciones_de_conservacion.sql) restringe la conservación del mobiliario a los tres valores operativos. Si encuentra filas fuera del dominio, informa la tabla y la columna para que se revisen antes de migrar.
+
 Hibernate valida el esquema al arrancar y Flyway está deshabilitado. El DDL anterior
 y sus scripts de demostración se conservan como historial.
 
