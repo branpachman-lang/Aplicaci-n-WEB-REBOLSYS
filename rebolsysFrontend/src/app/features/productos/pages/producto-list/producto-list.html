@@ -382,7 +382,7 @@
                         {{ m.signo > 0 ? "+" : "-" }}{{ m.cantidad }}
                       </strong>
                     </td>
-                    <td>{{ m.stockResultante }} unid.</td>
+                    <td>{{ m.stockResultante === null ? '—' : m.stockResultante + ' unid.' }}</td>
                     <td>Usuario #{{ m.idUsuario }}</td>
                     <td>{{ m.observacion }}</td>
                   </tr>

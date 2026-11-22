@@ -1,6 +1,6 @@
 import { notificarCambios } from '../../../../core/services/avisos-formulario';
 import { CommonModule, DecimalPipe } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription, forkJoin } from 'rxjs';
@@ -26,7 +26,7 @@ import { HabitacionService } from '../../services/habitacion-service';
   templateUrl: './habitacion-config-list.html',
   styleUrl: './habitacion-config-list.css',
 })
-export class HabitacionConfigList implements OnInit {
+export class HabitacionConfigList implements OnInit, OnDestroy {
   private readonly habitacionesService = inject(HabitacionService);
   private readonly tiposService = inject(TipoHabitacionService);
   private readonly notificacionService = inject(NotificacionService);
