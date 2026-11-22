@@ -18,7 +18,7 @@
       }
     </header>
     @if (sesion.permite('EMPLEADOS:VER')) {
-      <div class="table-scroll" tabindex="0" role="region" aria-labelledby="titulo-empleados">
+      <div class="table-scroll" role="region" aria-labelledby="titulo-empleados">
         <table aria-labelledby="titulo-empleados">
           <thead><tr><th scope="col">Empleado</th><th scope="col">Documento</th><th scope="col">Contacto</th><th scope="col">Contratación</th><th scope="col">Estado</th><th scope="col">Acciones</th></tr></thead>
           <tbody>@for (e of empleados(); track e.idEmpleado) {
@@ -59,7 +59,7 @@
     @if (sesion.actual()?.gerente && disponibles().length === 0) {
       <p class="nota-tabla muted">Para crear otro usuario, registra primero un empleado activo sin cuenta.</p>
     }
-    <div class="table-scroll" tabindex="0" role="region" aria-labelledby="titulo-usuarios">
+    <div class="table-scroll" role="region" aria-labelledby="titulo-usuarios">
       <table aria-labelledby="titulo-usuarios">
         <thead><tr><th scope="col">Usuario</th><th scope="col">Empleado</th><th scope="col">Estado</th><th scope="col">Roles</th><th scope="col">Acciones</th></tr></thead>
         <tbody>@for (u of usuarios(); track u.idUsuario) {
@@ -88,7 +88,7 @@
     <header class="tabla-cabecera">
       <h2 id="titulo-roles">Roles del hospedaje</h2>
     </header>
-    <div class="table-scroll" tabindex="0" role="region" aria-labelledby="titulo-roles">
+    <div class="table-scroll" role="region" aria-labelledby="titulo-roles">
       <table aria-labelledby="titulo-roles">
         <thead><tr><th scope="col">Rol</th><th scope="col">Permisos</th><th scope="col">Usuarios asignados</th><th scope="col">Acciones</th></tr></thead>
         <tbody>@for (r of roles(); track r.idRol) {

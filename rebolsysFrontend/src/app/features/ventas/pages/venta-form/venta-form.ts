@@ -10,6 +10,7 @@ import { PermisosUi } from "../../../../core/services/permisos-ui";
 import {
   Component,
   DestroyRef,
+  OnInit,
   inject,
   signal,
   computed,
@@ -53,7 +54,7 @@ import { VentaTicket } from "../../components/venta-ticket/venta-ticket";
   templateUrl: "./venta-form.html",
   styleUrl: "./venta-form.css",
 })
-export class VentaForm {
+export class VentaForm implements OnInit {
   readonly acceso = inject(PermisosUi);
   private readonly elemento = inject(ElementRef<HTMLElement>);
   private readonly impresion = inject(ImpresionService);

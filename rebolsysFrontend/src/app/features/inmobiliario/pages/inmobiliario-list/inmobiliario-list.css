@@ -119,7 +119,6 @@
     position-area: block-end span-inline-start;
     justify-self: end;
     position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
-    position-visibility: anchors-visible;
   }
 }
 

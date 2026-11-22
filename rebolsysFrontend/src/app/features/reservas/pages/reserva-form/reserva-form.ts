@@ -23,7 +23,7 @@ import {
   ReservaApi,
 } from "../../models/reserva-api.model";
 
-import { Component, inject, signal, computed, DestroyRef } from "@angular/core";
+import { Component, OnInit, inject, signal, computed, DestroyRef } from "@angular/core";
 import {
   ReactiveFormsModule,
   FormsModule,
@@ -67,7 +67,7 @@ import {
   templateUrl: "./reserva-form.html",
   styleUrl: "./reserva-form.css",
 })
-export class ReservaForm {
+export class ReservaForm implements OnInit {
   private readonly formatoFechaHoraLima = new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Lima",
     year: "numeric",
@@ -426,10 +426,12 @@ export class ReservaForm {
       )
     )
       return;
-    const desde = fechas.map((h) => h.fechaIngreso.slice(0, 10)).sort()[0];
+    const desde = fechas
+      .map((h) => h.fechaIngreso.slice(0, 10))
+      .sort((a, b) => a.localeCompare(b))[0];
     const final = fechas
       .map((h) => h.fechaSalida.slice(0, 10))
-      .sort()
+      .sort((a, b) => a.localeCompare(b))
       .at(-1)!;
     const hasta = new Date(final + "T00:00:00");
     hasta.setDate(hasta.getDate() + 1);

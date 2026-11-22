@@ -5,7 +5,7 @@ import { CatalogoService } from '../../../../core/services/catalogo-service';
 import { Catalogos } from '../../../../core/models/catalogo.model';
 import { PermisosUi } from '../../../../core/services/permisos-ui';
 import { notificarCambios } from '../../../../core/services/avisos-formulario';
-import { Component, inject, input, signal } from "@angular/core";
+import { Component, OnInit, inject, input, signal } from "@angular/core";
 import { CurrencyPipe, DatePipe } from "@angular/common";
 import { RouterLink } from "@angular/router";
 import { VentaService } from "../../services/venta-service";
@@ -19,7 +19,7 @@ import { mensajeError } from "../../../../core/utils/http-error";
   templateUrl: "./venta-detalle.html",
   styleUrl: "./venta-detalle.css",
 })
-export class VentaDetalle {
+export class VentaDetalle implements OnInit {
   id = input.required<string>();
   readonly acceso = inject(PermisosUi);
   private readonly elemento = inject(ElementRef<HTMLElement>);

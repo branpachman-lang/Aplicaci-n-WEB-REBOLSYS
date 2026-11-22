@@ -34,7 +34,7 @@
 
   <section class="panel" aria-labelledby="caja-arqueo">
     <div class="panel-toolbar"><h3 id="caja-arqueo">{{ t.abierto ? 'Importes esperados por forma de pago' : 'Arqueo del turno cerrado' }}</h3></div>
-    <div class="table-scroll" tabindex="0" role="region" aria-labelledby="caja-arqueo">
+    <div class="table-scroll" role="region" aria-labelledby="caja-arqueo">
       <table>
         <thead><tr><th>Forma de pago</th><th>Esperado</th>@if (!t.abierto) { <th>Declarado</th><th>Diferencia</th> }</tr></thead>
         <tbody>
@@ -53,7 +53,7 @@
 
   <section class="panel" aria-labelledby="caja-movimientos">
     <div class="panel-toolbar"><h3 id="caja-movimientos">Movimientos del turno</h3></div>
-    <div class="table-scroll" tabindex="0" role="region" aria-labelledby="caja-movimientos">
+    <div class="table-scroll" role="region" aria-labelledby="caja-movimientos">
       <table>
         <thead><tr><th>Fecha y hora</th><th>Concepto</th><th>Tipo</th><th>Importe</th><th>Evidencia</th></tr></thead>
         <tbody>

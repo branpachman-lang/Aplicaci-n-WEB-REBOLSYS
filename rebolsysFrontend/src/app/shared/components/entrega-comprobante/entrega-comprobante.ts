@@ -23,10 +23,20 @@ export class EntregaComprobante {
   readonly habilitado = signal(false);
   correo = '';
   intentoEnvio = signal(false);
+  private correoValido(correo: string): boolean {
+    const limpio = correo.trim();
+    if (!limpio || correo.length > 254 || /\s/.test(limpio)) return false;
+    const partes = limpio.split('@');
+    if (partes.length !== 2) return false;
+    const [usuario, dominio] = partes;
+    if (!usuario || !dominio) return false;
+    const punto = dominio.indexOf('.');
+    return punto > 0 && punto < dominio.length - 1 && !dominio.endsWith('.');
+  }
   errorCorreo() {
     if (!this.intentoEnvio()) return '';
     return !this.correo.trim() ? 'Ingresa el correo del destinatario.'
-      : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.correo.trim()) || this.correo.length > 254
+      : !this.correoValido(this.correo)
         ? 'Ingresa un correo electrónico válido.' : '';
   }
   private readonly base = environment.apiUrl + '/comprobantes';
@@ -48,7 +58,7 @@ export class EntregaComprobante {
     if (this.ocupado()) return;
     this.intentoEnvio.set(true);
     if (!this.habilitado()) { this.avisos.mostrar('El envío por correo aún no está habilitado para este hospedaje.', 'advertencia'); return; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.correo.trim()) || this.correo.length > 254) {
+    if (!this.correoValido(this.correo)) {
       this.avisos.mostrar('Ingresa un correo válido para recibir el comprobante.', 'advertencia'); return;
     }
     this.ocupado.set(true);
