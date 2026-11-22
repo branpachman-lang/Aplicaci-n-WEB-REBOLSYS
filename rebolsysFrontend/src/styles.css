@@ -557,6 +557,16 @@ td small {
     size: A4;
     margin: 18mm;
   }
+  /* El formato debe comenzar en la raíz para evitar una hoja inicial sin contenido. */
+  html:has(.reporte-impresion) {
+    page: reporte-a4;
+  }
+  html:has(.reporte-impresion.formato-ticket) {
+    page: reporte-ticket;
+  }
+  html:has(.reporte-impresion) .app-shell {
+    min-height: 0;
+  }
   .no-print,
   .toast {
     display: none !important;

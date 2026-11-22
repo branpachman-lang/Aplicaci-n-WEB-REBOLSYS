@@ -56,7 +56,10 @@ const ETIQUETAS: Record<string, string> = {
   imports: [CurrencyPipe, DatePipe, ReactiveFormsModule, MarcaHospedaje, DialogFocus],
   templateUrl: './reportes.html',
   styleUrls: ['./reportes.css', './reportes-ticket.css'],
-  host: { '[class.formato-ticket]': 'formatoImpresion() === "ticket"' },
+  host: {
+    class: 'reporte-impresion',
+    '[class.formato-ticket]': 'formatoImpresion() === "ticket"',
+  },
 })
 export class Reportes {
   private readonly http = inject(HttpClient);
