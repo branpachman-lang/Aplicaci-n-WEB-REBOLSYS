@@ -7,6 +7,7 @@ import { ProductoService } from "../../../productos/services/producto-service";
 import { CategoriaService } from "../../../categorias/services/categoria-service";
 import { VentaService } from "../../services/venta-service";
 import { ReservaService } from '../../../reservas/services/reserva-service';
+import { ClienteService } from '../../../clientes/services/cliente-service';
 
 describe("Venta de la tiendita", () => {
   const producto = {
@@ -36,10 +37,15 @@ describe("Venta de la tiendita", () => {
   const registrar = vi.fn();
   const actualizar = vi.fn();
   const ingresar = vi.fn();
+  const buscarCliente = vi.fn();
+  const registrarCliente = vi.fn();
   async function fixture(original?: any,falloReservas=false,falloCatalogo=false, opciones:{confirmada?:boolean;admiteCargos?:boolean;fallarCuenta?:boolean}={}) {
     registrar.mockReset();
     actualizar.mockReset();
     ingresar.mockReset();
+    buscarCliente.mockReset();
+    registrarCliente.mockReset();
+    buscarCliente.mockReturnValue(throwError(() => ({ status: 404 })));
     actualizar.mockReturnValue(
       throwError(() => ({ error: { message: "No se pudo guardar" } })),
     );
@@ -50,7 +56,8 @@ describe("Venta de la tiendita", () => {
       imports: [VentaForm],
       providers: [
         provideRouter([]),
-        { provide: CatalogoService, useValue: { listar: () => of({documentos: [], pagos: [{id:1,nombre:'Efectivo'}], ocupantes: [], usuarios: [{id:1,nombre:'Recepción'}], turnosAbiertos: [{idTurno:1,idUsuario:1,usuario:'Recepción',fechaApertura:''}]}) } },
+        { provide: ClienteService, useValue: { buscarPorDocumento: buscarCliente, registrar: registrarCliente } },
+        { provide: CatalogoService, useValue: { listar: () => of({documentos: [{id:1,nombre:'DNI',codigoSunat:'1'},{id:6,nombre:'RUC',codigoSunat:'6'}], pagos: [{id:1,nombre:'Efectivo'}], ocupantes: [], usuarios: [{id:1,nombre:'Recepción'}], turnosAbiertos: [{idTurno:1,idUsuario:1,usuario:'Recepción',fechaApertura:''}]}) } },
         {
           provide: ProductoService,
           useValue: { catalogo: () => falloCatalogo?throwError(()=>({status:503,error:{message:'Catálogo no disponible'}})):of([producto]) },
@@ -188,10 +195,48 @@ describe("Venta de la tiendita", () => {
     expect(registrar).not.toHaveBeenCalled();
     expect(c.error()).toContain("Selecciona");
   });
-  it("la venta externa abre el pago y no registra al cerrar", async () => {
+  it("la venta externa exige los datos del cliente", async () => {
     const c = (await fixture()).componentInstance;
     c.agregar(producto);
     c.confirmarVenta();
+    expect(c.error()).toContain("documento");
+    c.cambiarNumeroDocumento("1234");
+    c.confirmarVenta();
+    expect(c.error()).toContain("8 dígitos");
+    c.cambiarNumeroDocumento("12345678");
+    c.confirmarVenta();
+    expect(c.error()).toContain("nombres y apellidos");
+    c.cambiarTipoDocumento(6);
+    c.cambiarNumeroDocumento("20123456789");
+    c.razonSocial.set("Empresa SAC");
+    c.confirmarVenta();
+    expect(c.error()).toContain("dirección fiscal");
+    expect(buscarCliente).not.toHaveBeenCalled();
+    expect(c.pagoAbierto()).toBe(false);
+  });
+  it("registra al cliente externo nuevo y lo asocia a la venta", async () => {
+    const c = (await fixture()).componentInstance;
+    registrarCliente.mockReturnValue(of({ idCliente: 40, persona: { idTipoDocumento: 1, numeroDocumento: "12345678", empresa: false, nombres: "Ana", apellidos: "Pérez", razonSocial: null, direccionFiscal: null, fechaNacimiento: null, correo: null, telefono: null } }));
+    c.agregar(producto);
+    c.cambiarNumeroDocumento("12345678");
+    c.nombres.set("Ana");
+    c.apellidos.set("Pérez");
+    c.confirmarVenta();
+    expect(registrarCliente).toHaveBeenCalledWith(expect.objectContaining({ idTipoDocumento: 1, numeroDocumento: "12345678", nombres: "Ana" }));
+    expect(c.idClienteExterno()).toBe(40);
+    expect(c.pagoAbierto()).toBe(true);
+    c.registrar(10);
+    expect(registrar).toHaveBeenCalledWith(expect.objectContaining({ idCliente: 40, compradorNombre: "Ana Pérez" }));
+  });
+  it("la venta externa abre el pago y no registra al cerrar", async () => {
+    const c = (await fixture()).componentInstance;
+    buscarCliente.mockReturnValue(of({ idCliente: 9, datos: { idTipoDocumento: 1, numeroDocumento: "12345678", empresa: false, nombres: "Ana", apellidos: "Pérez", razonSocial: null, direccionFiscal: null, fechaNacimiento: null, correo: null, telefono: null } }));
+    c.agregar(producto);
+    c.cambiarNumeroDocumento("12345678");
+    c.buscarClienteExterno();
+    expect(c.nombres()).toBe("Ana");
+    c.confirmarVenta();
+    expect(registrarCliente).not.toHaveBeenCalled();
     expect(c.pagoAbierto()).toBe(true);
     expect(registrar).not.toHaveBeenCalled();
     c.pagoAbierto.set(false);

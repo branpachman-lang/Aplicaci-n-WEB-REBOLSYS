@@ -37,6 +37,10 @@ import { Icon } from "../../../../shared/components/icono/icono";
 import { PagoModal } from "../../../../shared/components/pago-modal/pago-modal";
 import { DialogFocus } from "../../../../shared/directives/dialog-focus";
 import { VentaTicket } from "../../components/venta-ticket/venta-ticket";
+import { ClienteService } from "../../../clientes/services/cliente-service";
+import { ClienteDatos } from "../../../clientes/models/cliente.model";
+import { tipoDocumento } from "../../../clientes/utils/persona-validacion";
+import { Observable, concatMap, map, throwError } from "rxjs";
 @Component({
   selector: "app-venta-form",
   imports: [
@@ -96,6 +100,28 @@ export class VentaForm implements OnInit {
   reservaId = signal<number | null>(null);
   buscarHabitacion = signal("");
   compradorNombre = signal("");
+  private clienteService = inject(ClienteService);
+  // Datos del comprador externo: se usan para registrarlo y emitir su boleta o factura.
+  docTipo = signal<number | null>(null);
+  docNumero = signal("");
+  nombres = signal("");
+  apellidos = signal("");
+  razonSocial = signal("");
+  direccion = signal("");
+  correo = signal("");
+  idClienteExterno = signal<number | null>(null);
+  buscandoCliente = signal(false);
+  avisoCliente = signal("");
+  documentosCliente = computed(() => this.catalogos()?.documentos ?? []);
+  esRucExterno = computed(
+    () =>
+      tipoDocumento(
+        this.documentosCliente().find((d) => d.id === this.docTipo()),
+      ) === "RUC",
+  );
+  empresaExterna = computed(
+    () => this.esRucExterno() && this.docNumero().trim().startsWith("20"),
+  );
   private clave = generarClaveOperacion();
   private solicitud: VentaRequest | null = null;
   solicitudFijada = signal(false);
@@ -150,6 +176,7 @@ export class VentaForm implements OnInit {
     }).subscribe({
       next: (r) => {
         this.catalogos.set(r.catalogos);
+        if (this.docTipo() === null) this.docTipo.set(this.documentoDni());
         this.productos.set(r.productos);
         this.categorias.set(r.categorias);
         this.reservas.set(r.reservas);
@@ -216,6 +243,150 @@ export class VentaForm implements OnInit {
     this.compradorNombre.set("");
     this.modoVenta.set("SEPARADA");
     this.buscarHabitacion.set("");
+    this.limpiarClienteExterno();
+  }
+  private documentoDni() {
+    return (
+      this.documentosCliente().find((d) => tipoDocumento(d) === "DNI")?.id ??
+      null
+    );
+  }
+  limpiarClienteExterno() {
+    if (this.guardando() || this.solicitudFijada() || this.buscandoCliente())
+      return;
+    this.docTipo.set(this.documentoDni());
+    this.docNumero.set("");
+    this.limpiarDatosCliente();
+    this.avisoCliente.set("");
+  }
+  private limpiarDatosCliente() {
+    this.idClienteExterno.set(null);
+    this.nombres.set("");
+    this.apellidos.set("");
+    this.razonSocial.set("");
+    this.direccion.set("");
+    this.correo.set("");
+  }
+  cambiarTipoDocumento(id: number | null) {
+    if (this.idClienteExterno() !== null) return;
+    this.docTipo.set(id);
+    this.docNumero.set("");
+    this.avisoCliente.set("");
+  }
+  cambiarNumeroDocumento(numero: string) {
+    if (this.idClienteExterno() !== null) return;
+    this.docNumero.set(numero.replace(/\s+/g, ""));
+    this.avisoCliente.set("");
+  }
+  private validarDocumentoExterno() {
+    const d = this.documentosCliente().find((d) => d.id === this.docTipo());
+    const numero = this.docNumero().trim();
+    if (!d || !numero) return "Ingresa el tipo y número de documento del cliente.";
+    const tipo = tipoDocumento(d);
+    if (tipo === "DNI" && !/^\d{8}$/.test(numero))
+      return "El DNI debe tener 8 dígitos.";
+    if (tipo === "RUC" && !/^\d{11}$/.test(numero))
+      return "El RUC debe tener 11 dígitos.";
+    if (numero.length > 20) return "El número de documento es demasiado largo.";
+    return "";
+  }
+  private validarClienteExterno() {
+    const error = this.validarDocumentoExterno();
+    if (error) return error;
+    if (this.idClienteExterno() !== null) return "";
+    if (this.empresaExterna()) {
+      if (!this.razonSocial().trim()) return "Ingresa la razón social del cliente.";
+    } else if (!this.nombres().trim() || !this.apellidos().trim())
+      return "Ingresa los nombres y apellidos del cliente.";
+    if (this.esRucExterno() && !this.direccion().trim())
+      return "Ingresa la dirección fiscal del cliente con RUC.";
+    const correo = this.correo().trim();
+    if (correo && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo))
+      return "Ingresa un correo válido o déjalo vacío.";
+    return "";
+  }
+  private llenarCliente(id: number, p: ClienteDatos) {
+    this.idClienteExterno.set(id);
+    this.docTipo.set(p.idTipoDocumento);
+    this.docNumero.set(p.numeroDocumento);
+    this.nombres.set(p.nombres ?? "");
+    this.apellidos.set(p.apellidos ?? "");
+    this.razonSocial.set(p.razonSocial ?? "");
+    this.direccion.set(p.direccionFiscal ?? "");
+    this.correo.set(p.correo ?? "");
+  }
+  buscarClienteExterno() {
+    if (this.buscandoCliente() || this.guardando() || this.solicitudFijada())
+      return;
+    const error = this.validarDocumentoExterno();
+    if (error) {
+      this.error.set(error);
+      return;
+    }
+    this.error.set("");
+    this.buscandoCliente.set(true);
+    this.clienteService
+      .buscarPorDocumento(this.docTipo()!, this.docNumero().trim())
+      .pipe(takeUntilDestroyed(this.destroy))
+      .subscribe({
+        next: (c) => {
+          this.buscandoCliente.set(false);
+          if (c.idCliente) {
+            this.llenarCliente(c.idCliente, c.datos);
+            this.avisoCliente.set("Cliente encontrado. Sus datos se usarán en la boleta o factura.");
+          } else {
+            this.limpiarDatosCliente();
+            this.avisoCliente.set("Cliente nuevo: completa sus datos; se registrará al confirmar la venta.");
+          }
+        },
+        error: (e) => {
+          this.buscandoCliente.set(false);
+          this.limpiarDatosCliente();
+          if (e.status === 404)
+            this.avisoCliente.set("Cliente nuevo: completa sus datos; se registrará al confirmar la venta.");
+          else this.error.set(mensajeError(e));
+        },
+      });
+  }
+  private nombreClienteExterno() {
+    return this.empresaExterna()
+      ? this.razonSocial().trim()
+      : `${this.nombres().trim()} ${this.apellidos().trim()}`.trim();
+  }
+  /** Devuelve el id del comprador externo, buscándolo o registrándolo si aún no existe. */
+  private resolverClienteExterno(): Observable<number> {
+    const id = this.idClienteExterno();
+    if (id !== null) return of(id);
+    const empresa = this.empresaExterna();
+    const persona: ClienteDatos = {
+      idTipoDocumento: this.docTipo(),
+      numeroDocumento: this.docNumero().trim(),
+      empresa,
+      nombres: empresa ? null : this.nombres().trim(),
+      apellidos: empresa ? null : this.apellidos().trim(),
+      razonSocial: empresa ? this.razonSocial().trim() : null,
+      direccionFiscal: this.direccion().trim() || null,
+      fechaNacimiento: null,
+      correo: this.correo().trim() || null,
+      telefono: null,
+    };
+    return this.clienteService
+      .buscarPorDocumento(persona.idTipoDocumento!, persona.numeroDocumento)
+      .pipe(
+        catchError((e) => (e.status === 404 ? of(null) : throwError(() => e))),
+        concatMap((existente) => {
+          if (existente?.idCliente) {
+            this.llenarCliente(existente.idCliente, existente.datos);
+            return of(existente.idCliente);
+          }
+          return this.clienteService.registrar(persona).pipe(
+            map((c) => {
+              this.llenarCliente(c.idCliente, c.persona);
+              return c.idCliente;
+            }),
+          );
+        }),
+      );
   }
   elegirReserva(id: number | null) {
     if (this.guardando() || this.solicitudFijada() || this.pendiente()) return;
@@ -390,16 +561,45 @@ export class VentaForm implements OnInit {
         });
       return;
     }
+    if (this.tipoComprador() === "EXTERNO") {
+      const error = this.validarClienteExterno();
+      if (error) {
+        this.error.set(error);
+        return;
+      }
+      this.guardando.set(true);
+      this.resolverClienteExterno()
+        .pipe(takeUntilDestroyed(this.destroy))
+        .subscribe({
+          next: (idCliente) => {
+            this.guardando.set(false);
+            this.prepararSolicitud(idCliente, this.nombreClienteExterno());
+          },
+          error: (e) => {
+            this.guardando.set(false);
+            this.error.set(
+              "No se pudieron registrar los datos del cliente. " + mensajeError(e),
+            );
+          },
+        });
+      return;
+    }
+    const r = this.seleccionada();
+    this.prepararSolicitud(
+      r && this.compradorNombre().trim() === r.clienteNombre
+        ? r.idCliente
+        : null,
+      this.compradorNombre().trim() || null,
+    );
+  }
+  private prepararSolicitud(idCliente: number | null, nombre: string | null) {
     const r = this.seleccionada();
     this.solicitud = {
       claveRegistro: this.clave,
       modoVenta: "SEPARADA",
       idDetalleReserva: r?.idDetalleReserva ?? null,
-      idCliente:
-        r && this.compradorNombre().trim() === r.clienteNombre
-          ? r.idCliente
-          : null,
-      compradorNombre: this.compradorNombre().trim() || null,
+      idCliente,
+      compradorNombre: nombre,
       detalles: this.carrito().map((l) => ({
         idProducto: l.producto.idProducto,
         cantidad: l.cantidad,
@@ -433,6 +633,7 @@ export class VentaForm implements OnInit {
         this.clave = generarClaveOperacion();
         this.solicitud = null;
         this.solicitudFijada.set(false);
+        this.limpiarClienteExterno();
         this.productoService
           .catalogo()
           .subscribe({ next: (p) => this.productos.set(p) });
@@ -492,6 +693,14 @@ export class VentaForm implements OnInit {
     this.compradorNombre.set("");
     this.reservaId.set(null);
     this.error.set("");
+    this.limpiarClienteExterno();
+  }
+  puedeEmitir(v: Venta) {
+    return (
+      v.estadoVenta === "CONFIRMADA" &&
+      v.modoVenta === "SEPARADA" &&
+      this.acceso.permite("VENTAS:EMITIR_COMPROBANTE")
+    );
   }
   imprimir() {
     void this.impresion.imprimir(this.elemento.nativeElement.querySelector('.success-ticket [data-ticket]'))
