@@ -23,8 +23,8 @@ export const CONFIGURACIONES_ROUTES: Routes = [
       {
         path: 'mobiliario',
         loadChildren: () =>
-          import('../inmobiliario/inmobiliario.routes').then(
-            (m) => m.INMOBILIARIO_ROUTES,
+          import('../mobiliario/mobiliario.routes').then(
+            (m) => m.MOBILIARIO_ROUTES,
           ),
       },
       {

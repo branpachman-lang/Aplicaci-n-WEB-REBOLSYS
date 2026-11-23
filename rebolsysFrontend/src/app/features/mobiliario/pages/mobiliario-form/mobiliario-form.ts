@@ -14,18 +14,18 @@ import {
   HabitacionConfiguracion,
 } from '../../../habitaciones/models/habitacion.model';
 import { HabitacionService } from '../../../habitaciones/services/habitacion-service';
-import { TipoItem } from '../../../tipos-inmobiliario/models/tipo-item.model';
-import { TipoItemService } from '../../../tipos-inmobiliario/services/tipo-item-service';
-import { EstadoConservacion, Item } from '../../models/inmobiliario.model';
-import { InmobiliarioService } from '../../services/inmobiliario-service';
+import { TipoItem } from '../../../tipos-mobiliario/models/tipo-item.model';
+import { TipoItemService } from '../../../tipos-mobiliario/services/tipo-item-service';
+import { EstadoConservacion, Item } from '../../models/mobiliario.model';
+import { MobiliarioService } from '../../services/mobiliario-service';
 @Component({
-  selector: 'app-inmobiliario-form',
+  selector: 'app-mobiliario-form',
   imports: [FormsModule, Icon, DialogFocus],
-  templateUrl: './inmobiliario-form.html',
-  styleUrl: './inmobiliario-form.css',
+  templateUrl: './mobiliario-form.html',
+  styleUrl: './mobiliario-form.css',
 })
-export class InmobiliarioForm implements OnInit {
-  private readonly inmobiliarioService = inject(InmobiliarioService);
+export class MobiliarioForm implements OnInit {
+  private readonly mobiliarioService = inject(MobiliarioService);
   private readonly habitacionesService = inject(HabitacionService);
   private readonly tiposService = inject(TipoItemService);
   protected readonly sesion = inject(SesionService);
@@ -126,7 +126,7 @@ export class InmobiliarioForm implements OnInit {
       const item = this.itemEnEdicion()!;
       this.registroOcupado.set(true);
       this.registroError.set('');
-      this.inmobiliarioService
+      this.mobiliarioService
         .guardarItem(item.idItem, {
           nombreItem: this.formNombreItem.trim(),
           idTipoItem: this.formIdTipoItem,
@@ -182,7 +182,7 @@ export class InmobiliarioForm implements OnInit {
     }
 
     // Etapa 1: Crear unidad en estado Activo
-    this.inmobiliarioService
+    this.mobiliarioService
       .guardarItem(null, {
         nombreItem: this.formNombreItem.trim(),
         idTipoItem: this.formIdTipoItem,
@@ -228,7 +228,7 @@ export class InmobiliarioForm implements OnInit {
     }
     this.lastAsignacionPayload = firmaPayload;
 
-    this.inmobiliarioService
+    this.mobiliarioService
       .asignarItem(idItem, {
         claveOperacion: this.asignacionClaveOperacion,
         idUsuario: this.sesion.actual()!.idUsuario,
@@ -332,7 +332,7 @@ export class InmobiliarioForm implements OnInit {
         ? this.habitacionesService.habitacionesTodas()
         : of([]),
       tipos: this.tiposService.tiposItem(),
-      item: id === null ? of(null) : this.inmobiliarioService.item(id),
+      item: id === null ? of(null) : this.mobiliarioService.item(id),
     }).subscribe({
       next: (res) => {
         this.habitaciones.set(res.habitaciones);

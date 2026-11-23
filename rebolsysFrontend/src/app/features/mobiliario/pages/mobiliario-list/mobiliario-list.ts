@@ -17,23 +17,23 @@ import {
   HabitacionConfiguracion,
 } from '../../../habitaciones/models/habitacion.model';
 import { HabitacionService } from '../../../habitaciones/services/habitacion-service';
-import { TipoItem } from '../../../tipos-inmobiliario/models/tipo-item.model';
-import { TipoItemService } from '../../../tipos-inmobiliario/services/tipo-item-service';
+import { TipoItem } from '../../../tipos-mobiliario/models/tipo-item.model';
+import { TipoItemService } from '../../../tipos-mobiliario/services/tipo-item-service';
 import {
   EstadoConservacion,
   EstadoItem,
   Item,
   ItemHistorial,
-} from '../../models/inmobiliario.model';
-import { InmobiliarioService } from '../../services/inmobiliario-service';
+} from '../../models/mobiliario.model';
+import { MobiliarioService } from '../../services/mobiliario-service';
 @Component({
-  selector: 'app-inmobiliario-list',
+  selector: 'app-mobiliario-list',
   imports: [FormsModule, DatePipe, Icon, DialogFocus],
-  templateUrl: './inmobiliario-list.html',
-  styleUrl: './inmobiliario-list.css',
+  templateUrl: './mobiliario-list.html',
+  styleUrl: './mobiliario-list.css',
 })
-export class InmobiliarioList implements OnInit {
-  private readonly inmobiliarioService = inject(InmobiliarioService);
+export class MobiliarioList implements OnInit {
+  private readonly mobiliarioService = inject(MobiliarioService);
   private readonly habitacionesService = inject(HabitacionService);
   private readonly tiposService = inject(TipoItemService);
   protected readonly sesion = inject(SesionService);
@@ -192,7 +192,7 @@ export class InmobiliarioList implements OnInit {
       this.habitacionSeleccionada.set(null);
     }
 
-    this.inmobiliarioService.items(filtros).subscribe({
+    this.mobiliarioService.items(filtros).subscribe({
       next: (page) => {
         this.respuesta.set(page);
         this.cargando.set(false);
@@ -306,7 +306,7 @@ export class InmobiliarioList implements OnInit {
     this.asigOcupado.set(true);
     this.asigError.set('');
 
-    this.inmobiliarioService
+    this.mobiliarioService
       .asignarItem(item.idItem, {
         claveOperacion: this.asigClaveOperacion,
         idUsuario: this.sesion.actual()!.idUsuario,
@@ -383,7 +383,7 @@ export class InmobiliarioList implements OnInit {
     this.consOcupado.set(true);
     this.consError.set('');
 
-    this.inmobiliarioService
+    this.mobiliarioService
       .conservarItem(item.idItem, {
         claveOperacion: this.consClaveOperacion,
         idUsuario: this.sesion.actual()!.idUsuario,
@@ -472,7 +472,7 @@ export class InmobiliarioList implements OnInit {
       }
 
       // Etapa 1: Retiro de la habitación con condición final
-      this.inmobiliarioService
+      this.mobiliarioService
         .asignarItem(item.idItem, {
           claveOperacion: this.bajaClaveOperacion,
           idUsuario: this.sesion.actual()!.idUsuario,
@@ -494,7 +494,7 @@ export class InmobiliarioList implements OnInit {
       // Unidad en almacén / sin asignar: desactivación directa
       this.bajaOcupado.set(true);
       this.bajaError.set('');
-      this.inmobiliarioService.desactivarItem(item.idItem).subscribe({
+      this.mobiliarioService.desactivarItem(item.idItem).subscribe({
         next: () => {
           this.bajaOcupado.set(false);
           this.cerrarModalBaja();
@@ -515,7 +515,7 @@ export class InmobiliarioList implements OnInit {
     this.bajaOcupado.set(true);
     this.bajaError.set('');
 
-    this.inmobiliarioService.desactivarItem(idItem).subscribe({
+    this.mobiliarioService.desactivarItem(idItem).subscribe({
       next: () => {
         this.bajaOcupado.set(false);
         this.cerrarModalBaja();
@@ -545,7 +545,7 @@ export class InmobiliarioList implements OnInit {
       return;
     }
 
-    this.inmobiliarioService.historialItem(item.idItem).subscribe({
+    this.mobiliarioService.historialItem(item.idItem).subscribe({
       next: (movimientos) => {
         this.historial.set(movimientos || []);
         this.cargandoHistorial.set(false);

@@ -10,9 +10,9 @@ import {
   ItemHistorial,
   ItemOperacion,
   ItemRequest,
-} from '../models/inmobiliario.model';
+} from '../models/mobiliario.model';
 @Injectable({ providedIn: 'root' })
-export class InmobiliarioService {
+export class MobiliarioService {
   item(id: number) {
     return this.http.get<Item>(this.base + '/items/' + id);
   }
