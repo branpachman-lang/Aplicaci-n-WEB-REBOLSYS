@@ -156,6 +156,8 @@ export class ComprobanteDialog implements OnInit {
             this.receptor = { ...cliente.persona };
             this.idCliente = cliente.idCliente;
             this.direccion = cliente.persona.direccionFiscal ?? '';
+            // En la tienda, un comprador con RUC normalmente pide factura.
+            if (venta && this.esRuc(cliente.persona.idTipoDocumento)) this.tipo = 'FACTURA';
           }
           this.cargando.set(false);
           this.cambiarCuenta();

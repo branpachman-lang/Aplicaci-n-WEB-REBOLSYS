@@ -129,16 +129,98 @@
       }
       <p class="buyer-note">Esta venta se cobra por completo al confirmar y conserva la referencia a la habitación.</p>
       } } @else {
-      <label class="field external-name"
-        >Nombre para el ticket <span class="optional">Opcional</span
-        ><input
-          [ngModel]="compradorNombre()"
-          (ngModelChange)="compradorNombre.set($event)"
-          maxlength="200"
-          placeholder="Venta al público"
-      /></label>
-      <p class="buyer-note">
-        El comprador externo no necesita registrarse como cliente o huésped.
+      @let bloqueado = idClienteExterno() !== null || guardando() || solicitudFijada() || !!pendiente();
+      <div class="buyer-fields external-fields">
+        <label class="field"
+          >Tipo de documento <span class="required">*</span
+          ><select
+            [disabled]="bloqueado"
+            [ngModel]="docTipo()"
+            (ngModelChange)="cambiarTipoDocumento($event)"
+          >
+            @for (d of documentosCliente(); track d.id) {
+            <option [ngValue]="d.id">{{ d.nombre }}</option>
+            }
+          </select></label
+        ><label class="field"
+          >Número de documento <span class="required">*</span>
+          <span class="doc-search"
+            ><input
+              [disabled]="bloqueado"
+              [ngModel]="docNumero()"
+              (ngModelChange)="cambiarNumeroDocumento($event)"
+              (keydown.enter)="buscarClienteExterno()"
+              maxlength="20"
+              inputmode="numeric"
+              [placeholder]="esRucExterno() ? '11 dígitos' : 'Ej. 8 dígitos para DNI'" />
+            @if (idClienteExterno() === null) {
+            <button
+              type="button"
+              class="button small"
+              [disabled]="buscandoCliente() || guardando() || solicitudFijada()"
+              (click)="buscarClienteExterno()"
+            >
+              <app-icon name="search" />{{ buscandoCliente() ? 'Buscando…' : 'Buscar' }}
+            </button>
+            } @else {
+            <button
+              type="button"
+              class="button small"
+              [disabled]="guardando() || solicitudFijada()"
+              (click)="limpiarClienteExterno()"
+            >
+              Cambiar cliente
+            </button>
+            }</span
+          ></label
+        >
+        @if (empresaExterna()) {
+        <label class="field wide"
+          >Razón social <span class="required">*</span
+          ><input
+            [disabled]="bloqueado"
+            maxlength="200"
+            [ngModel]="razonSocial()"
+            (ngModelChange)="razonSocial.set($event)"
+        /></label>
+        } @else {
+        <label class="field"
+          >Nombres <span class="required">*</span
+          ><input
+            [disabled]="bloqueado"
+            maxlength="100"
+            [ngModel]="nombres()"
+            (ngModelChange)="nombres.set($event)"
+        /></label>
+        <label class="field"
+          >Apellidos <span class="required">*</span
+          ><input
+            [disabled]="bloqueado"
+            maxlength="100"
+            [ngModel]="apellidos()"
+            (ngModelChange)="apellidos.set($event)"
+        /></label>
+        }
+        <label class="field"
+          >Dirección fiscal
+          @if (esRucExterno()) {<span class="required">*</span>} @else {<span class="optional">Opcional</span>}<input
+            [disabled]="bloqueado"
+            maxlength="300"
+            [ngModel]="direccion()"
+            (ngModelChange)="direccion.set($event)"
+        /></label>
+        <label class="field"
+          >Correo <span class="optional">Opcional</span
+          ><input
+            type="email"
+            [disabled]="bloqueado"
+            maxlength="150"
+            [ngModel]="correo()"
+            (ngModelChange)="correo.set($event)"
+        /></label>
+      </div>
+      <p class="buyer-note" role="status">
+        {{ avisoCliente() || 'Los datos del cliente son obligatorios para emitir su boleta (DNI) o factura (RUC). Si no está registrado, se registrará al confirmar la venta.' }}
       </p>
       } }
     </section>
@@ -327,13 +409,31 @@
       @if (v.modoVenta === "SEPARADA") {
       <p>Vuelto: <strong>{{ v.vuelto | currency: "PEN" : "S/ " }}</strong></p>
       }
-      @if (v.estadoVenta === 'CONFIRMADA' && v.modoVenta === 'SEPARADA' && acceso.permite('VENTAS:EMITIR_COMPROBANTE')) {
-        <button class="button full" (click)="comprobanteAbierto.set(true)">{{ v.comprobante ? 'Ver comprobante y enviar al correo' : 'Generar boleta o factura' }}</button>
+      @let falta = puedeEmitir(v) && !v.comprobante;
+      @if (puedeEmitir(v)) {
+        <button
+          class="button full"
+          [class.primary]="falta"
+          (click)="comprobanteAbierto.set(true)"
+        >
+          <app-icon name="receipt" />{{ v.comprobante ? 'Ver comprobante y enviar al correo' : 'Generar boleta o factura' }}
+        </button>
       }
-      <button class="button primary full" (click)="imprimir()">
-        <app-icon name="print" />{{ v.comprobante ? "Imprimir comprobante" :
+      <button
+        class="button full"
+        [class.primary]="!falta"
+        [disabled]="falta"
+        [attr.aria-describedby]="falta ? 'imprimir-bloqueado' : null"
+        (click)="imprimir()"
+      >
+        <app-icon name="print" />{{ v.comprobante ? "Imprimir boleta o factura" :
         "Imprimir constancia" }}</button
-      ><button class="button full" (click)="nuevaVenta()">
+      >
+      @if (falta) {
+      <p id="imprimir-bloqueado" class="print-hint">
+        Genera primero la boleta o factura para habilitar la impresión.
+      </p>
+      }<button class="button full" (click)="nuevaVenta()">
         <app-icon name="plus" />Nueva venta</button
       ><a class="text-button" routerLink="/ventas/historial"
         >Ver historial de ventas</a

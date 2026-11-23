@@ -45,6 +45,32 @@
 .external-name {
   max-width: 520px;
 }
+.external-fields .wide {
+  grid-column: 1 / -1;
+}
+.doc-search {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+.doc-search input {
+  flex: 1;
+  min-width: 0;
+}
+.doc-search .button {
+  flex: none;
+  white-space: nowrap;
+}
+.required {
+  color: #c0392b;
+  font-weight: 700;
+}
+.print-hint {
+  margin: 0;
+  color: #7c748b;
+  font-size: 12px;
+  text-align: center;
+}
 .buyer-note {
   display: flex;
   align-items: center;
