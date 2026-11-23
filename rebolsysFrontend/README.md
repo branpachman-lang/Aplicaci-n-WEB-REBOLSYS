@@ -1,194 +1,110 @@
 # REBOLSYS Frontend
 
-Aplicación Angular para las reservas y la tienda del hospedaje Real Bolognesi.
+Aplicación web Angular para la operación del hospedaje Real Bolognesi. Consume la API de REBOLSYS para gestionar reservas, estadías, ventas, caja, inventario, limpieza y reportes.
 
-## Ejecutar
+| Dato | Valor |
+|---|---|
+| Versión del paquete | `0.0.0` (sin release etiquetado) |
+| Curso | Lenguaje de Programación II · EP Ingeniería de Sistemas · UPeU · 2026-II |
+| Docente | Benjamin David Reyna Barreto |
+| Integrantes | Yeremin Brian Ccapa Chacca, Esther Mariana Landa Torres, Brandon Erly Pacho Mamani, James Tequen Oncoy y Sebastian Gamarra Tarazona |
+| Backend local | `http://localhost:8080/api/v1` |
+| Demo pública | No definida; revisar la regla de API de Vercel antes de desplegar |
 
-Requiere una versión de Node.js compatible con Angular 22 y npm. Desde esta carpeta:
+## Contenido
+
+- [Funciones](#funciones)
+- [Capturas](#capturas)
+- [Tecnologías y estructura](#tecnologías-y-estructura)
+- [Rutas y seguridad](#rutas-y-seguridad)
+- [Requisitos y ejecución local](#requisitos-y-ejecución-local)
+- [Compilación y despliegue](#compilación-y-despliegue)
+- [Pruebas, rendimiento y calidad](#pruebas-rendimiento-y-calidad)
+- [Versión y responsables](#versión-y-responsables)
+
+## Funciones
+
+- Panel de habitaciones y calendario de disponibilidad.
+- Reservas con titular natural o empresa, varias habitaciones, ocupantes, pagos y cuenta de estadía.
+- Ventas de productos, cobro y comprobantes internos.
+- Configuración de habitaciones, mobiliario, productos y categorías.
+- Caja por turnos, gastos, reportes e informes de limpieza con incidencias y tickets de mantenimiento.
+- Comprobantes imprimibles en A4; los reportes admiten impresión A4 horizontal o ticket de 80 mm mediante el diálogo del navegador.
+- Interfaz adaptable a distintos anchos de pantalla. Las acciones visibles dependen de la sesión y los permisos del usuario.
+
+## Capturas
+
+El repositorio no incluye capturas de las pantallas funcionales. Los recursos de `public/images/` son el logo y el fondo de acceso; se pueden agregar capturas de la aplicación en `docs/capturas/` cuando estén disponibles.
+
+## Tecnologías y estructura
+
+| Tecnología | Uso |
+|---|---|
+| Angular 22.2 | Aplicación de una sola página y enrutamiento |
+| TypeScript 6.0.2 | Lógica de componentes y servicios |
+| RxJS 7.8 | Flujos de datos y solicitudes HTTP |
+| Node.js 24 · npm 11.17 | Instalación, desarrollo y build |
+| Vitest 5 | Pruebas unitarias mediante Angular CLI |
+
+- `src/app/features/`: funcionalidades, páginas, modelos y servicios por módulo.
+- `src/app/core/`: sesión, HTTP, permisos, utilidades y servicios compartidos.
+- `src/app/shared/`: componentes, directivas y pantallas comunes.
+- `src/app/layout/`: estructura principal, encabezado y menú lateral.
+- `public/`: imágenes y otros recursos estáticos.
+- `proxy.conf.json`: proxy local de `/api` hacia `http://localhost:8080`.
+
+## Rutas y seguridad
+
+| Ruta | Módulo | Acceso |
+|---|---|---|
+| `/login` | Inicio de sesión | Pública |
+| `/habitaciones` | Estado y calendario | Sesión y permiso `HABITACIONES:VER` |
+| `/reservas` | Reservas y estadías | Sesión; acciones según permisos |
+| `/ventas` | Ventas | Sesión; acciones según permisos |
+| `/configuraciones` | Habitaciones, mobiliario y productos | Sesión; acciones según permisos |
+| `/reportes` | Reportes | Sesión de gerencia |
+| `/limpieza` | Informes e incidencias | Sesión y permisos de limpieza |
+| `/caja` | Turnos, movimientos y gastos | Sesión y permisos de caja |
+| `/seguridad` | Usuarios, roles y accesos | Sesión activa y permisos de seguridad |
+
+Las rutas privadas usan el guard de sesión. El token se envía a la API para las solicitudes autenticadas; el backend vuelve a validar roles y permisos. No guardes credenciales Oracle, tokens de proveedores ni secretos JWT en el código del frontend.
+
+## Requisitos y ejecución local
+
+Requisitos: Node.js 24.x, npm 11.17 o compatible, y el backend conectado a Oracle.
 
 ```powershell
 npm ci
 npm start
 ```
 
-Abrir `http://localhost:4200`. Iniciar también [rebolsysBackend](https://github.com/branpachman-lang/rebolsysBackend). `proxy.conf.json` reenvía `/api` al backend local en el puerto 8080. Si cambia ese puerto, actualizar el proxy y reiniciar el frontend.
+Abre `http://localhost:4200`. El proxy envía `/api` al backend local en el puerto `8080`. Para cambiarlo, edita `proxy.conf.json` y reinicia el servidor Angular.
+
+## Compilación y despliegue
+
+Genera el build de producción con:
 
 ```powershell
 npm run build
 ```
 
-La aplicación compilada queda en `dist/rebolsys-frontend/browser`. El servidor web debe redirigir las rutas Angular a `index.html` y reenviar `/api` al backend.
+La salida queda en `dist/rebolsys-frontend/browser`. El servidor debe entregar `index.html` para las rutas Angular y reenviar `/api/*` a una instancia accesible del backend. El backend debe permitir el origen del sitio en `CORS_ALLOWED_ORIGINS`.
 
-## Pruebas desde Vercel
+`vercel.json` configura instalación con `npm ci`, compilación con `npm run build` y la carpeta de salida. Su destino actual para `/api/*` es una URL temporal de Cloudflare Tunnel. Antes de desplegar, reemplázala por la URL estable del backend y confirma que CORS permite el dominio final; el túnel temporal no constituye un endpoint permanente.
 
-Importar el repositorio unificado con `rebolsysFrontend` como Root Directory y
-seleccionar la rama que contiene los cambios a desplegar. `vercel.json` define
-Angular, `npm ci`, `npm run build`, la carpeta de salida y las rutas de la aplicación.
-Retirar los valores personalizados del panel si todavía usan `ng run build` o `dist`.
-`package.json` fija Node.js 24.x para la compilación.
+## Pruebas, rendimiento y calidad
 
-La primera regla reenvía `/api/*` al backend público, conservando `/api` en el destino;
-la segunda permite abrir directamente rutas Angular como `/reservas`. Se conserva
-`environment.apiUrl = '/api/v1'`: el navegador usa el dominio de Vercel para las
-llamadas autenticadas y el backend sigue conectándose a Oracle con su configuración
-privada. No se deben guardar credenciales de Oracle ni `JWT_SECRET` en el frontend.
-
-El backend también debe autorizar el origen del navegador, porque el proxy puede
-conservar la cabecera `Origin`. Para el despliegue actual, configurar en el proceso
-Java `CORS_ALLOWED_ORIGINS=http://localhost:4200,http://127.0.0.1:4200,https://rebolsys12.vercel.app`.
-En desarrollo también se puede establecer `app.cors.allowed-origins` con esa lista en
-`rebolsysBackend/.local/application-local-private.properties`. Reiniciar el backend
-después de cambiarla. Mantener orígenes exactos; los dominios de previews adicionales
-se autorizan por separado. Un rechazo `Invalid CORS request` ocurre antes del login.
-
-Para pruebas con el backend local en 8080, mantenerlo encendido junto con el túnel:
-
-```powershell
-cloudflared tunnel --url http://localhost:8080
-```
-
-El destino actual en `vercel.json` es temporal. Si Cloudflare genera otra URL,
-actualizar esa regla, subir el cambio y volver a desplegar. La terminal del túnel y
-la conexión del backend a Oracle deben permanecer activas durante las pruebas.
-Después del despliegue, comprobar `/api/health` y el inicio de sesión desde Vercel.
-
-## Funcionalidades
-
-La conexión con el backend actual incluye **Estado de habitaciones**, **Reservas hasta el cobro y comprobante** y **Configuraciones**. Se conservan los colores y el diseño existente, con ajustes para pantallas pequeñas.
-
-La aplicación solicita inicio de sesión en `/login` y el cambio obligatorio de
-la contraseña temporal. El menú y las acciones se adaptan a los permisos de la
-cuenta. Desde **Seguridad**, el gerente registra empleados, crea usuarios y
-selecciona roles o funciones individuales. El backend valida cada operación y
-registra la actividad en `AUDITORIA_GENERAL`.
-
-**Informes y habitaciones** (`/limpieza`) reúne el resumen del turno, las habitaciones
-por limpiar, los informes y los tickets. La interfaz adapta los marcos del
-[BUC02 de Figma](https://www.figma.com/design/D0sb4PLEvBp0HRs0mvaYST/Real-Bolognesi-Hospedaje?node-id=514-13905)
-a los componentes y permisos de REBOLSYS.
-
-El menú se oculta correctamente en móvil y se puede abrir y cerrar; el calendario desplaza sus días dentro de su propio contenedor. Se verificaron pantallas de 320 a 1920 píxeles en la etapa anterior, incluyendo formularios y diálogos de reserva. Están cargadas las 20 habitaciones reales de los pisos 2 al 5 y sus 26 camas, incluyendo las tres camas matrimoniales de la 303. Cada habitación utiliza el precio de la última imagen proporcionada por el usuario, con impuesto incluido, y está habilitada para preparar reservas según disponibilidad. Las habitaciones sin precio siguen mostrando **Tarifa pendiente**. Los registros de pruebas identificados se retiraron el 03/11/2026, con respaldo privado previo en el backend.
-
-- Calendario por semana y piso, estados físicos y reservas del período.
-- Inicio de una reserva desde los detalles de una habitación.
-- Titular natural o empresa, varias habitaciones, fechas e importes con impuesto incluido.
-- Huéspedes opcionales al reservar; los menores necesitan un adulto responsable en la misma habitación. Se respetan capacidad, plazas de cama y menores de siete años sin plaza propia.
-- Las 20 habitaciones admiten hasta un menor de 7 años adicional que comparta cama. Se puede desmarcar su plaza propia; desde el cumpleaños número siete se exige cama. El menor sigue contando en el máximo total, configurado como las plazas originales más ese cupo adicional. Dos adultos y un menor sin cama usan dos plazas, y no se admite un segundo menor sin cama.
-- Selección del recepcionista. Cada pago requiere un turno abierto de ese usuario y una forma de pago del catálogo.
-- Pago total, abonos o reserva pendiente. El efectivo recibido se usa para calcular el vuelto; solo el abono se envía a caja.
-- Lista con total, pagado, saldo e historial de abonos. Se consulta la cuenta principal antes de cobrar; los consumos separados se muestran como cuentas separadas.
-- Recuperación de reservas y pagos pendientes de confirmación tras errores de conexión. Se conserva la solicitud y su clave en la sesión de esta pestaña; se reintenta el mismo movimiento. No se deben iniciar otro registro o abono mientras exista una confirmación pendiente.
-
-El check-in permite saldo y el check-out exige pago completo según el backend. Las acciones de check-in, check-out y edición posterior se conectarán en las siguientes etapas. El registro de un pago abre la pantalla de comprobantes; la emisión requiere elegir y confirmar boleta o factura.
-
-### Boletas y facturas
-
-Al terminar una reserva nueva se abre la pantalla de comprobantes. También está disponible desde **Reservas → Boleta / Factura** y desde el detalle. Permite seleccionar la cuenta principal o un consumo separado, usar al titular u otro receptor y generar el comprobante interno sin registrar otro cobro. Las facturas exigen RUC; si hay saldo se solicitan cuotas que sumen exactamente lo pendiente antes de preparar la emisión electrónica.
-
-Después de generar el comprobante interno se puede preparar la emisión, revisar la tasa y dirección fiscal, **Enviar a APIsPerú beta**, consultar una respuesta incierta y descargar XML, CDR y PDF según su disponibilidad. Se muestran por separado el número interno y el electrónico. Los precios ya incluyen impuesto; no se añade otra vez al total. Una respuesta incierta se consulta antes de permitir otro envío. Los documentos de esta configuración beta no tienen validez tributaria de producción.
-
-### Configuraciones
-
-El menú desplegable **Configuraciones** agrupa **Habitaciones**, **Mobiliario** y **Productos**. Habitaciones permite crear y editar número, tipo, estado físico, tarifa y límites de ocupación; Mobiliario administra las unidades, asignaciones, traslados, retiros y conservación con responsable y motivo. Los tipos se crean dentro de cada pantalla.
-
-Productos permite registrar descripción opcional de hasta 500 caracteres y existencias iniciales al crear. Con stock inicial mayor a cero se selecciona responsable y el backend genera automáticamente la entrada de inventario; no hay que abrir otro ajuste. Al editar se conserva el stock. Las reposiciones, mermas y correcciones posteriores usan «Ajustar existencias», con responsable, motivo y control del stock observado. El motivo queda en el historial de inventario. Las rutas antiguas `/productos` redirigen al nuevo apartado.
-
-El botón superior **Crear categoría** abre un modal desde el listado y el
-formulario. Permite agregar varias categorías, consultar las registradas y
-actualizar las opciones sin perder los datos del producto. Desde el formulario
-queda seleccionada la categoría recién creada. Las descripciones también se
-muestran en el catálogo de Ventas.
-
-Los filtros del listado recorren las páginas de reservas porque la API actual solo ofrece paginación. Las cuentas se consultan para la página mostrada. Para historiales grandes conviene trasladar la búsqueda al backend.
-
-Ventas adapta su registro al contrato actual: confirma con usuario y modalidad,
-consulta la cuenta y registra el pago en su turno, con claves estables por fase.
-Si se pierde la confirmación se conserva la operación en la sesión de la pestaña
-y aparece **Recuperar venta pendiente**, también después de recargar. Un consumo
-separado conserva su referencia de reserva. La constancia de pago no se presenta
-como una boleta o factura emitida sin los datos de su receptor.
-La carga de productos ya consulta las estancias desde la ruta vigente `/reservas`,
-recorre sus páginas y muestra habitaciones EN_CURSO. Una consulta de estancias
-fallida no oculta el catálogo para compradores externos. Los fallos del catálogo
-se muestran con reintento y se distinguen de un listado vacío.
-
-## Comprobación local
-
-La verificación incluye 81 pruebas locales y tres verificaciones HTTP opcionales
-(dos de comprobantes y la carga de Ventas) contra una simulación Postman. Estas últimas no se ejecutan con
-`npm test` normal. Para repetirlos, iniciar una instancia nueva de la simulación
-en una terminal:
-
-```powershell
-postman simulation run postman/simulations/reservas.sim.yaml --port 4932 --no-history
-```
-
-En otra terminal:
-
-```powershell
-$env:REBOLSYS_SIMULATION='http://127.0.0.1:4932/rebolsys/api/v1'
-npm test -- --watch=false
-Remove-Item Env:REBOLSYS_SIMULATION
-```
-
-El estado de esta simulación solo vive en memoria. Sus archivos fiscales son
-marcadores; verifica la integración HTTP del cliente, sin emitir en APIsPerú ni
-crear datos en Oracle. La revisión visual de las nuevas pantallas quedó pendiente
-porque el control del navegador estaba deshabilitado en la aplicación.
+Ejecuta las pruebas unitarias y la compilación con:
 
 ```powershell
 npm test -- --watch=false
 npm run build
 ```
 
-Se probaron además en el navegador reservas de persona natural y empresa, abono y pago total, menores con responsable y recuperación de una respuesta de pago perdida mediante una simulación local de Postman. La simulación almacena datos ficticios en memoria y no usa Oracle, SUNAT ni credenciales externas. Los detalles y archivos de apoyo están en `docs/RESERVAS-FRONTEND.md` y `postman/` de esta copia local.
+`package.json` no define un comando E2E. El repositorio tampoco incluye un informe o configuración de SonarQube ni una medición comparativa de rendimiento; por eso no se publican porcentajes ni resultados de calidad estática. El build de Angular establece límites de tamaño inicial de 500 kB para advertencia y 1 MB para error, y límites por hoja de estilos de componente de 4 kB y 8 kB respectivamente.
 
-La consulta real de habitaciones y catálogos fue comprobada contra el backend local. La creación de reservas y abonos en Oracle está pendiente de autorización explícita para esos registros de prueba.
+Para revisar errores durante el desarrollo, consulta la consola del navegador y la pestaña Network. Los errores de solicitudes API también se registran en la salida del backend.
 
-## Avance preexistente
+## Versión e historial
 
-- Inicio y navegación lateral.
-- Estado de habitaciones, calendario por piso y configuración de ocupación.
-- Reservas con varias habitaciones, cliente natural o empresa y huéspedes por habitación.
-- Menores con responsable adulto en la misma habitación y uso de plaza según los límites configurados.
-- Edición de huéspedes y menores a cargo durante la preparación de la reserva.
-- Cobro en efectivo, abonos y saldo pendiente.
-- Venta de productos a personas externas o del hospedaje, con cobro separado o cargo a una reserva.
-- Edición de productos y cantidades de ventas pendientes sin cobros ni comprobante.
-- Mantenimiento de productos y categorías, precio, stock y ruta de imagen.
-
-Los datos provienen de Oracle a través de la API. Los mensajes de validación del backend se presentan en los formularios. Las consultas de DNI/RUC se realizan desde el backend; el navegador no recibe el token de APIs Perú.
-
-## Organización
-
-`app.config.ts` configura los proveedores y `app.routes.ts` carga las rutas por funcionalidad. `layout` contiene la estructura principal; cada módulo en `features` separa `models`, `services`, `pages` y sus componentes. Cada pantalla conserva sus archivos TypeScript, HTML y CSS. `core` agrupa servicios y utilidades; `shared` reúne componentes y directivas comunes.
-
-La autenticación usa JWT y permisos por funcionalidad. El paso de facturación a
-producción y una pasarela de pagos requieren configuración e integración adicionales.
-La versión está destinada al desarrollo local y a la facturación beta.
-
-Las reservas se actualizan cada 30 segundos para reflejar el checkout automático
-del backend, sin interrumpir los diálogos activos. La [revisión de noviembre de 2026](../rebolsysBackend/REVISION-2026-11-21.md)
-documenta las reglas, las pruebas y la eliminación de la pantalla de configuración
-antigua, sustituida por las rutas específicas de habitaciones y mobiliario.
-
-Las pruebas de regresión de reservas y otras pruebas indicadas en `.gitignore`
-están versionadas. Parte de las pruebas locales anteriores sigue excluida de Git.
-Compilaciones, capturas y dependencias instaladas se mantienen fuera de Git.
-
-## Factura para una reserva registrada con DNI
-
-Desde **Reservas → Boleta / Factura**, elegir **Factura** abre el formulario del
-receptor con documento RUC. El titular y los huéspedes conservan sus documentos.
-Buscar el RUC reutiliza al receptor existente; si falta, se completan sus datos y
-se registra al emitir. También se busca antes de registrar cuando se omite la
-búsqueda manual. RUC 10 muestra nombres y apellidos; RUC 20, razón social.
-
-La emisión usa `idClienteReceptor` del comprobante y conserva la misma reserva,
-cuenta y pago. Los reintentos mantienen el receptor y la solicitud originales;
-un comprobante ya emitido conserva su tipo y receptor. Volver a **Boleta** recupera
-los datos del titular. Este formulario se comparte con los comprobantes de ventas.
-
-**Agregar nueva reserva** se encuentra en el encabezado, antes de la tabla y de
-la paginación. Los encabezados de los listados acomodan sus acciones en varias
-líneas cuando el ancho de la pantalla lo requiere.
+Versión declarada en `package.json`: `0.0.0`. No se han definido releases etiquetados. El historial está en Git; entre los cambios recientes figura `feat: mejorar reportes y comprobantes A4`.
