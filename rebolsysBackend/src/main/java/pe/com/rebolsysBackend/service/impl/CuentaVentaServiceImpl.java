@@ -14,6 +14,7 @@ import pe.com.rebolsysBackend.enums.*;
 import pe.com.rebolsysBackend.exception.*;
 import pe.com.rebolsysBackend.repository.*;
 import pe.com.rebolsysBackend.service.service.*;
+import pe.com.rebolsysBackend.util.IgvIncluido;
 
 @Service
 @RequiredArgsConstructor
@@ -62,9 +63,10 @@ public class CuentaVentaServiceImpl implements CuentaVentaService {
         ? List.<CuentaEstadiaDTO>of()
         : List.of(new CuentaEstadiaDTO(v.getDetalleReserva().getHabitacion().getNumeroCuarto(),
             v.getDetalleReserva().getFechaIngreso(), v.getDetalleReserva().getFechaSalida()));
+    var impuesto = IgvIncluido.resumir(lineas.stream().map(CuentaLineaDTO::total));
     return new CuentaDocumentoDTO(null, reserva, reserva == null ? null : "R" + reserva, id, "CUENTA",
             EstadoComprobante.BORRADOR, "CTA", null, v.getClienteComprador() == null ? null : v.getClienteComprador().getIdPerfil(),
-            null, null, null, total, BigDecimal.ZERO, total, lineas, List.of(), estadias);
+            null, null, null, total, impuesto.subtotal(), impuesto.igv(), BigDecimal.ZERO, total, lineas, List.of(), estadias);
   }
 
   @Override

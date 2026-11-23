@@ -1,6 +1,9 @@
 export function generarClaveOperacion(): string {
-  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID();
   }
-  return 'op-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+  const bytes = new Uint8Array(8);
+  crypto.getRandomValues(bytes);
+  const aleatorio = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+  return `op-${Date.now().toString(36)}-${aleatorio}`;
 }

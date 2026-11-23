@@ -74,7 +74,9 @@ export class HabitacionList {
     }),
   );
   pisos = computed(() =>
-    [...new Set(this.rooms().map((r) => this.roomFloor(r.numero)))].sort(),
+    [...new Set(this.rooms().map((r) => this.roomFloor(r.numero)))].sort((a, b) =>
+      a.localeCompare(b, 'es', { numeric: true }),
+    ),
   );
   filtradas = computed(() =>
     this.rooms().filter(

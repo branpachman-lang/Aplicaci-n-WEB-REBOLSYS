@@ -1,17 +1,16 @@
 import { notificarCambios } from '../../../../core/services/avisos-formulario';
 import { generarClaveOperacion } from '../../../../core/utils/clave-operacion';
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
+import { rxResource } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { CurrencyPipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { forkJoin } from 'rxjs';
 import { ProductoService } from '../../services/producto-service';
 import { CategoriaService } from '../../../categorias/services/categoria-service';
 import { AjusteStock, MovimientoInventario, Producto } from '../../models/producto.model';
 import { Categoria } from '../../../categorias/models/categoria.model';
 import { SesionService } from '../../../../core/services/sesion-service';
 import { CategoriaDialog } from '../../../categorias/components/categoria-dialog/categoria-dialog';
-import { Pagina } from '../../../../core/models/pagina-response';
 import { mensajeError } from '../../../../core/utils/http-error';
 import { NotificacionService } from '../../../../core/services/notificacion.service';
 import { Icon } from '../../../../shared/components/icono/icono';
@@ -23,19 +22,13 @@ import { DialogFocus } from '../../../../shared/directives/dialog-focus';
   templateUrl: './producto-list.html',
   styleUrl: './producto-list.css',
 })
-export class ProductoList implements OnInit {
+export class ProductoList {
   protected readonly sesion = inject(SesionService);
   private productos = inject(ProductoService);
   private categoriasService = inject(CategoriaService);
   private avisos = inject(NotificacionService);
 
-  // Estados de datos
-  respuesta = signal<Pagina<Producto> | null>(null);
-  categorias = signal<Categoria[]>([]);
   categoriasAbiertas = signal(false);
-  error = signal('');
-  private readonly alertaError = notificarCambios(this.error, 'error');
-  cargando = signal(true);
   fallidas = signal<Set<number>>(new Set());
 
   // Filtros y paginación
@@ -45,6 +38,36 @@ export class ProductoList implements OnInit {
   estado = '';
   categoria: number | null = null;
   stockBajo: boolean | null = null;
+
+  private readonly consulta = signal(this.parametrosListado());
+  private readonly listado = rxResource({
+    params: this.consulta,
+    stream: ({ params }) =>
+      this.productos.listar(
+        params.pagina,
+        params.tamanio,
+        params.buscar,
+        params.estado,
+        params.categoria,
+        params.stockBajo,
+      ),
+  });
+  private readonly revisionCategorias = signal(0);
+  private readonly catalogoCategorias = rxResource({
+    params: this.revisionCategorias,
+    stream: () => this.categoriasService.listar(),
+  });
+
+  readonly respuesta = computed(() => (this.listado.hasValue() ? this.listado.value() : null));
+  readonly categorias = computed(() =>
+    this.catalogoCategorias.hasValue() ? this.catalogoCategorias.value() : [],
+  );
+  readonly cargando = computed(() => this.listado.isLoading() || this.catalogoCategorias.isLoading());
+  readonly error = computed(() => {
+    const causa = this.listado.error() ?? this.catalogoCategorias.error();
+    return causa ? mensajeError(causa) : '';
+  });
+  private readonly alertaError = notificarCambios(this.error, 'error');
 
   // Modal de baja / retiro
   desactivando = signal<Producto | null>(null);
@@ -70,15 +93,16 @@ export class ProductoList implements OnInit {
   ajusteConflicto = signal('');
 
   categoriaCreada(categoria: Categoria) {
-    this.categorias.update((categorias) =>
-      [...categorias.filter((c) => c.idCategoria !== categoria.idCategoria), categoria].sort(
+    if (!this.catalogoCategorias.hasValue()) {
+      this.revisionCategorias.update((revision) => revision + 1);
+      return;
+    }
+
+    this.catalogoCategorias.update((categorias) =>
+      [...(categorias ?? []).filter((c) => c.idCategoria !== categoria.idCategoria), categoria].sort(
         (a, b) => a.nombreCategoria.localeCompare(b.nombreCategoria, 'es'),
       ),
     );
-  }
-
-  ngOnInit() {
-    this.cargar();
   }
 
   filtrar() {
@@ -87,30 +111,19 @@ export class ProductoList implements OnInit {
   }
 
   cargar() {
-    this.cargando.set(true);
-    this.error.set('');
+    if (this.catalogoCategorias.error()) this.catalogoCategorias.reload();
+    this.consulta.set(this.parametrosListado());
+  }
 
-    forkJoin({
-      page: this.productos.listar(
-        this.pagina,
-        this.tamanio,
-        this.buscar,
-        this.estado,
-        this.categoria,
-        this.stockBajo,
-      ),
-      categorias: this.categoriasService.listar(),
-    }).subscribe({
-      next: (r) => {
-        this.respuesta.set(r.page);
-        this.categorias.set(r.categorias);
-        this.cargando.set(false);
-      },
-      error: (e) => {
-        this.error.set(mensajeError(e));
-        this.cargando.set(false);
-      },
-    });
+  private parametrosListado() {
+    return {
+      pagina: this.pagina,
+      tamanio: this.tamanio,
+      buscar: this.buscar,
+      estado: this.estado,
+      categoria: this.categoria,
+      stockBajo: this.stockBajo,
+    };
   }
 
   imagen(p: Producto): string {

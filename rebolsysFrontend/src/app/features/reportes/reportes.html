@@ -61,7 +61,8 @@
       @if (reporte.vista === 'financiero') {
         <span class="moneda">Moneda: PEN</span>
       }
-      <button class="button no-print" type="button" (click)="imprimir()">Imprimir vista</button>
+      <button class="button no-print" type="button" (click)="imprimir()">Imprimir A4</button>
+      <button class="button no-print" type="button" (click)="imprimir('ticket')">Imprimir ticket</button>
     </div>
     @switch (reporte.vista) {
       @case ('incidencias') {
@@ -204,4 +205,131 @@
       }
     </section>
   </div>
+}
+
+@if (resultado(); as reporte) {
+  <!-- ===== BOLETA (solo se ve al imprimir) ===== -->
+  <section class="boleta" aria-hidden="true">
+    <header class="cab">
+      <app-marca-hospedaje [mostrarSinConfigurar]="true" />
+    </header>
+    <hr class="regla" />
+    <div class="doc">
+      @for (opcion of reportes; track opcion.id) {
+        @if (opcion.id === vista()) { <div class="t">{{ opcion.titulo }}</div> }
+      }
+      <div class="s">Reporte interno</div>
+    </div>
+
+    <div class="meta">
+      @if (!vista().startsWith('inventario/')) {
+        <div class="kv"><span class="k">Periodo</span>
+          <span class="v">{{ (aplicados().desde | date:'dd/MM/yyyy') || 'Inicio' }} al {{ (aplicados().hasta | date:'dd/MM/yyyy') || 'hoy' }}</span></div>
+      }
+      @if (aplicados().habitacion.trim()) {
+        <div class="kv"><span class="k">Habitación</span><span class="v">{{ aplicados().habitacion }}</span></div>
+      }
+      @if (aplicados().estado) {
+        <div class="kv"><span class="k">Estado</span><span class="v">{{ etiqueta(aplicados().estado) }}</span></div>
+      }
+      @if (aplicados().usuario.trim()) {
+        <div class="kv"><span class="k">Usuario</span><span class="v">{{ aplicados().usuario }}</span></div>
+      }
+      @if (aplicados().buscar.trim()) {
+        <div class="kv"><span class="k">Búsqueda</span><span class="v">{{ aplicados().buscar }}</span></div>
+      }
+      @if (aplicados().stockBajo) {
+        <div class="kv"><span class="k">Filtro</span><span class="v">Solo stock bajo</span></div>
+      }
+      <div class="kv"><span class="k">Emisión</span><span class="v">{{ generadoEn() | date:'dd/MM/yyyy HH:mm' }}</span></div>
+    </div>
+
+    @switch (reporte.vista) {
+      @case ('financiero') {
+        <div class="sec">Resumen</div>
+        <div class="kv"><span class="k">Cobros de reservas</span><span class="v">{{ reporte.datos.cobrosReservas | currency:'PEN':'S/ ' }}</span></div>
+        <div class="kv"><span class="k">Cobros de ventas</span><span class="v">{{ reporte.datos.cobrosVentas | currency:'PEN':'S/ ' }}</span></div>
+        <div class="kv"><span class="k">Ingresos manuales</span><span class="v">{{ reporte.datos.ingresosManuales | currency:'PEN':'S/ ' }}</span></div>
+        <div class="kv"><span class="k">Egresos</span><span class="v">{{ reporte.datos.egresos | currency:'PEN':'S/ ' }}</span></div>
+        <div class="neto"><span>SALDO NETO</span><strong>{{ reporte.datos.neto | currency:'PEN':'S/ ' }}</strong></div>
+
+        <div class="sec">Detalle de movimientos</div>
+        @if (reporte.datos.filas.length) {
+          <div class="th"><span>Concepto</span><span class="m">Medio</span><span class="n">Importe</span></div>
+          @for (fila of reporte.datos.filas; track $index) {
+            <div class="tr"><span>{{ etiqueta(fila.concepto) }}</span><span class="m">{{ fila.medioPago }}</span>
+              <span class="n">{{ (fila.ingreso - fila.egreso) | currency:'PEN':'S/ ' }}</span></div>
+          }
+        } @else { <p class="vacio">No hay movimientos en el periodo seleccionado.</p> }
+        <div class="total">{{ reporte.datos.filas.length }} movimiento(s)</div>
+      }
+
+      @case ('incidencias') {
+        @for (fila of reporte.datos.filas; track $index) {
+          <article class="reg">
+            <div class="reg-t"><strong>INF-{{ fila.idInforme }}</strong><span>Hab. {{ fila.habitacion }}</span></div>
+            <div class="kv"><span class="k">Fecha</span><span class="v">{{ fila.fecha | date:'dd/MM/yyyy HH:mm' }}</span></div>
+            <div class="kv"><span class="k">Estado</span><span class="v">{{ etiqueta(fila.estadoInforme) }}</span></div>
+            <div class="kv"><span class="k">Ítem</span><span class="v">{{ fila.mueble }}</span></div>
+            <div class="kv"><span class="k">Condición</span><span class="v">{{ etiqueta(fila.condicion) }}</span></div>
+            <div class="kv"><span class="k">Observ.</span><span class="v">{{ fila.observacion || '—' }}</span></div>
+            <div class="kv"><span class="k">Ticket</span>
+              <span class="v">{{ fila.idTicket ? 'TKT-' + fila.idTicket + ' · ' + etiqueta(fila.estadoTicket) : 'Sin ticket' }}</span></div>
+          </article>
+        } @empty { <p class="vacio">No hay incidencias para los filtros aplicados.</p> }
+        <div class="total">{{ reporte.datos.filas.length }} incidencia(s)</div>
+      }
+
+      @case ('cierres-caja') {
+        @for (fila of reporte.datos.filas; track fila.idTurno + '/' + fila.medioPago) {
+          <article class="reg">
+            <div class="reg-t"><strong>Turno #{{ fila.idTurno }}</strong><span>{{ fila.usuario }}</span></div>
+            <div class="kv"><span class="k">Apertura</span><span class="v">{{ fila.apertura | date:'dd/MM/yyyy HH:mm' }}</span></div>
+            <div class="kv"><span class="k">Cierre</span><span class="v">{{ fila.cierre | date:'dd/MM/yyyy HH:mm' }}</span></div>
+            <div class="kv"><span class="k">Medio</span><span class="v">{{ fila.medioPago || 'Sin arqueo' }}</span></div>
+            <div class="kv"><span class="k">Esperado</span><span class="v">{{ (fila.esperado | currency:'PEN':'S/ ') || '—' }}</span></div>
+            <div class="kv"><span class="k">Declarado</span><span class="v">{{ (fila.declarado | currency:'PEN':'S/ ') || '—' }}</span></div>
+            <div class="kv" [class.alerta]="fila.diferencia !== null && fila.diferencia !== 0">
+              <span class="k">Diferencia</span><span class="v">{{ (fila.diferencia | currency:'PEN':'S/ ') || '—' }}</span></div>
+          </article>
+        } @empty { <p class="vacio">No hay turnos cerrados para los filtros aplicados.</p> }
+        <div class="total">{{ reporte.datos.filas.length }} registro(s)</div>
+      }
+
+      @case ('inventario/productos') {
+        @for (fila of reporte.datos.filas; track fila.id) {
+          <article class="reg">
+            <div class="reg-t"><strong>{{ fila.producto }}</strong><span>{{ fila.categoria }}</span></div>
+            <div class="kv"><span class="k">Estado</span><span class="v">{{ etiqueta(fila.estado) }}</span></div>
+            <div class="kv"><span class="k">Stock</span><span class="v">{{ fila.stock }}</span></div>
+            <div class="kv"><span class="k">Mínimo</span><span class="v">{{ fila.minimo }}</span></div>
+            @if (fila.estado === 'ACTIVO' && fila.stock <= fila.minimo) {
+              <div class="kv alerta"><span class="k">Reposición</span><span class="v">STOCK BAJO</span></div>
+            }
+          </article>
+        } @empty { <p class="vacio">No hay productos para los filtros aplicados.</p> }
+        <div class="total">{{ reporte.datos.filas.length }} producto(s)</div>
+      }
+
+      @case ('inventario/mobiliario') {
+        @for (fila of reporte.datos.filas; track fila.id) {
+          <article class="reg">
+            <div class="reg-t"><strong>{{ fila.mueble }}</strong><span>{{ fila.tipo }}</span></div>
+            <div class="kv"><span class="k">Habitación</span><span class="v">{{ fila.habitacion || 'Sin asignar' }}</span></div>
+            <div class="kv"><span class="k">Estado</span><span class="v">{{ etiqueta(fila.estado) }}</span></div>
+            <div class="kv"><span class="k">Condición</span><span class="v">{{ etiqueta(fila.condicion) }}</span></div>
+          </article>
+        } @empty { <p class="vacio">No hay muebles para los filtros aplicados.</p> }
+        <div class="total">{{ reporte.datos.filas.length }} mueble(s)</div>
+      }
+    }
+
+    <hr class="regla" />
+    <footer class="pie">
+      <div class="fin">· · · FIN DEL REPORTE · · ·</div>
+      <div>Documento sin valor tributario</div>
+      <div class="firma">Real Bolognesi Management Suite</div>
+    </footer>
+  </section>
+
 }

@@ -62,9 +62,13 @@ h3 {
 button:focus-visible,
 a:focus-visible,
 input:focus-visible,
-select:focus-visible {
+select:focus-visible,
+.focus-group:focus-within {
   outline: 3px solid #318ee4;
   outline-offset: 3px;
+}
+.focus-group > input:focus {
+  outline: none;
 }
 .button {
   display: inline-flex;
@@ -486,6 +490,13 @@ td small {
   margin: 14px 0;
   font-size: 14px;
 }
+.field .field-error {
+  margin: .25rem 0 0;
+  padding: 0;
+  background: transparent;
+  font-size: .85rem;
+}
+.field [aria-invalid="true"] { border-color: #a51515; }
 .toast {
   position: fixed;
   bottom: 24px;
@@ -549,6 +560,16 @@ td small {
   @page {
     size: A4;
     margin: 18mm;
+  }
+  /* El formato debe comenzar en la raíz para evitar una hoja inicial sin contenido. */
+  html:has(.reporte-impresion) {
+    page: reporte-a4;
+  }
+  html:has(.reporte-impresion.formato-ticket) {
+    page: reporte-ticket;
+  }
+  html:has(.reporte-impresion) .app-shell {
+    min-height: 0;
   }
   .no-print,
   .toast {

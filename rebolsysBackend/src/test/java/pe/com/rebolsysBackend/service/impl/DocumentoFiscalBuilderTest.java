@@ -40,21 +40,28 @@ class DocumentoFiscalBuilderTest {
     assertThat(n.path("formaPago").path("tipo").asString()).isEqualTo("Contado");
     assertThat(n.path("fechaEmision").asString()).matches("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}-05:00");
   }
-  @Test void admitePorcentajeDecimalExplicito() {
-    var d=builder.construir(cuenta("110.50"),List.of(linea(1,"110.50")),BigDecimal.ZERO,request("10.50",null,null));
-    assertThat(d.subtotal()).isEqualByComparingTo("100");assertThat(d.igv()).isEqualByComparingTo("10.50");
+  @Test void rechazaUnaTasaDistintaDeDieciocho() {
+    assertThatThrownBy(() -> builder.construir(cuenta("110.50"),List.of(linea(1,"110.50")),BigDecimal.ZERO,request("10.50",null,null)))
+        .hasMessageContaining("18%");
   }
-  @Test void combinaTratamientosPorLineaSinAplicarBeneficiosAutomaticos() {
-    var t=List.of(new EmisionElectronicaRequestDTO.TratamientoLinea(2,"10",new BigDecimal("10.50")),
-        new EmisionElectronicaRequestDTO.TratamientoLinea(3,"20",BigDecimal.ZERO));
-    var d=builder.construir(cuenta("238.50"),List.of(linea(1,"118"),linea(2,"110.50"),linea(3,"10")),BigDecimal.ZERO,request("18",t,null));
-    assertThat(d.subtotal()).isEqualByComparingTo("210");assertThat(d.igv()).isEqualByComparingTo("28.50");
-    assertThat(json.readTree(d.solicitud()).path("mtoOperExoneradas").decimalValue()).isEqualByComparingTo("10");
+  @Test void mantieneDieciochoPorCientoEnTodasLasLineas() {
+    var t=List.of(new EmisionElectronicaRequestDTO.TratamientoLinea(2,"10",new BigDecimal("18")));
+    var d=builder.construir(cuenta("236"),List.of(linea(1,"118"),linea(2,"118")),BigDecimal.ZERO,request("18",t,null));
+    assertThat(d.subtotal()).isEqualByComparingTo("200");assertThat(d.igv()).isEqualByComparingTo("36");
+    assertThat(json.readTree(d.solicitud()).path("mtoOperExoneradas").decimalValue()).isZero();
   }
   @Test void redondeaPorLineaConCantidadFraccionada() {
     var l=linea(1,"39.3333");l.setCantidad(new BigDecimal("3"));
     var d=builder.construir(cuenta("118"),List.of(l),BigDecimal.ZERO,request("18",null,null));
     assertThat(d.subtotal().add(d.igv())).isEqualByComparingTo("118");
+  }
+  @Test void resumenYDocumentoFiscalCoincidenConImportesPequenos() {
+    var lineas=List.of(linea(1,"0.03"),linea(2,"0.03"),linea(3,"0.03"));
+    var d=builder.construir(cuenta("0.09"),lineas,BigDecimal.ZERO,request("18",null,null));
+    var resumen=pe.com.rebolsysBackend.util.IgvIncluido.resumir(lineas.stream().map(ComprobanteDetalle::getValorUnitario));
+    assertThat(resumen.subtotal()).isEqualByComparingTo(d.subtotal());
+    assertThat(resumen.igv()).isEqualByComparingTo(d.igv());
+    assertThat(resumen.subtotal().add(resumen.igv())).isEqualByComparingTo("0.09");
   }
   @Test void creditoExigeCuotasPorElSaldoYNoPorElTotal() {
     var r=request("18",null,List.of(new EmisionElectronicaRequestDTO.Cuota(LocalDate.now().plusDays(2),new BigDecimal("40"))));
@@ -67,7 +74,7 @@ class DocumentoFiscalBuilderTest {
   @Test void rechazaLineaDesconocidaOImpuestoIncompatibleConExoneracion() {
     var t=new EmisionElectronicaRequestDTO.TratamientoLinea(1,"20",BigDecimal.ONE);
     assertThatThrownBy(()->builder.construir(cuenta("10"),List.of(linea(1,"10")),BigDecimal.ZERO,request("18",List.of(t),null)))
-        .hasMessageContaining("tasa cero");
+        .hasMessageContaining("18%");
     var desconocido=new EmisionElectronicaRequestDTO.TratamientoLinea(2,"20",BigDecimal.ZERO);
     assertThatThrownBy(()->builder.construir(cuenta("10"),List.of(linea(1,"10")),BigDecimal.ZERO,request("18",List.of(desconocido),null)))
         .hasMessageContaining("inexistente");

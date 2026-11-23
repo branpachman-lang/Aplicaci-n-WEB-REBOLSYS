@@ -3357,7 +3357,7 @@
           "Facturación electrónica beta"
         ],
         "summary": "Preparar una boleta o factura beta desde un comprobante interno emitido",
-        "description": "Los precios incluyen impuesto. La tasa se indica como porcentaje; se pueden especificar tratamientos distintos por línea. No envía a APIsPerú todavía.",
+        "description": "Los precios incluyen IGV de 18% para boletas y facturas. Las líneas son gravadas (afectación 10). No envía a APIsPerú todavía.",
         "operationId": "preparar",
         "parameters": [
           {
@@ -7711,6 +7711,14 @@
             "items": {
               "$ref": "#/components/schemas/ReservaPagoRespuestaDTO"
             }
+          },
+          "subtotal": {
+            "type": "number",
+            "description": "Base imponible con IGV de 18% incluido, redondeada por línea."
+          },
+          "igv": {
+            "type": "number",
+            "description": "IGV incluido en el precio final."
           }
         }
       },
@@ -8716,9 +8724,9 @@
             "format": "int64"
           },
           "tasaIgv": {
-            "maximum": 100,
+            "maximum": 18,
             "exclusiveMaximum": false,
-            "minimum": 0.01,
+            "minimum": 18,
             "exclusiveMinimum": false,
             "type": "number"
           },
@@ -8760,13 +8768,13 @@
             "format": "int32"
           },
           "afectacion": {
-            "pattern": "10|20|30",
+            "pattern": "10",
             "type": "string"
           },
           "tasaIgv": {
-            "maximum": 100,
+            "maximum": 18,
             "exclusiveMaximum": false,
-            "minimum": 0,
+            "minimum": 18,
             "exclusiveMinimum": false,
             "type": "number"
           }

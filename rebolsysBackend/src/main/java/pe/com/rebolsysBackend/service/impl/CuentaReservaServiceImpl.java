@@ -13,6 +13,7 @@ import pe.com.rebolsysBackend.enums.*;
 import pe.com.rebolsysBackend.exception.*;
 import pe.com.rebolsysBackend.repository.*;
 import pe.com.rebolsysBackend.service.service.*;
+import pe.com.rebolsysBackend.util.IgvIncluido;
 
 @Service
 @RequiredArgsConstructor
@@ -51,6 +52,7 @@ public class CuentaReservaServiceImpl implements CuentaReservaService {
                           BigDecimal.ONE,
                           d.getCostoEstadia()))
               .toList();
+      var impuesto = IgvIncluido.resumir(cargos.stream().map(CuentaLineaDTO::total));
       docs.add(
           new CuentaDocumentoDTO(
               null,
@@ -66,6 +68,8 @@ public class CuentaReservaServiceImpl implements CuentaReservaService {
               null,
               null,
               gestion.alojamiento(r),
+              impuesto.subtotal(),
+              impuesto.igv(),
               BigDecimal.ZERO,
               gestion.alojamiento(r),
               cargos,

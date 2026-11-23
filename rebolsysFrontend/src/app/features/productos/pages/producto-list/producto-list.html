@@ -19,7 +19,7 @@
 
 <section class="panel">
   <div class="panel-toolbar">
-    <div class="search-field">
+    <div class="search-field focus-group">
       <app-icon name="search" />
       <input
         aria-label="Buscar productos"
@@ -382,7 +382,7 @@
                         {{ m.signo > 0 ? "+" : "-" }}{{ m.cantidad }}
                       </strong>
                     </td>
-                    <td>{{ m.stockResultante }} unid.</td>
+                    <td>{{ m.stockResultante === null ? '—' : m.stockResultante + ' unid.' }}</td>
                     <td>Usuario #{{ m.idUsuario }}</td>
                     <td>{{ m.observacion }}</td>
                   </tr>

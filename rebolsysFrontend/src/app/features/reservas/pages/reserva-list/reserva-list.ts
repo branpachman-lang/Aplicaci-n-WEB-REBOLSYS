@@ -1,7 +1,7 @@
 import { notificarCambios } from '../../../../core/services/avisos-formulario';
 import { generarClaveOperacion } from '../../../../core/utils/clave-operacion';
 import { PermisosUi } from "../../../../core/services/permisos-ui";
-import { Component, DestroyRef, inject, signal } from "@angular/core";
+import { Component, DestroyRef, OnDestroy, inject, signal } from "@angular/core";
 import { CurrencyPipe, DatePipe } from "@angular/common";
 import { FormsModule } from "@angular/forms";
 import { RouterLink,Router,ActivatedRoute } from "@angular/router";
@@ -43,7 +43,7 @@ import {
   templateUrl: "./reserva-list.html",
   styleUrl: "./reserva-list.css",
 })
-export class ReservaList {
+export class ReservaList implements OnDestroy {
   readonly acceso = inject(PermisosUi);
   private readonly servicio = inject(ReservaService);
   private readonly catalogoService = inject(CatalogoService);

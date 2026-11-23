@@ -12,6 +12,7 @@ import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.*;
 import org.springframework.stereotype.Service;
 import pe.com.rebolsysBackend.dto.TicketComprobanteDTO;
+import pe.com.rebolsysBackend.util.NumeroComprobante;
 
 /** Representación interna en A4. No firma XML ni acredita aceptación de SUNAT. */
 @Service
@@ -32,7 +33,7 @@ public class TicketPdfService {
       PDFont normal = new PDType1Font(Standard14Fonts.FontName.HELVETICA);
       PDFont negrita = new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD);
       var documento = datos.documento();
-      var layout = new PaginaA4(pdf, normal, negrita, documento.tipo() + " INTERNA · " + documento.serie() + "-" + documento.numero());
+      var layout = new PaginaA4(pdf, normal, negrita, documento.tipo() + " INTERNA · " + NumeroComprobante.formatear(documento.serie(), documento.numero()));
       layout.encabezado(datos);
       layout.datosReceptor(datos);
       if (!documento.estadias().isEmpty()) layout.estadias(datos);
@@ -41,7 +42,7 @@ public class TicketPdfService {
       layout.pagos(datos);
       layout.disclaimer();
       layout.cerrarPagina();
-      pdf.getDocumentInformation().setTitle(documento.tipo() + " " + documento.serie() + "-" + documento.numero() + " - PRUEBA A4");
+      pdf.getDocumentInformation().setTitle(documento.tipo() + " " + NumeroComprobante.formatear(documento.serie(), documento.numero()) + " - PRUEBA A4");
       pdf.save(salida);
       return salida.toByteArray();
     } catch (IOException ex) {
@@ -117,7 +118,7 @@ public class TicketPdfService {
       lienzo.addRect(x, y - 70, 190, 70);
       lienzo.stroke();
       centrar(datos.documento().tipo() + " INTERNA", x, y - 24, 190, negrita, 15, AZUL);
-      centrar(datos.documento().serie() + "-" + datos.documento().numero(), x, y - 43, 190, negrita, 12, TEXTO);
+      centrar(NumeroComprobante.formatear(datos.documento().serie(), datos.documento().numero()), x, y - 43, 190, negrita, 12, TEXTO);
       centrar("MONEDA: PEN", x, y - 59, 190, normal, 8, TEXTO);
       y -= 88;
     }

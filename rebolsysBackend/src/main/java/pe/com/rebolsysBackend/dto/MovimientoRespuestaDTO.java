@@ -1,8 +1,6 @@
 package pe.com.rebolsysBackend.dto;
 
-import jakarta.validation.constraints.*;
-import java.time.*;
-import java.util.*;
+import java.time.LocalDateTime;
 
 public record MovimientoRespuestaDTO(
     Long idMovimiento,
@@ -11,6 +9,6 @@ public record MovimientoRespuestaDTO(
     String tipo,
     int signo,
     int cantidad,
-    int stockResultante,
+    Integer stockResultante,
     LocalDateTime fechaMovimiento,
     String observacion) {}

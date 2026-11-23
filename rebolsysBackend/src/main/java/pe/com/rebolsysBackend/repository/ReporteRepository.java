@@ -3,7 +3,6 @@ package pe.com.rebolsysBackend.repository;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -16,7 +15,7 @@ public class ReporteRepository {
 
   public Pagina<Incidencia> incidencias(LocalDateTime desde, LocalDateTime hasta, String habitacion,
       String estado, int pagina, int tamanio) {
-    return paginar("""
+    var filas = jdbc.query("""
         select i.idInformeRevision, h.numeroCuarto, i.fechaHora, i.estadoInforme, m.nombreItem,
                d.estadoEncontrado, d.observacion, t.idTicket, t.estadoTicket
         from detalle_informe d
@@ -30,10 +29,12 @@ public class ReporteRepository {
           and (:cuarto is null or lower(h.numeroCuarto) like :cuarto escape '!')
           and (:estado is null or i.estadoInforme = :estado)
         order by i.fechaHora desc, d.idDetalleInforme desc
-        """, fechas(desde, hasta).addValue("cuarto", habitacion).addValue("estado", estado), pagina, tamanio,
+        offset :offset rows fetch next :limite rows only
+        """, conPaginacion(fechas(desde, hasta).addValue("cuarto", habitacion).addValue("estado", estado), pagina, tamanio),
         (rs, n) -> new Incidencia(rs.getLong(1), rs.getString(2), rs.getObject(3, LocalDateTime.class),
             rs.getString(4), rs.getString(5), rs.getString(6), rs.getString(7),
             rs.getObject(8, Long.class), rs.getString(9)));
+    return construirPagina(filas, pagina, tamanio);
   }
 
   public List<MovimientoFinanciero> movimientosFinancieros(LocalDateTime desde, LocalDateTime hasta) {
@@ -68,7 +69,7 @@ public class ReporteRepository {
   }
 
   public Pagina<Cierre> cierres(LocalDateTime desde, LocalDateTime hasta, String usuario, int pagina, int tamanio) {
-    return paginar("""
+    var filas = jdbc.query("""
         select t.idTurno, u.username, t.fechaApertura, t.fechaCierre, f.nombrePago,
                a.montoCalculado, a.montoDeclarado, a.diferencia
         from turno_caja t join usuario u on u.idUsuario = t.idUsuario
@@ -79,27 +80,31 @@ public class ReporteRepository {
           and (:hasta is null or t.fechaCierre < :hasta)
           and (:usuario is null or lower(u.username) like :usuario escape '!')
         order by t.fechaCierre desc, t.idTurno desc, a.idFormaPago
-        """, fechas(desde, hasta).addValue("usuario", usuario), pagina, tamanio,
+        offset :offset rows fetch next :limite rows only
+        """, conPaginacion(fechas(desde, hasta).addValue("usuario", usuario), pagina, tamanio),
         (rs, n) -> new Cierre(rs.getLong(1), rs.getString(2), rs.getObject(3, LocalDateTime.class),
             rs.getObject(4, LocalDateTime.class), rs.getString(5), rs.getBigDecimal(6),
             rs.getBigDecimal(7), rs.getBigDecimal(8)));
+    return construirPagina(filas, pagina, tamanio);
   }
 
   public Pagina<Existencia> productos(String buscar, boolean bajo, int pagina, int tamanio) {
-    return paginar("""
+    var filas = jdbc.query("""
         select p.idProducto, p.nombreProducto, c.nombreCategoria, p.estadoProducto, p.stock, p.stockMinimo
         from producto p join categoria c on c.idCategoria = p.idCategoria
         where (:buscar is null or lower(p.nombreProducto) like :buscar escape '!'
             or lower(c.nombreCategoria) like :buscar escape '!')
           and (:bajo = 0 or (p.estadoProducto = 'ACTIVO' and p.stock <= p.stockMinimo))
         order by p.nombreProducto, p.idProducto
-        """, new MapSqlParameterSource("buscar", buscar).addValue("bajo", bajo ? 1 : 0), pagina, tamanio,
+        offset :offset rows fetch next :limite rows only
+        """, conPaginacion(new MapSqlParameterSource("buscar", buscar).addValue("bajo", bajo ? 1 : 0), pagina, tamanio),
         (rs, n) -> new Existencia(rs.getLong(1), rs.getString(2), rs.getString(3),
             rs.getString(4), rs.getInt(5), rs.getInt(6)));
+    return construirPagina(filas, pagina, tamanio);
   }
 
   public Pagina<Mueble> mobiliario(String buscar, String habitacion, int pagina, int tamanio) {
-    return paginar("""
+    var filas = jdbc.query("""
         select i.idItem, i.nombreItem, t.nombreItem, h.numeroCuarto, i.estadoItem, i.condicionItem
         from item i join tipo_item t on t.idTipoItem = i.idTipoItem
         left join habitacion h on h.idHabitacion = i.idHabitacion
@@ -107,9 +112,11 @@ public class ReporteRepository {
             or lower(t.nombreItem) like :buscar escape '!')
           and (:cuarto is null or lower(h.numeroCuarto) like :cuarto escape '!')
         order by h.numeroCuarto nulls last, i.nombreItem, i.idItem
-        """, new MapSqlParameterSource("buscar", buscar).addValue("cuarto", habitacion), pagina, tamanio,
+        offset :offset rows fetch next :limite rows only
+        """, conPaginacion(new MapSqlParameterSource("buscar", buscar).addValue("cuarto", habitacion), pagina, tamanio),
         (rs, n) -> new Mueble(rs.getLong(1), rs.getString(2), rs.getString(3),
             rs.getString(4), rs.getString(5), rs.getString(6)));
+    return construirPagina(filas, pagina, tamanio);
   }
 
   private static MapSqlParameterSource fechas(LocalDateTime desde, LocalDateTime hasta) {
@@ -117,9 +124,11 @@ public class ReporteRepository {
         .addValue("hasta", hasta, java.sql.Types.TIMESTAMP);
   }
 
-  private <T> Pagina<T> paginar(String sql, MapSqlParameterSource params, int pagina, int tamanio, RowMapper<T> mapper) {
-    params.addValue("offset", (long) pagina * tamanio).addValue("limite", tamanio + 1);
-    var filas = jdbc.query(sql + " offset :offset rows fetch next :limite rows only", params, mapper);
+  private static MapSqlParameterSource conPaginacion(MapSqlParameterSource params, int pagina, int tamanio) {
+    return params.addValue("offset", (long) pagina * tamanio).addValue("limite", tamanio + 1);
+  }
+
+  private static <T> Pagina<T> construirPagina(List<T> filas, int pagina, int tamanio) {
     boolean siguiente = filas.size() > tamanio;
     return new Pagina<>(siguiente ? List.copyOf(filas.subList(0, tamanio)) : filas, pagina, siguiente);
   }

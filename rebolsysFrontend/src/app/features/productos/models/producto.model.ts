@@ -37,7 +37,7 @@ export interface MovimientoInventario {
   tipo: string;
   signo: number;
   cantidad: number;
-  stockResultante: number;
+  stockResultante: number | null;
   idUsuario: number;
   observacion: string | null;
   fechaMovimiento: string;

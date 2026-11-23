@@ -1,7 +1,6 @@
 <section class="buc02" aria-label="Informes y habitaciones">
   <header class="modulo-cabecera">
     <div>
-      <p class="eyebrow">OPERACIÓN DE HOSPEDAJE</p>
       <h2>Informes y habitaciones</h2>
     </div>
     <nav aria-label="Secciones de limpieza">
@@ -24,48 +23,53 @@
       <button class="button small" type="button" [disabled]="ocupado()" (click)="cerrarPanel()">← Volver</button>
     </div>
     @if (p.tipo === 'habitacion') {
-      <section class="panel ficha">
+      <section class="panel ficha ficha-habitacion">
         <header class="ficha-cabecera">
           <div><h3>Habitación {{ p.datos.habitacion.numeroHabitacion }}</h3>
             <p>{{ p.datos.habitacion.tipoHabitacion }} · Salida {{ fecha(p.datos.habitacion.fechaSalida) }}</p></div>
           <span [class]="'estado ' + p.datos.habitacion.estado">{{ texto(p.datos.habitacion.estado) }}</span>
         </header>
         <div class="ficha-cuerpo">
-          <p>Responsable · <strong>{{ p.datos.habitacion.responsable?.usuario ?? 'Sin asignar' }}</strong></p>
-          @if (permite('INICIAR') && (p.datos.habitacion.puedeIniciarLimpieza || p.datos.habitacion.puedeRetomarBorrador)) {
-            @if (p.datos.habitacion.estado === 'DISPONIBLE') {
-              <p class="nota-operativa">Al iniciar la revisión, la habitación queda en limpieza hasta aprobar su informe.</p>
+          <div class="habitacion-responsable">
+            <p>Responsable <strong>{{ p.datos.habitacion.responsable?.usuario ?? 'Sin asignar' }}</strong></p>
+            @if (permite('INICIAR') && (p.datos.habitacion.puedeIniciarLimpieza || p.datos.habitacion.puedeRetomarBorrador)) {
+              <button class="button primary" [disabled]="ocupado()" (click)="iniciar(p.datos.habitacion)">
+                {{ accionHabitacion(p.datos.habitacion) }}
+              </button>
             }
-            <button class="button small primary" [disabled]="ocupado()" (click)="iniciar(p.datos.habitacion)">
-              {{ accionHabitacion(p.datos.habitacion) }}
-            </button>
-          }
-          <div class="table-scroll">
-            <table><thead><tr><th>Ítem</th><th>Estado</th></tr></thead>
-              <tbody>@for (item of p.datos.items; track item.idItem) {
-                <tr><td>{{ item.item }}</td><td><span [class]="'estado ' + item.estado">{{ texto(item.estado) }}</span></td></tr>
-              } @empty { <tr><td colspan="2" class="vacio">La habitación no tiene ítems asignados.</td></tr> }</tbody>
-            </table>
           </div>
-          <div class="resumen-asociados">
-            <div><h4>Último informe</h4>
+          <section class="habitacion-items" aria-labelledby="habitacion-items">
+            <h4 id="habitacion-items">Ítems asignados</h4>
+            <div class="table-scroll">
+              <table><thead><tr><th>Ítem</th><th>Estado</th></tr></thead>
+                <tbody>@for (item of p.datos.items; track item.idItem) {
+                  <tr><td>{{ item.item }}</td><td><span [class]="'estado ' + item.estado">{{ texto(item.estado) }}</span></td></tr>
+                } @empty { <tr><td colspan="2" class="vacio">La habitación no tiene ítems asignados.</td></tr> }</tbody>
+              </table>
+            </div>
+          </section>
+          <div class="habitacion-asociados">
+            <section><h4>Último informe</h4>
               @if (p.datos.ultimoInforme; as ultimo) {
-                <p>{{ ultimo.informe.nombre }} · {{ texto(ultimo.informe.estado) }}</p>
-                <p class="muted">{{ fecha(ultimo.informe.fechaEnvio) }}</p>
-                @if (permite('VER_INFORMES')) {
-                  <button class="button small" [disabled]="ocupado()" (click)="verInforme(ultimo.informe.idInformeRevision)">Ver informe</button>
-                }
-              } @else { <p>{{ texto(p.datos.estadoInforme) }}</p> }
-            </div>
-            <div><h4>Tickets de mantenimiento</h4>
-              @for (ticket of p.datos.tickets; track ticket.idTicket) {
-                <p>{{ ticket.nombre }} · {{ ticket.item }}
-                  @if (permite('VER_TICKETS')) {
-                    <button class="button small" [disabled]="ocupado()" (click)="verTicket(ticket.idTicket)">Ver</button>
+                <div class="asociado">
+                  <div><p><strong>{{ ultimo.informe.nombre }}</strong> · {{ texto(ultimo.informe.estado) }}</p>
+                    <p class="muted">{{ fecha(ultimo.informe.fechaEnvio) }}</p></div>
+                  @if (permite('VER_INFORMES')) {
+                    <button class="button small" [disabled]="ocupado()" (click)="verInforme(ultimo.informe.idInformeRevision)">Ver informe</button>
                   }
-                </p>
+                </div>
+              } @else { <p>{{ texto(p.datos.estadoInforme) }}</p> }
+            </section>
+            <section><h4>Tickets de mantenimiento</h4>
+              @for (ticket of p.datos.tickets; track ticket.idTicket) {
+                <div class="asociado">
+                  <div><p><strong>{{ ticket.nombre }}</strong></p><p>{{ ticket.item }}</p></div>
+                  @if (permite('VER_TICKETS')) {
+                    <button class="button small" [attr.aria-label]="'Ver ticket ' + ticket.nombre" [disabled]="ocupado()" (click)="verTicket(ticket.idTicket)">Ver ticket</button>
+                  }
+                </div>
               } @empty { <p>{{ texto(p.datos.estadoTickets) }}</p> }
-            </div>
+            </section>
           </div>
         </div>
       </section>
@@ -104,7 +108,7 @@
             </table>
           </div>
           @if (p.datos.informe.estado === 'POR_APROBAR' && p.datos.informe.incidenciasPendientes > 0) {
-            <p class="nota-operativa">Resuelve las {{ p.datos.informe.incidenciasPendientes }} incidencias pendientes para aprobar el informe.</p>
+            <p class="nota-operativa">Incidencias pendientes de resolver: {{ p.datos.informe.incidenciasPendientes }}</p>
           }
           <div class="acciones-final">
             @if (p.datos.informe.puedeEditar && permite('EDITAR_INFORME') && p.datos.items.length > 0) {
@@ -131,7 +135,6 @@
           </span>
         </header>
         <div class="ficha-cuerpo">
-          <p class="muted">Selecciona un estado por ítem. Adjunta una foto si registras una incidencia.</p>
           <div class="table-scroll">
             <table class="tabla-formulario">
               <thead><tr><th>Ítem</th><th>Estado</th><th>Observación</th><th>Evidencia</th></tr></thead>
@@ -171,7 +174,7 @@
           @if (p.tipo === 'nuevoInforme') {
             <label>Observaciones generales <textarea name="observaciones" [(ngModel)]="observaciones" rows="2" maxlength="1000"></textarea></label>
           }
-          @if (!puedeGuardarInforme()) { <p class="nota-operativa">Completa los estados y adjunta las fotos requeridas.</p> }
+          @if (!puedeGuardarInforme()) { <p class="nota-operativa">Faltan estados o fotos requeridas.</p> }
           <div class="acciones-final">
             @if (p.tipo === 'nuevoInforme' && permite('CANCELAR_BORRADOR')) {
               <button class="button" type="button" [disabled]="ocupado()" (click)="confirmarCancelarBorrador(p.datos.idInformeRevision)">Descartar borrador</button>
@@ -207,7 +210,7 @@
           </div>
           <div class="acciones-final">
             @if (permite('VER_INFORMES')) {
-              <button class="button" [disabled]="ocupado()" (click)="verInforme(p.datos.ticket.idInformeRevision)">Ver informe asociado</button>
+              <button class="button" [disabled]="ocupado()" (click)="verInforme(p.datos.ticket.idInformeRevision)">Ver informe</button>
             }
             @if (p.datos.ticket.puedeEditar && puedeMantenimiento('EDITAR_TICKET')) {
               <button class="button" [disabled]="ocupado()" (click)="abrirEditarTicket(p.datos.ticket.idTicket)">Editar</button>
@@ -247,7 +250,7 @@
                 <input type="file" accept="image/jpeg,image/png" [disabled]="ocupado()" (change)="cargarFoto($event)" />
               </label>
             }
-            @if (p.tipo === 'nuevoTicket' && !evidenciaTicket()) { <p class="requerida">Se requiere una foto para generar el ticket.</p> }
+            @if (p.tipo === 'nuevoTicket' && !evidenciaTicket()) { <p class="requerida">Foto requerida</p> }
           </div>
           <div class="acciones-final">
             <button class="button" type="button" [disabled]="ocupado()" (click)="cerrarPanel()">Cancelar</button>
@@ -261,11 +264,6 @@
   } @else {
     <div class="subtitulo">
       <h3>{{ vista() === 'inicio' ? 'Resumen de informes y tickets' : texto(vista() === 'habitaciones' ? 'Habitaciones' : vista() === 'informes' ? 'Informes' : 'Tickets') }}</h3>
-      @switch (vista()) {
-        @case ('habitaciones') { <p>Inicia la limpieza o consulta los ítems, informes y tickets de cada habitación.</p> }
-        @case ('informes') { <p>Consulta los informes enviados y resuelve sus incidencias antes de aprobarlos.</p> }
-        @case ('tickets') { <p>Consulta las reparaciones y reposiciones registradas por ítem.</p> }
-      }
     </div>
     @switch (vista()) {
       @case ('habitaciones') {
@@ -297,8 +295,7 @@
       }
       @case ('tickets') {
         @if (permite('VER_INFORMES') && puedeMantenimiento('CREAR_TICKET')) {
-          <p class="nota-operativa">Los tickets registran incidencias atendidas. Para atender una nueva, abre su informe por aprobar.</p>
-          <button class="button small" type="button" (click)="verInformesPorAtender()">Ver informes por atender</button>
+          <button class="button small" type="button" (click)="verInformesPorAtender()">Informes pendientes</button>
         }
         <form class="panel filtros" (ngSubmit)="filtrar()">
           <label>Ticket <input name="nombre" [(ngModel)]="filtrosTicket.nombre" placeholder="Nombre del ticket" /></label>
@@ -315,10 +312,9 @@
     @else if (resultado(); as r) {
       @switch (r.vista) {
         @case ('inicio') {
-          @if (r.datos.alcance === 'GENERAL') { <p class="muted">Resumen general del hospedaje. Incluye los informes y tickets de todo el personal.</p> }
-          @else if (r.datos.alcance === 'DIA') { <p class="muted">Tu actividad de hoy · {{ fecha(r.datos.fechaApertura) }}</p> }
+          @if (r.datos.alcance === 'DIA') { <p class="muted">Tu actividad de hoy · {{ fecha(r.datos.fechaApertura) }}</p> }
           @else if (r.datos.idTurno) { <p class="muted">Turno #{{ r.datos.idTurno }} · Apertura {{ fecha(r.datos.fechaApertura) }}</p> }
-          @else { <p class="nota-operativa">Abre tu turno de recepción para consultar su resumen. Puedes consultar las habitaciones, informes y tickets según tus accesos.</p> }
+          @else if (r.datos.alcance !== 'GENERAL') { <p class="nota-operativa">Sin turno de recepción abierto.</p> }
           <div class="indicadores">
             <article class="panel"><span>Informes enviados</span><strong>{{ r.datos.informesEnviados }}</strong></article>
             <article class="panel"><span>Por aprobar</span><strong>{{ r.datos.informesPorAprobar }}</strong></article>
@@ -335,7 +331,7 @@
                   <td><strong>{{ h.numeroHabitacion }}</strong></td><td>{{ h.tipoHabitacion }}</td>
                   <td>{{ fecha(h.fechaSalida) }}</td><td><span [class]="'estado ' + h.estado">{{ texto(h.estado) }}</span></td>
                   <td>{{ h.responsable?.usuario ?? 'Sin asignar' }}</td>
-                  <td><div class="acciones">
+                  <td><div class="acciones-tabla acciones-tabla-habitacion">
                     @if (permite('INICIAR')) {
                       <button class="button small primary" [disabled]="ocupado() || (!h.puedeIniciarLimpieza && !h.puedeRetomarBorrador)"
                         (click)="iniciar(h)">{{ accionHabitacion(h) }}</button>
@@ -358,7 +354,7 @@
                   <td>{{ !i.tieneIncidencias ? 'Sin incidencias' : i.incidenciasPendientes ? i.incidenciasPendientes + ' pendientes' : 'Incidencias resueltas' }}</td>
                   <td><span [class]="'estado ' + i.estado">{{ texto(i.estado) }}</span></td>
                   <td>{{ i.tieneTickets ? 'Asociados' : '—' }}</td>
-                  <td><div class="acciones">
+                  <td><div class="acciones-tabla">
                     <button class="button small" [disabled]="ocupado()" (click)="verInforme(i.idInformeRevision)">
                       {{ i.incidenciasPendientes && puedeMantenimiento('CREAR_TICKET') ? 'Ver y atender' : 'Ver' }}
                     </button>
@@ -383,7 +379,7 @@
                   <td><strong>{{ t.nombre }}</strong></td><td>{{ t.numeroHabitacion }}</td><td>{{ t.item }}</td>
                   <td><span [class]="'estado ' + t.tipoAccion">{{ texto(t.tipoAccion) }}</span></td>
                   <td><span [class]="'estado ' + t.estado">{{ texto(t.estado) }}</span></td><td>{{ fecha(t.fechaGeneracion) }}</td>
-                  <td><div class="acciones">
+                  <td><div class="acciones-tabla">
                     <button class="button small" [disabled]="ocupado()" (click)="verTicket(t.idTicket)">Ver</button>
                     @if (puedeMantenimiento('EDITAR_TICKET')) {
                       <button class="button small" [disabled]="ocupado() || !t.puedeEditar" (click)="abrirEditarTicket(t.idTicket)">Editar</button>

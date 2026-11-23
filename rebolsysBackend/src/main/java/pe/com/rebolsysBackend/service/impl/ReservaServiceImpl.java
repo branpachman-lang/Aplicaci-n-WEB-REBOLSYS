@@ -21,6 +21,8 @@ import pe.com.rebolsysBackend.service.service.*;
 @Service
 @RequiredArgsConstructor
 public class ReservaServiceImpl implements ReservaService {
+    private static final ZoneId ZONA_HOSPEDAJE = ZoneId.of("America/Lima");
+
     private final jakarta.persistence.EntityManager entityManager;
     private final ReservaRepository reservas;
     private final DetalleReservaRepository detalles;
@@ -89,7 +91,9 @@ public class ReservaServiceImpl implements ReservaService {
             d.setFechaSalida(s.fechaSalida());
             var tarifa = h.getPrecioPorNoche() == null ? h.getTipoHabitacion().getPrecioBase() : h.getPrecioPorNoche();
             exigir(tarifa != null && tarifa.signum() > 0, "Configura una tarifa válida para la habitación antes de reservar");
-            var duracion = Duration.between(s.fechaIngreso(), s.fechaSalida());
+            var duracion = Duration.between(
+                s.fechaIngreso().atZone(ZONA_HOSPEDAJE),
+                s.fechaSalida().atZone(ZONA_HOSPEDAJE));
             var noches = BigDecimal.valueOf(duracion.getSeconds()).add(BigDecimal.valueOf(duracion.getNano(), 9))
                 .divide(BigDecimal.valueOf(86400), 0, RoundingMode.CEILING);
             var costo = tarifa.multiply(noches).setScale(2, RoundingMode.HALF_UP);

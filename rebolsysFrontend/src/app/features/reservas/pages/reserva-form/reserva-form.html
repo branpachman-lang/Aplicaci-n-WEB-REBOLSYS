@@ -45,18 +45,24 @@
         <div class="form-grid">
           <label class="field"
             >Tipo de documento <span class="required">*</span
-            ><select formControlName="idTipoDocumento">
+            ><select formControlName="idTipoDocumento" [attr.aria-invalid]="!!errorCampo(cliente, 'idTipoDocumento')" aria-describedby="cliente-error-tipo-documento">
               <option [ngValue]="null">Seleccionar documento</option>
               @for (d of catalogos()?.documentos; track d.id) {
               <option [ngValue]="d.id">{{ d.nombre }}</option>
               }
-            </select></label
+            </select>
+            @if (errorCampo(cliente, 'idTipoDocumento'); as mensaje) { <small id="cliente-error-tipo-documento" class="field-error">{{ mensaje }}</small> }
+            </label
           ><label class="field"
             >Número de documento <span class="required">*</span>
             <div class="input-with-button">
               <input
                 formControlName="numeroDocumento"
-                maxlength="50"
+                [maxlength]="limiteDocumento(cliente)"
+                [attr.inputmode]="tipoDocumentoGrupo(cliente) === 'OTRO' ? 'text' : 'numeric'"
+                (input)="ajustarDocumento($event, cliente)"
+                [attr.aria-invalid]="!!errorCampo(cliente, 'numeroDocumento')"
+                aria-describedby="cliente-error-documento"
                 placeholder="Ingresa el documento"
               /><button
                 type="button"
@@ -67,55 +73,76 @@
                 (click)="buscarCliente()"
               >
                 <app-icon name="search" />
-              </button></div
-          ></label>
+              </button></div>
+            @if (errorCampo(cliente, 'numeroDocumento'); as mensaje) { <small id="cliente-error-documento" class="field-error">{{ mensaje }}</small> }
+          </label>
           @if (!esEmpresa()) {
           <label class="field"
             >Nombres <span class="required">*</span
             ><input
               formControlName="nombres"
+              [attr.aria-invalid]="!!errorCampo(cliente, 'nombres')" aria-describedby="cliente-error-nombres"
               maxlength="100"
-              placeholder="Ej. Lucía Elena" /></label
+              placeholder="Ej. Lucía Elena" />
+            @if (errorCampo(cliente, 'nombres'); as mensaje) { <small id="cliente-error-nombres" class="field-error">{{ mensaje }}</small> }
+            </label
           ><label class="field"
             >Apellidos <span class="required">*</span
             ><input
               formControlName="apellidos"
+              [attr.aria-invalid]="!!errorCampo(cliente, 'apellidos')" aria-describedby="cliente-error-apellidos"
               maxlength="100"
-              placeholder="Ej. Mendoza Ramos" /></label
+              placeholder="Ej. Mendoza Ramos" />
+            @if (errorCampo(cliente, 'apellidos'); as mensaje) { <small id="cliente-error-apellidos" class="field-error">{{ mensaje }}</small> }
+            </label
           ><label class="field"
             >Fecha de nacimiento <span class="required">*</span
             ><input type="date" [max]="hoy" formControlName="fechaNacimiento"
-          /></label>
+              [attr.aria-invalid]="!!errorCampo(cliente, 'fechaNacimiento')" aria-describedby="cliente-error-nacimiento" />
+            @if (errorCampo(cliente, 'fechaNacimiento'); as mensaje) { <small id="cliente-error-nacimiento" class="field-error">{{ mensaje }}</small> }
+          </label>
           } @else {
           <label class="field span-2"
             >Razón social <span class="required">*</span
             ><input
               formControlName="razonSocial"
+              [attr.aria-invalid]="!!errorCampo(cliente, 'razonSocial')" aria-describedby="cliente-error-razon-social"
               maxlength="250"
-              placeholder="Nombre de la empresa" /></label
+              placeholder="Nombre de la empresa" />
+            @if (errorCampo(cliente, 'razonSocial'); as mensaje) { <small id="cliente-error-razon-social" class="field-error">{{ mensaje }}</small> }
+            </label
           ><label class="field span-2"
             >Dirección fiscal <span class="optional">Opcional</span
             ><input
               formControlName="direccionFiscal"
+              [attr.aria-invalid]="!!errorCampo(cliente, 'direccionFiscal')" aria-describedby="cliente-error-direccion"
               maxlength="200"
               placeholder="Dirección fiscal de la empresa"
-          /></label>
+          />
+            @if (errorCampo(cliente, 'direccionFiscal'); as mensaje) { <small id="cliente-error-direccion" class="field-error">{{ mensaje }}</small> }
+          </label>
           }
           <label class="field"
             >Correo electrónico <span class="optional">Opcional</span
             ><input
               type="email"
               formControlName="correo"
+              [attr.aria-invalid]="!!errorCampo(cliente, 'correo')" aria-describedby="cliente-error-correo"
               maxlength="100"
-              placeholder="nombre@correo.com" /></label
+              placeholder="nombre@correo.com" />
+            @if (errorCampo(cliente, 'correo'); as mensaje) { <small id="cliente-error-correo" class="field-error">{{ mensaje }}</small> }
+            </label
           ><label class="field"
             >Teléfono <span class="optional">Opcional</span
             ><input
               type="tel"
               formControlName="telefono"
+              [attr.aria-invalid]="!!errorCampo(cliente, 'telefono')" aria-describedby="cliente-error-telefono"
               maxlength="15"
               placeholder="Ej. 987 654 321"
-          /></label>
+          />
+            @if (errorCampo(cliente, 'telefono'); as mensaje) { <small id="cliente-error-telefono" class="field-error">{{ mensaje }}</small> }
+          </label>
         </div>
       </div>
       @if (clienteMensaje()) {
@@ -150,7 +177,8 @@
           <div class="form-grid">
             <label class="field"
               >Número de habitación <span class="required">*</span
-              ><select formControlName="idHabitacion" (change)="avisarErrorHabitacion(i)">
+              ><select formControlName="idHabitacion" (change)="avisarErrorHabitacion(i)"
+                [attr.aria-invalid]="!!errorCampo(line, 'idHabitacion')" [attr.aria-describedby]="'habitacion-error-numero-' + i">
                 <option [ngValue]="null">Seleccionar habitación</option>
                 @for (r of rooms(); track r.idHabitacion) {
                 <option
@@ -165,7 +193,9 @@
                   " + r.estado : "" }}
                 </option>
                 }
-              </select></label
+              </select>
+              @if (errorCampo(line, 'idHabitacion'); as mensaje) { <small [id]="'habitacion-error-numero-' + i" class="field-error">{{ mensaje }}</small> }
+              </label
             >
             <div class="field">
               <span>Características</span>
@@ -184,11 +214,15 @@
                 type="datetime-local"
                 [min]="minFechaIngreso()"
                 (change)="avisarErrorHabitacion(i)"
-                formControlName="fechaIngreso" /></label
+                formControlName="fechaIngreso" [attr.aria-invalid]="!!errorCampo(line, 'fechaIngreso')" [attr.aria-describedby]="'habitacion-error-ingreso-' + i" />
+              @if (errorCampo(line, 'fechaIngreso'); as mensaje) { <small [id]="'habitacion-error-ingreso-' + i" class="field-error">{{ mensaje }}</small> }
+              </label
             ><label class="field"
               >Salida <span class="required">*</span
               ><input type="datetime-local" formControlName="fechaSalida" (change)="avisarErrorHabitacion(i)"
-            /></label>
+                [attr.aria-invalid]="!!errorCampo(line, 'fechaSalida')" [attr.aria-describedby]="'habitacion-error-salida-' + i" />
+              @if (errorCampo(line, 'fechaSalida'); as mensaje) { <small [id]="'habitacion-error-salida-' + i" class="field-error">{{ mensaje }}</small> }
+            </label>
           </div>
           <div class="room-stay-summary">
             <span
@@ -398,17 +432,24 @@
     <form [formGroup]="guestForm" (ngSubmit)="guardarHuesped()">
       <div class="form-grid spaced-title">
         <label class="field"
-          >Tipo de documento<select formControlName="idTipoDocumento">
+          >Tipo de documento<select formControlName="idTipoDocumento" [attr.aria-invalid]="!!errorCampo(guestForm, 'idTipoDocumento')" aria-describedby="huesped-error-tipo-documento">
             <option [ngValue]="null">Seleccionar</option>
             @for (d of documentosPersonales(); track d.id) {
             <option [ngValue]="d.id">{{ d.nombre }}</option>
             }
-          </select></label
+          </select>
+          @if (errorCampo(guestForm, 'idTipoDocumento'); as mensaje) { <small id="huesped-error-tipo-documento" class="field-error">{{ mensaje }}</small> }
+          </label
         ><label class="field"
           >Número de documento<input
             formControlName="numeroDocumento"
-            maxlength="50"
-          /><button
+            [maxlength]="limiteDocumento(guestForm)"
+            [attr.inputmode]="tipoDocumentoGrupo(guestForm) === 'OTRO' ? 'text' : 'numeric'"
+            (input)="ajustarDocumento($event, guestForm)"
+            [attr.aria-invalid]="!!errorCampo(guestForm, 'numeroDocumento')" aria-describedby="huesped-error-documento"
+          />
+          @if (errorCampo(guestForm, 'numeroDocumento'); as mensaje) { <small id="huesped-error-documento" class="field-error">{{ mensaje }}</small> }
+          <button
             class="button small"
             type="button"
             [disabled]="buscandoHuesped()"
@@ -417,18 +458,25 @@
             {{ buscandoHuesped() ? "Consultando…" : "Buscar documento" }}
           </button></label
         ><label class="field"
-          >Nombres<input formControlName="nombres" maxlength="100" /></label
+          >Nombres<input formControlName="nombres" maxlength="100" [attr.aria-invalid]="!!errorCampo(guestForm, 'nombres')" aria-describedby="huesped-error-nombres" />
+          @if (errorCampo(guestForm, 'nombres'); as mensaje) { <small id="huesped-error-nombres" class="field-error">{{ mensaje }}</small> }
+          </label
         ><label class="field"
-          >Apellidos<input formControlName="apellidos" maxlength="100" /></label
+          >Apellidos<input formControlName="apellidos" maxlength="100" [attr.aria-invalid]="!!errorCampo(guestForm, 'apellidos')" aria-describedby="huesped-error-apellidos" />
+          @if (errorCampo(guestForm, 'apellidos'); as mensaje) { <small id="huesped-error-apellidos" class="field-error">{{ mensaje }}</small> }
+          </label
         ><label class="field"
           >Fecha de nacimiento<input
             type="date"
             [max]="hoy"
             formControlName="fechaNacimiento"
-        /></label>
+            [attr.aria-invalid]="!!errorCampo(guestForm, 'fechaNacimiento')" aria-describedby="huesped-error-nacimiento" />
+          @if (errorCampo(guestForm, 'fechaNacimiento'); as mensaje) { <small id="huesped-error-nacimiento" class="field-error">{{ mensaje }}</small> }
+        </label>
         <label class="field"
           >Celular <span class="optional">Opcional</span>
-          <input type="tel" formControlName="telefono" maxlength="15" placeholder="Ej. 987 654 321" />
+          <input type="tel" formControlName="telefono" maxlength="15" placeholder="Ej. 987 654 321" [attr.aria-invalid]="!!errorCampo(guestForm, 'telefono')" aria-describedby="huesped-error-telefono" />
+          @if (errorCampo(guestForm, 'telefono'); as mensaje) { <small id="huesped-error-telefono" class="field-error">{{ mensaje }}</small> }
         </label>
       </div>
       @if (puedeEditarMenores()) {
@@ -470,17 +518,24 @@
         </div>
         <div class="form-grid">
           <label class="field"
-            >Tipo de documento<select formControlName="idTipoDocumento">
+            >Tipo de documento<select formControlName="idTipoDocumento" [attr.aria-invalid]="!!errorCampo(menor, 'idTipoDocumento')" [attr.aria-describedby]="'menor-error-tipo-documento-' + mi">
               @for (d of documentosPersonales(); track d.id) {
               <option [ngValue]="d.id">{{ d.nombre }}</option>
               }
-            </select></label
+            </select>
+            @if (errorCampo(menor, 'idTipoDocumento'); as mensaje) { <small [id]="'menor-error-tipo-documento-' + mi" class="field-error">{{ mensaje }}</small> }
+            </label
           >
           <label class="field"
             >Número de documento<input
               formControlName="numeroDocumento"
-              maxlength="50"
-            /><button
+              [maxlength]="limiteDocumento(grupoMenor(mi))"
+              [attr.inputmode]="tipoDocumentoGrupo(grupoMenor(mi)) === 'OTRO' ? 'text' : 'numeric'"
+              (input)="ajustarDocumento($event, grupoMenor(mi))"
+              [attr.aria-invalid]="!!errorCampo(menor, 'numeroDocumento')" [attr.aria-describedby]="'menor-error-documento-' + mi"
+            />
+            @if (errorCampo(menor, 'numeroDocumento'); as mensaje) { <small [id]="'menor-error-documento-' + mi" class="field-error">{{ mensaje }}</small> }
+            <button
               type="button"
               class="button small"
               (click)="buscarMenor(mi)"
@@ -490,27 +545,36 @@
           >
           <label class="field"
             >Nombres<input formControlName="nombres" maxlength="100"
-          /></label>
+              [attr.aria-invalid]="!!errorCampo(menor, 'nombres')" [attr.aria-describedby]="'menor-error-nombres-' + mi" />
+            @if (errorCampo(menor, 'nombres'); as mensaje) { <small [id]="'menor-error-nombres-' + mi" class="field-error">{{ mensaje }}</small> }
+          </label>
           <label class="field"
             >Apellidos<input formControlName="apellidos" maxlength="100"
-          /></label>
+              [attr.aria-invalid]="!!errorCampo(menor, 'apellidos')" [attr.aria-describedby]="'menor-error-apellidos-' + mi" />
+            @if (errorCampo(menor, 'apellidos'); as mensaje) { <small [id]="'menor-error-apellidos-' + mi" class="field-error">{{ mensaje }}</small> }
+          </label>
           <label class="field"
             >Fecha de nacimiento<input
               type="date"
               [max]="hoy"
               formControlName="fechaNacimiento"
-          /></label>
+              [attr.aria-invalid]="!!errorCampo(menor, 'fechaNacimiento')" [attr.aria-describedby]="'menor-error-nacimiento-' + mi" />
+            @if (errorCampo(menor, 'fechaNacimiento'); as mensaje) { <small [id]="'menor-error-nacimiento-' + mi" class="field-error">{{ mensaje }}</small> }
+          </label>
           <label class="field"
-            >El adulto es su<select formControlName="parentesco">
+            >El adulto es su<select formControlName="parentesco" [attr.aria-invalid]="!!errorCampo(menor, 'parentesco')" [attr.aria-describedby]="'menor-error-parentesco-' + mi">
               <option [ngValue]="null">Seleccionar parentesco</option>
               <option value="PADRE">Padre</option>
               <option value="MADRE">Madre</option>
               <option value="TUTOR">Tutor</option>
-            </select></label
+            </select>
+            @if (errorCampo(menor, 'parentesco'); as mensaje) { <small [id]="'menor-error-parentesco-' + mi" class="field-error">{{ mensaje }}</small> }
+            </label
           >
           <label class="field"
             >Celular <span class="optional">Opcional</span>
-            <input type="tel" formControlName="telefono" maxlength="15" placeholder="Ej. 987 654 321" />
+            <input type="tel" formControlName="telefono" maxlength="15" placeholder="Ej. 987 654 321" [attr.aria-invalid]="!!errorCampo(menor, 'telefono')" [attr.aria-describedby]="'menor-error-telefono-' + mi" />
+            @if (errorCampo(menor, 'telefono'); as mensaje) { <small [id]="'menor-error-telefono-' + mi" class="field-error">{{ mensaje }}</small> }
           </label>
         </div>
         <label class="minor-toggle"

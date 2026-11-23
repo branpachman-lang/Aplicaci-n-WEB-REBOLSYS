@@ -14,7 +14,7 @@ import { Emision } from '../../models/emision.model';
 
 describe('Comprobantes de reservas',()=>{
   const persona={idTipoDocumento:1,numeroDocumento:'12345678',empresa:false,nombres:'Cliente',apellidos:'Simulado',fechaNacimiento:'1990-01-01',razonSocial:null,direccionFiscal:null,correo:null,telefono:null};
-  const doc:CuentaDocumento={idCuenta:9,idReserva:1,idVenta:null,tipo:'BOLETA',estado:'EMITIDO',serie:'BINT',numero:'1',idClienteReceptor:1,total:118,pagado:118,saldo:0,lineas:[{idDetalleReserva:1,idDetalleVenta:null,descripcion:'Habitación 201',cantidad:1,total:118}],pagos:[]};
+  const doc:CuentaDocumento={idCuenta:9,idReserva:1,idVenta:null,tipo:'BOLETA',estado:'EMITIDO',serie:'BINT',numero:'1',idClienteReceptor:1,total:118,subtotal:100,igv:18,pagado:118,saldo:0,lineas:[{idDetalleReserva:1,idDetalleVenta:null,descripcion:'Habitación 201',cantidad:1,total:118}],pagos:[]};
   const emision:Emision={idEmision:1,idComprobante:9,idUsuario:130,ambiente:'BETA',estado:'PREPARADO',serie:'B001',correlativo:1,subtotal:100,igv:18,total:118,codigoRespuesta:null,mensajeRespuesta:null,xmlDisponible:true,cdrDisponible:false};
   async function fixture(emitido=false,saldo=0,venta=false){
     const cuenta={idReserva:1,numeroReserva:'R1',totalAlojamiento:118,totalCargos:118,totalPagado:118-saldo,saldoPendiente:saldo,admiteConsumosConsolidados:false,cuentas:[{...doc,estado:emitido?'EMITIDO':'BORRADOR',pagado:118-saldo,saldo}]};
@@ -56,7 +56,7 @@ describe('Comprobantes de reservas',()=>{
   it('reutiliza un RUC existente al emitir sin crear otro cliente, reserva o pago',async()=>{
     const {c,api,clientes,reservas}=await fixture();const original=structuredClone(c.reserva());
     c.tipo='FACTURA';c.cambiarTipo();c.cambiarNumero('20123456789');
-    c.receptor.razonSocial='Nombre ingresado';
+    c.receptor.razonSocial='Nombre ingresado';c.receptor.direccionFiscal='Av. Los Andes 123';
     clientes.buscarPorDocumento.mockReturnValue(of({idCliente:22,datos:{...c.receptor,razonSocial:'Empresa registrada SAC'}}));
     c.emitir();
     expect(clientes.buscarPorDocumento).toHaveBeenCalledWith(2,'20123456789');
@@ -88,8 +88,44 @@ describe('Comprobantes de reservas',()=>{
     expect(c.error()).toContain('11');expect(clientes.buscarPorDocumento).not.toHaveBeenCalled();
     expect(clientes.registrar).not.toHaveBeenCalled();expect(api.emitir).not.toHaveBeenCalled();
   });
+  it.each([{tipo:1,limite:8,entrada:'12a345678999',esperado:'12345678'},{tipo:2,limite:11,entrada:'20a123456789999',esperado:'20123456789'}])('limita documento $tipo al escribir o pegar',async({tipo,limite,entrada,esperado})=>{
+    const {c,f}=await fixture();c.otroReceptor();c.receptor.idTipoDocumento=tipo;f.detectChanges();
+    const input=f.nativeElement.querySelector('[aria-describedby="error-documento"]') as HTMLInputElement;
+    expect(input.maxLength).toBe(limite);expect(input.inputMode).toBe('numeric');
+    input.value=entrada;input.dispatchEvent(new Event('input'));f.detectChanges();await f.whenStable();
+    expect(input.value).toBe(esperado);expect(c.receptor.numeroDocumento).toBe(esperado);
+  });
+  it('muestra y limpia el error debajo de cada campo requerido',async()=>{
+    const {c,f,api}=await fixture();c.otroReceptor();c.emitir();f.detectChanges();
+    for(const id of ['error-documento','error-nombres','error-apellidos']) {
+      const mensaje=f.nativeElement.querySelector('#'+id);
+      expect(mensaje).not.toBeNull();expect(mensaje.parentElement.querySelector('input')).not.toBeNull();
+    }
+    expect(api.emitir).not.toHaveBeenCalled();
+    c.cambiarNumero('12345678');c.receptor.nombres='María';c.receptor.apellidos='Quispe';f.detectChanges();
+    expect(f.nativeElement.querySelector('#error-documento')).toBeNull();
+    expect(f.nativeElement.querySelector('#error-nombres')).toBeNull();
+    expect(f.nativeElement.querySelector('#error-apellidos')).toBeNull();
+  });
+  it('muestra razón social y dirección obligatorias debajo de sus campos',async()=>{
+    const {c,f,api}=await fixture();c.tipo='FACTURA';c.cambiarTipo();c.cambiarNumero('20123456789');c.emitir();f.detectChanges();
+    expect(f.nativeElement.querySelector('#error-razon-social')?.textContent).toContain('razón social');
+    expect(f.nativeElement.querySelector('#error-direccion-receptor')?.textContent).toContain('dirección fiscal');
+    expect(api.emitir).not.toHaveBeenCalled();
+  });
+  it('presenta los errores de validación del backend junto a los campos',async()=>{
+    const {c,f,clientes}=await fixture();c.otroReceptor();c.cambiarNumero('12345678');c.receptor.nombres='María';c.receptor.apellidos='Quispe';
+    clientes.registrar.mockReturnValueOnce(throwError(()=>new HttpErrorResponse({status:400,error:{validationErrors:{nombres:'Revisa los nombres del receptor'}}})));
+    c.emitir();f.detectChanges();
+    expect(f.nativeElement.querySelector('#error-nombres')?.textContent).toContain('Revisa los nombres');
+  });
+  it('muestra el correlativo de ocho dígitos en el comprobante',async()=>{
+    const {c,f}=await fixture(true);
+    c.documento.set({...doc,tipo:'FACTURA',serie:'F002',numero:'3848'});f.detectChanges();
+    expect(f.nativeElement.querySelector('.factura-numero').textContent).toContain('F002-00003848');
+  });
   it('un fallo al buscar el receptor no se trata como un receptor nuevo',async()=>{
-    const {c,clientes,api}=await fixture();c.tipo='FACTURA';c.cambiarTipo();c.cambiarNumero('20123456789');c.receptor.razonSocial='Empresa';
+    const {c,clientes,api}=await fixture();c.tipo='FACTURA';c.cambiarTipo();c.cambiarNumero('20123456789');c.receptor.razonSocial='Empresa';c.receptor.direccionFiscal='Av. Los Andes 123';
     clientes.buscarPorDocumento.mockReturnValue(throwError(()=>new HttpErrorResponse({status:503})));
     c.emitir();expect(clientes.registrar).not.toHaveBeenCalled();expect(api.emitir).not.toHaveBeenCalled();
     expect(c.ocupado()).toBe(false);expect(c.emisionFijada()).toBe(false);
@@ -102,7 +138,7 @@ describe('Comprobantes de reservas',()=>{
   });
   it('reintentar una factura para un receptor recién registrado no repite su registro',async()=>{
     const {c,api,clientes}=await fixture();c.tipo='FACTURA';c.cambiarTipo();c.cambiarNumero('20123456789');
-    c.receptor.razonSocial='Empresa nueva';api.emitir.mockReturnValueOnce(throwError(()=>new HttpErrorResponse({status:503})));
+    c.receptor.razonSocial='Empresa nueva';c.receptor.direccionFiscal='Av. Los Andes 123';api.emitir.mockReturnValueOnce(throwError(()=>new HttpErrorResponse({status:503})));
     c.emitir();expect(c.idCliente).toBe(2);expect(c.emisionFijada()).toBe(true);c.emitir();
     expect(clientes.registrar).toHaveBeenCalledTimes(1);expect(clientes.buscarPorDocumento).toHaveBeenCalledTimes(1);
     expect(api.emitir.mock.calls[1]).toEqual(api.emitir.mock.calls[0]);
@@ -116,6 +152,15 @@ describe('Comprobantes de reservas',()=>{
     const {c,api}=await fixture(true);expect(c.documento()?.idCuenta).toBe(9);expect(c.estadoConsultado()).toBe(true);
     expect(api.estado).toHaveBeenCalledWith(9);expect(api.emitir).not.toHaveBeenCalled();
   });
+  it.each(['BOLETA','FACTURA'])('muestra IGV de 18% en %s antes de preparar la emisión',async(tipo)=>{
+    const {c,f,api}=await fixture(true);
+    c.cuentas.set([{...doc,tipo}]); f.detectChanges();
+    const totales=f.nativeElement.querySelector('.comprobante-totales').textContent;
+    expect(totales).toContain('IGV (18%)'); expect(totales).toContain('100.00');
+    expect(totales).toContain('18.00'); expect(totales).toContain('118.00');
+    expect(f.nativeElement.querySelector('input[type="number"][max="100"]')).toBeNull();
+    expect(api.preparar).not.toHaveBeenCalled(); expect(api.enviar).not.toHaveBeenCalled();
+  });
   it('las cuotas cubren exactamente el saldo y el impuesto se desglosa del total',async()=>{
     const {c,api}=await fixture(true,68);c.cuotas=[{fechaPago:c.hoy,monto:60}];c.preparar();
     expect(api.preparar).not.toHaveBeenCalled();expect(c.error()).toContain('exactamente');
@@ -125,7 +170,7 @@ describe('Comprobantes de reservas',()=>{
   });
   it('conserva clave y datos de preparación cuando la respuesta no confirma el resultado',async()=>{
     const {c,api}=await fixture(true);api.preparar.mockReturnValueOnce(throwError(()=>new HttpErrorResponse({status:503})));
-    c.preparar();const envio=api.preparar.mock.calls[0];c.tasaIgv=20;c.preparar();
+    c.preparar();const envio=api.preparar.mock.calls[0];c.direccion='Otro domicilio';c.preparar();
     expect(api.preparar.mock.calls[1]).toEqual(envio);
   });
   it('un estado incierto permite consultar, sin volver a enviar',async()=>{

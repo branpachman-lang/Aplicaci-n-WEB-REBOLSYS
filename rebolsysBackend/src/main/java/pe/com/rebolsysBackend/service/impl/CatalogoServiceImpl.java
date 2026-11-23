@@ -1,26 +1,25 @@
 package pe.com.rebolsysBackend.service.impl;
 
-import static pe.com.rebolsysBackend.service.impl.ReglasPropuesta.*;
-
-import java.util.*;
+import java.util.stream.StreamSupport;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import pe.com.rebolsysBackend.dto.*;
-import pe.com.rebolsysBackend.entity.*;
-import pe.com.rebolsysBackend.enums.*;
-import pe.com.rebolsysBackend.exception.*;
-import pe.com.rebolsysBackend.repository.*;
-import pe.com.rebolsysBackend.service.service.*;
+import pe.com.rebolsysBackend.dto.CatalogoItemResponseDTO;
+import pe.com.rebolsysBackend.dto.CatalogosResponseDTO;
+import pe.com.rebolsysBackend.dto.TurnoDisponibleDTO;
+import pe.com.rebolsysBackend.enums.EstadoUsuario;
+import pe.com.rebolsysBackend.repository.TurnoCajaRepository;
+import pe.com.rebolsysBackend.repository.UsuarioRepository;
+import pe.com.rebolsysBackend.service.service.CatalogoService;
+import pe.com.rebolsysBackend.service.service.TipoHabitacionService;
+import pe.com.rebolsysBackend.service.service.TipoItemService;
 
 @Service
 @RequiredArgsConstructor
 public class CatalogoServiceImpl implements CatalogoService {
-  private final TipoDocumentoRepository documentos;
-  private final FormaPagoRepository pagos;
-  private final TipoHabitacionRepository habitaciones;
-  private final TipoItemRepository items;
-  private final TipoMovimientoCajaRepository gastos;
+  private final CatalogosEstaticosService referencias;
+  private final TipoHabitacionService habitaciones;
+  private final TipoItemService items;
   private final UsuarioRepository usuarios;
   private final TurnoCajaRepository turnos;
 
@@ -28,25 +27,13 @@ public class CatalogoServiceImpl implements CatalogoService {
   @Transactional(readOnly = true)
   public CatalogosResponseDTO catalogos() {
     return new CatalogosResponseDTO(
-        documentos.findByNombreDocumentoNotOrderByIdTipoDocumento("INTERNO").stream()
-            .map(
-                t ->
-                    new CatalogoItemResponseDTO(
-                        t.getIdTipoDocumento(), t.getNombreDocumento(), t.getCodigoSunat()))
-            .toList(),
-        pagos.findAll().stream()
-            .map(t -> new CatalogoItemResponseDTO(t.getIdFormaPago(), t.getNombrePago()))
-            .toList(),
-        habitaciones.findAll().stream()
-            .map(t -> new CatalogoItemResponseDTO(t.getIdTipoHabitacion(), t.getNombreTipo()))
-            .toList(),
-        items.findAll().stream()
-            .map(t -> new CatalogoItemResponseDTO(t.getIdTipoItem(), t.getNombreItem()))
-            .toList(),
-        gastos.findAll().stream()
-            .filter(t -> t.getSigno() == -1)
-            .map(t -> new CatalogoItemResponseDTO(t.getIdTipoMovimiento(), t.getNombreMovimiento()))
-            .toList(),
+        referencias.documentos(),
+        referencias.pagos(),
+        StreamSupport.stream(habitaciones.readAll().spliterator(), false)
+            .map(t -> new CatalogoItemResponseDTO(t.idTipoHabitacion(), t.nombreTipo())).toList(),
+        StreamSupport.stream(items.readAll().spliterator(), false)
+            .map(t -> new CatalogoItemResponseDTO(t.idTipoItem(), t.nombreItem())).toList(),
+        referencias.gastos(),
         usuarios.findAll().stream()
             .filter(t -> t.getEstadoUsuario() == EstadoUsuario.ACTIVO)
             .map(t -> new CatalogoItemResponseDTO(t.getIdUsuario(), t.getUsername()))

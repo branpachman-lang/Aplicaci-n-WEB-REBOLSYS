@@ -13,9 +13,9 @@ Preparar, enviar y consultar nunca cobran dinero ni descuentan stock otra vez.
 Rutas implementadas, prefijo /api/v1:
 
 - POST /comprobantes/{id}/emision-electronica: prepara el documento sin enviarlo.
-  Recibe claveOperacion, idUsuario, tasaIgv (porcentaje), direccionReceptor opcional,
-  tratamientos por numeroLinea opcionales (afectacion 10 gravada, 20 exonerada,
-  30 inafecta y tasaIgv), y cuotas opcionales si hay saldo pendiente.
+  Recibe claveOperacion, idUsuario, tasaIgv=18, direccionReceptor opcional,
+  tratamientos por numeroLinea opcionales (afectacion 10 y tasaIgv=18),
+  y cuotas opcionales para saldos históricos.
 - GET /comprobantes/{id}/emision-electronica: consulta estado local y totales.
 - POST /comprobantes/{id}/emision-electronica/envio: envía una única vez, con idUsuario.
 - POST /comprobantes/{id}/emision-electronica/consulta: consulta CDR con idUsuario.
@@ -26,7 +26,17 @@ Rutas implementadas, prefijo /api/v1:
 
 Primero se emite el registro interno BOLETA/FACTURA por la ruta de reservas o ventas
 existente. Su idCuenta identifica el comprobante para estas nuevas rutas. La primera
-versión conserva sus series BINT/FINT y correlativos exclusivamente para beta.
+versión conservaba BINT/FINT. Los nuevos documentos usan B002/F002; la
+presentación del correlativo se completa a ocho dígitos, sin renumerar documentos
+emitidos. La integración continúa exclusivamente en beta.
+
+Antes de activar las nuevas series, aplicar manualmente
+`src/main/resources/db/iteration/V20__series_f002_b002.sql` con autorización de
+la base. Solo registra las series y conserva los contadores existentes. No cambia
+tablas ni comprobantes. El backend permite seleccionar las series mediante
+`app.comprobantes.serie-factura` y `app.comprobantes.serie-boleta`; sus valores por
+defecto son F002/B002. Mientras no se registre la configuración de Oracle, mantener
+las series anteriores en la configuración privada para conservar la emisión actual.
 
 PREPARADO permite enviar. ENVIANDO impide una segunda solicitud concurrente.
 ACEPTADO y RECHAZADO requieren una respuesta CDR coherente. INCIERTO exige consultar
@@ -35,10 +45,13 @@ ERROR_ENVIO identifica fallos previos al envío o validaciones HTTP explícitas,
 permite repetir manualmente la misma copia. No se reintentan automáticamente POST.
 Un estado incierto no se reenvía automáticamente ni se libera por tiempo transcurrido.
 
-Las tasas son explícitas y se guardan por línea en la copia fiscal; no se deduce
-un beneficio tributario por el hecho de ser un hospedaje. Puede configurarse una
-tasa distinta por línea para alojamiento y productos. La base neta se obtiene del
-total final, y el impuesto es la diferencia, con redondeo a céntimos por línea.
+La regla de negocio del prototipo fija IGV de 18% para boletas y facturas,
+tanto de alojamiento como de productos. El backend rechaza otras tasas y
+afectaciones. La base neta se obtiene del total final dividido por 1.18, y el
+impuesto es la diferencia, con redondeo a céntimos por línea.
+Las respuestas de cuenta incluyen subtotal e igv para la vista, impresión y correo,
+incluso antes de preparar la copia fiscal. Los precios y pagos existentes no cambian.
+Una emisión ya preparada conserva sus importes fijados; no se recalculan sus datos históricos.
 Si existe saldo se exige un cronograma que sume ese saldo para declarar Crédito;
 una cuenta saldada se declara Contado. El comprobante electrónico no sustituye
 las reglas de caja, anticipos ni el pago total requerido al check-out.
@@ -118,17 +131,15 @@ es 18%, la copia conserva total 118, subtotal 100 e impuesto 18; no suma otro 18
 Para una factura, direccionReceptor es obligatoria y el receptor debe tener RUC,
 incluida la persona natural con RUC. El modelo de identidades sigue sin cambios.
 
-Un tratamiento por línea usa numeroLinea, afectacion (10,20,30) y tasaIgv. Para
-exonerada o inafecta se exige tasa cero. Las cuotas usan fechaPago (YYYY-MM-DD)
+Un tratamiento por línea usa numeroLinea, afectacion=10 y tasaIgv=18.
+Las cuotas de documentos históricos usan fechaPago (YYYY-MM-DD)
 y monto; deben sumar exactamente el saldo pendiente. No hay cálculo automático
 de exoneraciones, descuentos, detracciones, anticipos tributarios o moneda extranjera.
 Los anticipos registrados en caja permanecen como pagos; esta etapa no implementa
 la emisión fiscal independiente de anticipos ni su posterior aplicación tributaria.
 
-La tasa debe corresponder a la empresa y la operación. Por ejemplo, SUNAT publica
-una tasa total especial de 10.50% para determinadas MYPE de hoteles/alojamientos
-durante 2026, sujeta a requisitos; el sistema no la aplica por defecto.
-[Referencia SUNAT](https://orientacion.sunat.gob.pe/reduccion-del-igv-para-restaurantes-hoteles-y-alojamiento-turisticos-1).
+La tasa fija corresponde al alcance de pruebas solicitado para REBOLSYS;
+esta implementación continúa limitada a beta y no habilita producción.
 
 Después, POST .../emision-electronica/envio con {"idUsuario":1}. Una respuesta HTTP
 200 solo indica que la solicitud se procesó: revisar estado, codigoRespuesta y
@@ -143,6 +154,26 @@ backend conectado a APIsPerú beta para los dos tipos de documento. Permite usar
 un entorno de Postman para aportar las variables, sin incluir el token del proveedor.
 
 ## Base de datos
+
+La actualización del 22 de noviembre de 2026 reutiliza EMISION_ELECTRONICA:
+no requiere otra tabla ni ejecuta migraciones. La configuración de la empresa
+se guarda en `.local/facturacion-beta-private.properties`, importado desde el
+archivo privado local. El token y los datos SOL no se incluyen en Git ni en Angular.
+
+## Verificar los cambios de IGV y la integración
+
+`FacturacionProveedorHttpTest` ejecuta el cliente real contra el simulador de Postman
+en puerto 4920. Habilitar `RUN_FACTURACION_HTTP_SIM=true`; cubre boleta, factura,
+CDR, PDF, rechazo, autenticación y consulta tras timeout sin reenviar.
+Las pruebas habituales de `ComprobanteEntregaTest` usan H2 y correo simulado.
+
+`FacturacionBetaVivaTest` queda desactivada por defecto. Solo con autorización
+para crear documentos ficticios en la cuenta externa, habilitar
+`RUN_FACTURACION_BETA_REAL=true` y ejecutar esa prueba. Guarda XML/CDR/PDF en
+`.local/facturacion-beta-demostracion/`, sin tocar Oracle ni enviar correos.
+Una prueba local satisfactoria no confirma aceptación de la empresa beta real.
+
+## Estructura inicial e historial
 
 Se añadió EMISION_ELECTRONICA, una fila por comprobante interno y una numeración
 única por RUC/tipo/serie/correlativo. Conserva la copia JSON, XML, CDR, totales,

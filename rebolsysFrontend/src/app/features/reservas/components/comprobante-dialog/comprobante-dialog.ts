@@ -28,6 +28,8 @@ import { MarcaHospedaje } from '../../../../shared/components/marca-hospedaje/ma
 import { ClienteService } from "../../../clientes/services/cliente-service";
 import { ClienteDatos } from "../../../clientes/models/cliente.model";
 import { tipoDocumento } from '../../../clientes/utils/persona-validacion';
+import { numeroComprobante } from '../../../../core/utils/numero-comprobante';
+import { erroresDeValidacion } from '../../../../core/utils/http-error';
 import { CuentaDocumento } from "../../models/reserva-api.model";
 import { Emision, PrepararEmision } from "../../models/emision.model";
 import { ReservaResumen, ReservaService } from "../../services/reserva-service";
@@ -70,6 +72,11 @@ export class ComprobanteDialog implements OnInit {
   usuario: number | null = null;
   turno: number | null = null;
   tipo = "BOLETA";
+  readonly numeroComprobante = numeroComprobante;
+  private camposTocados = signal<Record<string, boolean>>({});
+  private intentoReceptor = signal(false);
+  private intentoFiscal = signal(false);
+  private erroresServidor = signal<Record<string, string>>({});
   idCliente: number | null = null;
   titular = signal<{ idCliente: number; persona: ClienteDatos } | null>(null);
   receptor: ClienteDatos = {
@@ -84,7 +91,7 @@ export class ComprobanteDialog implements OnInit {
     correo: null,
     telefono: null,
   };
-  tasaIgv = 18;
+  readonly tasaIgv = 18;
   direccion = "";
   cuotas: { fechaPago: string; monto: number }[] = [];
   hoy = fechaLocal(new Date());
@@ -160,6 +167,7 @@ export class ComprobanteDialog implements OnInit {
       });
   }
   cambiarCuenta() {
+    this.reiniciarValidaciones();
     const cuenta = this.cuenta();
     this.documento.set(cuenta?.estado === "EMITIDO" ? cuenta : null);
     this.emision.set(null);
@@ -176,6 +184,7 @@ export class ComprobanteDialog implements OnInit {
   }
   buscar() {
     if (this.ocupado() || this.emisionFijada()) return;
+    this.tocarCampo('idTipoDocumento'); this.tocarCampo('numeroDocumento');
     const error = this.validarDocumentoReceptor();
     if (error) {
       this.error.set(error);
@@ -207,6 +216,7 @@ export class ComprobanteDialog implements OnInit {
   otroReceptor() {
     if (this.ocupado() || this.emisionFijada()) return;
     this.idCliente = null;
+    this.reiniciarValidaciones();
     this.receptor = {
       idTipoDocumento: this.tipo === 'FACTURA'
         ? this.catalogos().documentos.find(d => d.codigoSunat === '6')?.id ?? null
@@ -233,6 +243,64 @@ export class ComprobanteDialog implements OnInit {
   esRuc(id = this.receptor.idTipoDocumento) {
     return tipoDocumento(this.catalogos().documentos.find(d => d.id === id)) === 'RUC';
   }
+  esDni() {
+    return tipoDocumento(this.catalogos().documentos.find(d => d.id === this.receptor.idTipoDocumento)) === 'DNI';
+  }
+  limiteDocumento() { return this.esDni() ? 8 : this.esRuc() ? 11 : 50; }
+  ajustarEntradaDocumento(evento: Event) {
+    const input = evento.target as HTMLInputElement;
+    input.value = (this.esDni() || this.esRuc() ? input.value.replace(/[^0-9]/g, '') : input.value).slice(0, this.limiteDocumento());
+  }
+  tocarCampo(campo: string) {
+    this.camposTocados.update(campos => ({ ...campos, [campo]: true }));
+  }
+  limpiarErrorCampo(campo: string) {
+    this.erroresServidor.update(errores => { const copia = { ...errores }; delete copia[campo]; return copia; });
+  }
+  private reiniciarValidaciones() {
+    this.camposTocados.set({}); this.erroresServidor.set({});
+    this.intentoReceptor.set(false); this.intentoFiscal.set(false);
+  }
+  errorCampo(campo: string) {
+    const remoto = this.erroresServidor()[campo];
+    if (remoto) return remoto;
+    if (!this.intentoReceptor() && !this.camposTocados()[campo]) return '';
+    return this.validacionesReceptor()[campo] ?? '';
+  }
+  private validacionesReceptor(): Record<string, string> {
+    const errores: Record<string, string> = {};
+    if (!this.receptor.idTipoDocumento) errores['idTipoDocumento'] = 'Selecciona el tipo de documento.';
+    const documento = this.validarDocumentoReceptor();
+    if (documento) errores['numeroDocumento'] = documento;
+    if (this.receptor.empresa) {
+      if (!this.receptor.razonSocial?.trim()) errores['razonSocial'] = 'Completa la razón social.';
+    } else {
+      if (!this.receptor.nombres?.trim()) errores['nombres'] = 'Completa los nombres.';
+      if (!this.receptor.apellidos?.trim()) errores['apellidos'] = 'Completa los apellidos.';
+    }
+    if (this.tipo === 'FACTURA' && !this.receptor.direccionFiscal?.trim())
+      errores['direccionFiscal'] = 'Completa la dirección fiscal del receptor.';
+    if (!this.turnos().some(t => t.idTurno === this.turno)) errores['turno'] = 'Selecciona un turno de caja abierto.';
+    return errores;
+  }
+  errorDireccionFiscal() {
+    return (this.intentoFiscal() || this.camposTocados()['direccionReceptor'])
+      && this.documento()?.tipo === 'FACTURA' && !this.direccion.trim()
+      ? 'Completa la dirección fiscal del receptor.' : this.erroresServidor()['direccionReceptor'] ?? '';
+  }
+  errorCuota(indice: number, campo: 'fechaPago' | 'monto') {
+    const clave = `cuotas[${indice}].${campo}`;
+    if (this.erroresServidor()[clave]) return this.erroresServidor()[clave];
+    if (!this.intentoFiscal() && !this.camposTocados()[clave]) return '';
+    const cuota = this.cuotas[indice];
+    if (campo === 'fechaPago') return !cuota.fechaPago ? 'Selecciona la fecha de pago.'
+      : cuota.fechaPago < this.hoy ? 'La fecha no puede ser anterior a hoy.' : '';
+    if (!Number.isFinite(cuota.monto) || cuota.monto <= 0) return 'Ingresa un monto mayor a cero.';
+    if (Math.abs(cuota.monto * 100 - Math.round(cuota.monto * 100)) > 1e-6) return 'Usa como máximo dos decimales.';
+    return this.intentoFiscal() && indice === this.cuotas.length - 1
+      && Math.round(this.cuotas.reduce((s,c) => s + (Number.isFinite(c.monto) ? c.monto : 0), 0) * 100) !== Math.round((this.documento()?.saldo ?? 0) * 100)
+      ? 'Las cuotas deben sumar exactamente el saldo pendiente.' : '';
+  }
   nombreTitular() {
     const persona = this.titular()?.persona;
     return persona?.empresa ? persona.razonSocial : `${persona?.nombres ?? ''} ${persona?.apellidos ?? ''}`.trim();
@@ -243,6 +311,7 @@ export class ComprobanteDialog implements OnInit {
     if (this.tipo === 'FACTURA' && !this.esRuc(titular.persona.idTipoDocumento)) return;
     this.idCliente = titular.idCliente;
     this.receptor = { ...titular.persona };
+    this.reiniciarValidaciones();
     this.direccion = titular.persona.direccionFiscal ?? '';
     this.error.set('');
     this.aviso.set('El comprobante se emitirá al titular.');
@@ -261,6 +330,8 @@ export class ComprobanteDialog implements OnInit {
   }
   cambiarNumero(numero: string) {
     if (this.ocupado() || this.emisionFijada() || this.idCliente !== null) return;
+    numero = (this.esDni() || this.esRuc() ? numero.replace(/[^0-9]/g, '') : numero).slice(0, this.limiteDocumento());
+    this.limpiarErrorCampo('numeroDocumento');
     const documento = this.receptor.idTipoDocumento;
     const empresa = this.esRuc() && numero.startsWith('20');
     this.receptor = { idTipoDocumento: documento, numeroDocumento: numero, empresa,
@@ -282,21 +353,16 @@ export class ComprobanteDialog implements OnInit {
     const d = this.catalogos().documentos.find(
       (d) => d.id === this.receptor.idTipoDocumento,
     );
-    if (!d || !this.receptor.numeroDocumento.trim())
-      return "Selecciona el documento del receptor.";
-    if (
-      (d.codigoSunat === "1" &&
-        !/^\d{8}$/.test(this.receptor.numeroDocumento.trim())) ||
-      (d.codigoSunat === "6" &&
-        !/^\d{11}$/.test(this.receptor.numeroDocumento.trim()))
-    )
-      return "El DNI debe tener 8 dígitos y el RUC 11 dígitos.";
+    if (!d) return 'Selecciona el tipo de documento del receptor.';
     if (
       this.tipo === "FACTURA" &&
       (d.codigoSunat !== "6" ||
         !/^\d{11}$/.test(this.receptor.numeroDocumento.trim()))
     )
       return "Para factura se requiere un receptor con RUC de 11 dígitos.";
+    if (!this.receptor.numeroDocumento.trim()) return 'Ingresa el número de documento.';
+    if (this.esDni() && !/^\d{8}$/.test(this.receptor.numeroDocumento.trim())) return 'El DNI debe tener exactamente 8 dígitos.';
+    if (this.esRuc() && !/^\d{11}$/.test(this.receptor.numeroDocumento.trim())) return 'El RUC debe tener exactamente 11 dígitos.';
     return '';
   }
   validarReceptor() {
@@ -315,8 +381,10 @@ export class ComprobanteDialog implements OnInit {
   }
   emitir() {
     if (this.ocupado()) return;
+    this.intentoReceptor.set(true);
+    this.erroresServidor.set({});
     const cuenta = this.cuenta();
-    const error = this.validarReceptor();
+    const error = this.validarReceptor() || Object.values(this.validacionesReceptor())[0];
     if (error) {
       this.error.set(error);
       return;
@@ -351,7 +419,8 @@ export class ComprobanteDialog implements OnInit {
           concatMap(existente => {
             if (existente?.idCliente) {
               this.receptor = { ...existente.datos };
-              this.direccion = existente.datos.direccionFiscal ?? '';
+              this.direccion = persona.direccionFiscal || existente.datos.direccionFiscal || '';
+              this.receptor.direccionFiscal = this.direccion;
               return of({ idCliente: existente.idCliente });
             }
             return this.clientes.registrar(persona);
@@ -390,6 +459,7 @@ export class ComprobanteDialog implements OnInit {
           this.cargarEstado(doc.idCuenta!);
         },
         error: (e) => {
+          this.erroresServidor.set(erroresDeValidacion(e));
           this.ocupado.set(false);
           if (e.status >= 400 && e.status < 500) {
             this.solicitudInterna = null;
@@ -438,17 +508,8 @@ export class ComprobanteDialog implements OnInit {
       return;
     }
     if (!this.solicitudFiscal) {
-      if (
-        !Number.isFinite(this.tasaIgv) ||
-        this.tasaIgv <= 0 ||
-        this.tasaIgv > 100 ||
-        Math.abs(this.tasaIgv * 100 - Math.round(this.tasaIgv * 100)) > 1e-6
-      ) {
-        this.error.set(
-          "Indica una tasa de impuesto válida, con hasta dos decimales.",
-        );
-        return;
-      }
+      this.intentoFiscal.set(true);
+      this.erroresServidor.set({});
       if (doc.tipo === "FACTURA" && !this.direccion.trim()) {
         this.error.set(
           "Completa la dirección fiscal del receptor para preparar la factura.",
@@ -505,6 +566,7 @@ export class ComprobanteDialog implements OnInit {
             this.modoFiscal.set(null);
             this.clave = generarClaveOperacion();
           }
+          this.erroresServidor.set(erroresDeValidacion(e));
           this.error.set(mensajeError(e));
           this.cargarEstado(doc.idCuenta!);
         },
@@ -573,7 +635,7 @@ export class ComprobanteDialog implements OnInit {
           const url = URL.createObjectURL(blob);
           const a = document.createElement("a");
           a.href = url;
-          a.download = `${e?.serie ?? doc.serie}-${e?.correlativo ?? doc.numero}.${tipo === "cdr" ? "zip" : tipo}`;
+          a.download = `${numeroComprobante(e?.serie ?? doc.serie, e?.correlativo ?? doc.numero)}.${tipo === "cdr" ? "zip" : tipo}`;
           a.click();
           setTimeout(() => URL.revokeObjectURL(url), 1000);
           this.ocupado.set(false);

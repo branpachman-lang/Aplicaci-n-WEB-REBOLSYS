@@ -1,7 +1,7 @@
 import { notificarCambios } from '../../core/services/avisos-formulario';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { Component, DestroyRef, Injector, afterNextRender, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { Observable, Subscription, finalize, map } from 'rxjs';
@@ -55,11 +55,16 @@ const ETIQUETAS: Record<string, string> = {
 @Component({
   imports: [CurrencyPipe, DatePipe, ReactiveFormsModule, MarcaHospedaje, DialogFocus],
   templateUrl: './reportes.html',
-  styleUrl: './reportes.css',
+  styleUrls: ['./reportes.css', './reportes-ticket.css'],
+  host: {
+    class: 'reporte-impresion',
+    '[class.formato-ticket]': 'formatoImpresion() === "ticket"',
+  },
 })
 export class Reportes {
   private readonly http = inject(HttpClient);
   private readonly destroy = inject(DestroyRef);
+  private readonly injector = inject(Injector);
   private readonly base = environment.apiUrl + '/reportes/';
   private solicitud?: Subscription;
   private solicitudInforme?: Subscription;
@@ -68,6 +73,7 @@ export class Reportes {
   protected readonly resultado = signal<Resultado | null>(null);
   protected readonly cargando = signal(false);
   protected readonly generadoEn = signal(new Date());
+  protected readonly formatoImpresion = signal<'a4' | 'ticket'>('a4');
   protected readonly error = signal('');
   private readonly alertaError = notificarCambios(this.error, 'error');
   protected readonly errorRango = signal('');
@@ -120,8 +126,9 @@ export class Reportes {
     }
   }
 
-  protected imprimir() {
-    window.print();
+  protected imprimir(formato: 'a4' | 'ticket' = 'a4') {
+    this.formatoImpresion.set(formato);
+    afterNextRender(() => window.print(), { injector: this.injector });
   }
 
   protected verInforme(id: number) {

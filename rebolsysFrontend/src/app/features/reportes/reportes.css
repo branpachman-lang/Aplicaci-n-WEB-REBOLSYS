@@ -31,9 +31,9 @@
 .paginacion { justify-content: end; padding: 1rem; }
 .solo-impresion { display: none; }
 @media print {
-  @page { size: A4 landscape; margin: 12mm; }
+  @page reporte-a4 { size: A4 landscape; margin: 12mm; }
   .no-print { display: none !important; }
-  .resultado { margin: 0; overflow: visible; }
+  .resultado { page: reporte-a4; margin: 0; overflow: visible; }
   .resultado-financiero { border: 0; border-radius: 0; box-shadow: none; }
   .resultado-financiero .cabecera { padding: 0 0 .7rem; border-bottom: 1px solid #dfe0e8; }
   .resultado-financiero .cabecera h3 { font-size: 18pt; }

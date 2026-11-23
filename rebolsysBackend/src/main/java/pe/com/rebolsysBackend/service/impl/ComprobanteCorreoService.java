@@ -15,6 +15,7 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import pe.com.rebolsysBackend.dto.*;
 import pe.com.rebolsysBackend.exception.ServicioExternoException;
+import pe.com.rebolsysBackend.util.NumeroComprobante;
 
 /** SMTP se ejecuta después de leer una copia del documento, sin bloqueos sobre caja o comprobantes. */
 @Service
@@ -43,7 +44,7 @@ public class ComprobanteCorreoService {
         "El envío de comprobantes por correo no está configurado. Configura el servidor SMTP del hospedaje.");
     var correo = transporte.getObject();
     var doc = datos.documento();
-    String numero = doc.serie() + "-" + doc.numero();
+    String numero = NumeroComprobante.formatear(doc.serie(), doc.numero());
     try {
       var mensaje = correo.createMimeMessage();
       var contenido = new MimeMessageHelper(mensaje, true, StandardCharsets.UTF_8.name());

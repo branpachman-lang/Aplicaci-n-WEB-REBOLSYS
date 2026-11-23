@@ -1,10 +1,10 @@
-<div class="app-shell" [class.menu-open]="!menuColapsado()" (keydown.escape)="menuColapsado.set(true)">
-  <app-sidebar (navegar)="menuColapsado.set(true)" />
+<div class="app-shell" [class.menu-open]="!menuColapsado()" (keydown.escape)="cerrarMenu($event)">
+  <app-sidebar (navegar)="cerrarMenu()" />
   @if (!menuColapsado()) {
     <button
       class="menu-backdrop"
       aria-label="Cerrar menú"
-      (click)="menuColapsado.set(true)"
+      (click)="cerrarMenu()"
     ></button>
   }
   <div class="workspace">

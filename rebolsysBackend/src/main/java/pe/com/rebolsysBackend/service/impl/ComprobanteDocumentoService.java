@@ -33,8 +33,8 @@ public class ComprobanteDocumentoService {
     var emision = emisiones.findByComprobanteIdComprobante(id);
     return new TicketComprobanteDTO(documento, hospedaje.marca(),
         c.getCliente() == null ? null : c.getCliente().getCorreo(),
-        emision.map(e -> e.getSubtotal()).orElse(c.getSubtotal()),
-        emision.map(e -> e.getIgv()).orElse(c.getIgv()));
+        emision.map(e -> e.getSubtotal()).orElse(documento.subtotal()),
+        emision.map(e -> e.getIgv()).orElse(documento.igv()));
   }
 
   private void autorizar(Comprobante c, boolean envio) {

@@ -5,6 +5,7 @@ import static pe.com.rebolsysBackend.service.impl.ReglasPropuesta.*;
 import jakarta.persistence.EntityManager;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,12 +16,15 @@ import pe.com.rebolsysBackend.enums.EstadoComprobante;
 import pe.com.rebolsysBackend.exception.*;
 import pe.com.rebolsysBackend.repository.*;
 import pe.com.rebolsysBackend.service.service.*;
+import pe.com.rebolsysBackend.util.IgvIncluido;
 
 /** Cobros compartidos; el servicio que llama bloquea primero la reserva o venta de origen. */
 @Service
 @RequiredArgsConstructor
 @Transactional(propagation = Propagation.MANDATORY)
 public class CuentaCobroServiceImpl implements CuentaCobroService {
+  @Value("${app.comprobantes.serie-factura:F002}") private String serieFactura;
+  @Value("${app.comprobantes.serie-boleta:B002}") private String serieBoleta;
   private final EntityManager em;
   private final CuentaReservaGestion gestion;
   private final ComprobanteRepository cuentas;
@@ -106,10 +110,11 @@ public class CuentaCobroServiceImpl implements CuentaCobroService {
           "La factura interna requiere un receptor con RUC registrado");
     var tipo = tipos.findByCodigo(request.tipo())
         .orElseThrow(() -> new ReglaNegocioException("Falta configurar " + request.tipo()));
-    String serie = "FACTURA".equals(request.tipo()) ? "FINT" : "BINT";
+    String serie = "FACTURA".equals(request.tipo()) ? serieFactura : serieBoleta;
+    exigir(serie.matches(("FACTURA".equals(request.tipo()) ? "F" : "B") + "[A-Z0-9]{3}"), "La serie configurada no es válida");
     var contador = series.bloquear(new SerieComprobanteId(tipo.getIdTipoComprobante(), serie))
         .orElseThrow(() -> new ReglaNegocioException("Falta configurar la serie " + serie));
-    exigir(contador.getSiguienteNumero() < 9999999999L, "La serie agotó su numeración");
+    exigir(contador.getSiguienteNumero() >= 1 && contador.getSiguienteNumero() <= 99999999L, "La serie agotó su numeración de ocho dígitos");
     c.setTipoComprobante(tipo);
     c.setSerie(serie);
     c.setNumeroComprobante(String.valueOf(contador.getSiguienteNumero()));
@@ -158,11 +163,12 @@ public class CuentaCobroServiceImpl implements CuentaCobroService {
         .toList();
     var pagado = gestion.pagado(c);
     Long reserva = idReserva(c);
+    var impuesto = IgvIncluido.resumir(ls.stream().map(CuentaLineaDTO::total));
     return new CuentaDocumentoDTO(c.getIdComprobante(), reserva, reserva == null ? null : "R" + reserva,
         c.getVenta() == null ? null : c.getVenta().getIdVenta(), c.getTipoComprobante().getCodigo(),
         c.getEstadoComprobante(), c.getSerie(), c.getNumeroComprobante(),
         c.getCliente() == null ? null : c.getCliente().getIdPerfil(), c.getReceptorNombre(),
-        c.getReceptorNumeroDoc(), c.getFechaEmision(), c.getTotalPagar(), pagado,
+        c.getReceptorNumeroDoc(), c.getFechaEmision(), c.getTotalPagar(), impuesto.subtotal(), impuesto.igv(), pagado,
         c.getTotalPagar().subtract(pagado), ls, ps, estadias);
   }
 }

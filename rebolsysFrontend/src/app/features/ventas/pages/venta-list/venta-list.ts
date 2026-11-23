@@ -1,5 +1,5 @@
 import { notificarCambios } from '../../../../core/services/avisos-formulario';
-import { Component, inject, signal } from "@angular/core";
+import { Component, OnInit, inject, signal } from "@angular/core";
 import { PermisosUi } from "../../../../core/services/permisos-ui";
 import { CurrencyPipe, DatePipe } from "@angular/common";
 import { RouterLink } from "@angular/router";
@@ -14,7 +14,7 @@ import { Icon } from "../../../../shared/components/icono/icono";
   templateUrl: "./venta-list.html",
   styleUrl: "./venta-list.css",
 })
-export class VentaList {
+export class VentaList implements OnInit {
   readonly acceso = inject(PermisosUi);
   private servicio = inject(VentaService);
   respuesta = signal<Pagina<Venta> | null>(null);

@@ -11,6 +11,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.Objects;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -27,7 +28,30 @@ import pe.com.rebolsysBackend.exception.RecursoNoEncontradoException;
 public class EvidenciaCajaService {
   private final Path directorio;
 
-  record Archivo(String nombre, String extension, String sha, byte[] contenido) {}
+  record Archivo(String nombre, String extension, String sha, byte[] contenido) {
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (!(o instanceof Archivo other)) return false;
+      return Objects.equals(nombre, other.nombre)
+          && Objects.equals(extension, other.extension)
+          && Objects.equals(sha, other.sha)
+          && Arrays.equals(contenido, other.contenido);
+    }
+
+    @Override
+    public int hashCode() {
+      return 31 * Objects.hash(nombre, extension, sha) + Arrays.hashCode(contenido);
+    }
+
+    @Override
+    public String toString() {
+      return "Archivo[nombre=" + nombre
+          + ", extension=" + extension
+          + ", sha=" + sha
+          + ", contenido=" + Arrays.toString(contenido) + "]";
+    }
+  }
 
   public EvidenciaCajaService(@Value("${app.caja.directorio-evidencias:.local/evidencias-caja}") String directorio) {
     this.directorio = Path.of(directorio).toAbsolutePath().normalize();

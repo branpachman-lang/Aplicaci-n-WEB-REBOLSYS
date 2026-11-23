@@ -1,6 +1,6 @@
 <div class="delivery-actions no-print">
   <button type="button" class="button" [disabled]="ocupado()" (click)="descargar()">
-    <app-icon name="receipt" />Descargar ticket PDF
+    <app-icon name="receipt" />Descargar comprobante A4
   </button>
   @if (acceso.permite('RESERVAS:EMITIR_COMPROBANTE', 'VENTAS:EMITIR_COMPROBANTE')) {
     <button type="button" class="button" [disabled]="ocupado()" (click)="abierto.set(!abierto())">
@@ -9,15 +9,17 @@
   }
 </div>
 @if (abierto()) {
-  <form class="delivery-form no-print" (ngSubmit)="enviar()">
+  <form class="delivery-form no-print" (ngSubmit)="enviar()" novalidate>
     <label class="field">Correo del destinatario
       <input type="email" name="correoComprobante" [(ngModel)]="correo" required maxlength="254"
+        (blur)="intentoEnvio.set(true)" [attr.aria-invalid]="!!errorCorreo()" aria-describedby="error-correo-comprobante"
         placeholder="cliente@ejemplo.com" [disabled]="ocupado()" />
+      @if(errorCorreo()){<small id="error-correo-comprobante" class="field-error" role="alert">{{errorCorreo()}}</small>}
     </label>
     @if (!habilitado()) {
       <p class="inline-note">El envío por correo aún no está habilitado para este hospedaje.</p>
     }
-    <p class="muted">Se enviará una copia del comprobante con su ticket PDF adjunto.</p>
+    <p class="muted">Se enviará una copia del comprobante con su PDF A4 adjunto.</p>
     <button type="submit" class="button primary" [disabled]="ocupado() || !habilitado()">
       {{ ocupado() ? 'Enviando…' : 'Confirmar envío' }}
     </button>

@@ -92,6 +92,36 @@
   flex-wrap: wrap;
 }
 
+.acciones-fila .boton-acciones {
+  width: 36px;
+  padding-inline: 0;
+}
+
+.menu-acciones {
+  gap: 6px;
+  padding: 8px;
+  max-inline-size: calc(100vw - 12px);
+  max-block-size: calc(100dvh - 12px);
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--paper);
+  box-shadow: 0 5px 24px #0002;
+}
+
+.menu-acciones:popover-open {
+  display: grid;
+}
+
+@supports (position-area: block-end span-inline-start) {
+  .menu-acciones {
+    margin: 6px;
+    position-area: block-end span-inline-start;
+    justify-self: end;
+    position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
+  }
+}
+
 .pagination-container {
   display: flex;
   justify-content: space-between;

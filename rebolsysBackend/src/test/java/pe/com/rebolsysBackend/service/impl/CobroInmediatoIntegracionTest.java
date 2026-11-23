@@ -149,7 +149,7 @@ class CobroInmediatoIntegracionTest {
       var comprobantes = em.createQuery("from TipoComprobante where codigo='FACTURA'", TipoComprobante.class).getResultList();
       if (comprobantes.isEmpty()) {
         var tipo = new TipoComprobante(); tipo.setCodigo("FACTURA"); tipo.setNombreComprobante("Factura"); em.persist(tipo);
-        var serie = new SerieComprobante(); serie.setId(new SerieComprobanteId(tipo.getIdTipoComprobante(), "FINT"));
+        var serie = new SerieComprobante(); serie.setId(new SerieComprobanteId(tipo.getIdTipoComprobante(), "F002"));
         serie.setTipoComprobante(tipo); em.persist(serie);
       }
       return td.getIdTipoDocumento();
@@ -165,6 +165,7 @@ class CobroInmediatoIntegracionTest {
     var antes = cuentasReserva.cuenta(reserva.idReserva()).cuentas().getFirst();
     var solicitud = new ReservaComprobanteRegistroDTO(usuario, turno, "FACTURA", receptor, null);
     var factura = cuentasReserva.emitir(reserva.idReserva(), solicitud);
+    assertThat(factura.serie()).isEqualTo("F002");
     assertThat(cuentasReserva.emitir(reserva.idReserva(), solicitud).idCuenta()).isEqualTo(factura.idCuenta());
     assertThat(factura.idCuenta()).isEqualTo(antes.idCuenta());
     assertThat(factura.idClienteReceptor()).isEqualTo(receptor);
@@ -183,6 +184,22 @@ class CobroInmediatoIntegracionTest {
       assertThat(cantidad("ReservaOcupante", "huesped.perfil.idPerfil", cliente)).isEqualTo(1);
       assertThat(cantidad("Pago", "comprobante.idComprobante", factura.idCuenta())).isEqualTo(1);
     });
+  }
+
+  @Test void boletaNuevaUsaB002YNoAvanzaElContadorAlRecuperarla() {
+    Long tipo = tx.execute(s -> {
+      em.find(Perfil.class, cliente).setNumeroDocumento("12345678");
+      var t = new TipoComprobante(); t.setCodigo("BOLETA"); t.setNombreComprobante("Boleta"); em.persist(t);
+      var serie = new SerieComprobante(); serie.setTipoComprobante(t);
+      serie.setId(new SerieComprobanteId(t.getIdTipoComprobante(), "B002")); em.persist(serie);
+      return t.getIdTipoComprobante();
+    });
+    var reserva = reservas.registrar(reserva(UUID.randomUUID().toString(), "80.00"));
+    var solicitud = new ReservaComprobanteRegistroDTO(usuario, turno, "BOLETA", cliente, null);
+    var boleta = cuentasReserva.emitir(reserva.idReserva(), solicitud);
+    assertThat(boleta.serie()).isEqualTo("B002"); assertThat(boleta.numero()).isEqualTo("1");
+    assertThat(cuentasReserva.emitir(reserva.idReserva(), solicitud).idCuenta()).isEqualTo(boleta.idCuenta());
+    tx.executeWithoutResult(s -> assertThat(em.find(SerieComprobante.class, new SerieComprobanteId(tipo, "B002")).getSiguienteNumero()).isEqualTo(2L));
   }
 
   @Test void pagoParcialOExcesivoRevierteReservaYOcupantes() {

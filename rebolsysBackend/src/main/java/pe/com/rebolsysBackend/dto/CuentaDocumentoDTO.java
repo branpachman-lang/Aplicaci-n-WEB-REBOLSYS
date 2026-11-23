@@ -19,6 +19,8 @@ public record CuentaDocumentoDTO(
     String receptorNumeroDoc,
     LocalDateTime fechaEmision,
     BigDecimal total,
+    BigDecimal subtotal,
+    BigDecimal igv,
     BigDecimal pagado,
     BigDecimal saldo,
     List<CuentaLineaDTO> lineas,

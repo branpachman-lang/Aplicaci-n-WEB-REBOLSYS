@@ -9,7 +9,7 @@ import java.util.List;
 public record EmisionElectronicaRequestDTO(
     @NotBlank @Size(max=64) String claveOperacion,
     @NotNull @Positive Long idUsuario,
-    @NotNull @DecimalMin("0.01") @DecimalMax("100") @Digits(integer=3, fraction=2) BigDecimal tasaIgv,
+    @NotNull @DecimalMin("18") @DecimalMax("18") @Digits(integer=3, fraction=2) BigDecimal tasaIgv,
     @Size(max=200) String direccionReceptor,
     @NotNull @Size(max=500) List<@NotNull @Valid TratamientoLinea> tratamientos,
     @NotNull @Size(max=120) List<@NotNull @Valid Cuota> cuotas) {
@@ -20,8 +20,8 @@ public record EmisionElectronicaRequestDTO(
 
   public record TratamientoLinea(
       @NotNull @Positive Integer numeroLinea,
-      @NotNull @Pattern(regexp="10|20|30") String afectacion,
-      @NotNull @DecimalMin("0") @DecimalMax("100") @Digits(integer=3, fraction=2) BigDecimal tasaIgv) {}
+      @NotNull @Pattern(regexp="10") String afectacion,
+      @NotNull @DecimalMin("18") @DecimalMax("18") @Digits(integer=3, fraction=2) BigDecimal tasaIgv) {}
 
   public record Cuota(
       @NotNull @FutureOrPresent LocalDate fechaPago,
