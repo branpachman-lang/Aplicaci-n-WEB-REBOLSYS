@@ -18,10 +18,10 @@ import org.springframework.data.redis.cache.RedisCacheWriter;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.serializer.JacksonJsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext.SerializationPair;
-import pe.com.rebolsysBackend.dto.CatalogoItemResponseDTO;
-import pe.com.rebolsysBackend.dto.CategoriaResponseDTO;
-import pe.com.rebolsysBackend.dto.TipoHabitacionResponseDTO;
-import pe.com.rebolsysBackend.dto.TipoItemResponseDTO;
+import pe.com.rebolsysBackend.dto.reservas.CatalogoItemResponseDTO;
+import pe.com.rebolsysBackend.dto.mantenimiento.CategoriaResponseDTO;
+import pe.com.rebolsysBackend.dto.configuracion.TipoHabitacionResponseDTO;
+import pe.com.rebolsysBackend.dto.mantenimiento.TipoItemResponseDTO;
 import tools.jackson.databind.json.JsonMapper;
 
 @Configuration(proxyBeanMethods = false)

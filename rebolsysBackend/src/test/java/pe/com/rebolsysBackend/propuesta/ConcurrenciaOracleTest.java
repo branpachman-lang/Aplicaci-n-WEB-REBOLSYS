@@ -14,11 +14,24 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
-import pe.com.rebolsysBackend.dto.*;
+import pe.com.rebolsysBackend.dto.caja.GastoFiltroDTO;
+import pe.com.rebolsysBackend.dto.caja.GastoRequestDTO;
+import pe.com.rebolsysBackend.dto.caja.cobros.PagoCuentaDTO;
+import pe.com.rebolsysBackend.dto.comun.OperacionUsuarioDTO;
+import pe.com.rebolsysBackend.dto.reservas.ReservaDetalleRegistroDTO;
+import pe.com.rebolsysBackend.dto.reservas.ReservaOcupanteRegistroDTO;
+import pe.com.rebolsysBackend.dto.reservas.ReservaPagoRegistroDTO;
+import pe.com.rebolsysBackend.dto.reservas.ReservaRegistroRequestDTO;
+import pe.com.rebolsysBackend.dto.ventas.VentaLineaRegistroDTO;
+import pe.com.rebolsysBackend.dto.ventas.VentaRequestDTO;
+import pe.com.rebolsysBackend.service.service.caja.GastoService;
+import pe.com.rebolsysBackend.service.service.reservas.CuentaReservaService;
+import pe.com.rebolsysBackend.service.service.reservas.ReservaService;
+import pe.com.rebolsysBackend.service.service.ventas.CuentaVentaService;
+import pe.com.rebolsysBackend.service.service.ventas.VentaService;
 import pe.com.rebolsysBackend.entity.*;
 import pe.com.rebolsysBackend.enums.*;
 import pe.com.rebolsysBackend.exception.ReglaNegocioException;
-import pe.com.rebolsysBackend.service.service.*;
 
 /**
  * Transacciones independientes reales; elimina exclusivamente las filas creadas por cada prueba.

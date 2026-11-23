@@ -13,11 +13,11 @@ import org.springframework.web.servlet.mvc.method.annotation.*;
 import org.springframework.web.context.request.*;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.ObjectNode;
-import pe.com.rebolsysBackend.dto.LimpiezaDTO.Borrador;
-import pe.com.rebolsysBackend.dto.LimpiezaDTO.TicketDetalle;
-import pe.com.rebolsysBackend.dto.SeguridadDTO.*;
+import pe.com.rebolsysBackend.dto.limpieza.LimpiezaDTO.Borrador;
+import pe.com.rebolsysBackend.dto.limpieza.LimpiezaDTO.TicketDetalle;
+import pe.com.rebolsysBackend.dto.accesos.SeguridadDTO.*;
 import pe.com.rebolsysBackend.security.CredencialesService.Temporal;
-import static pe.com.rebolsysBackend.service.impl.ReglasPropuesta.exigir;
+import static pe.com.rebolsysBackend.service.impl.comun.ReglasPropuesta.exigir;
 
 @ControllerAdvice
 @RequiredArgsConstructor

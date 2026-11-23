@@ -24,12 +24,31 @@ import org.springframework.transaction.support.AbstractPlatformTransactionManage
 import org.springframework.transaction.support.DefaultTransactionStatus;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
-import pe.com.rebolsysBackend.dto.*;
-import pe.com.rebolsysBackend.dto.SistemaDTO.ParametrosComerciales;
+import pe.com.rebolsysBackend.dto.mantenimiento.CategoriaRequestDTO;
+import pe.com.rebolsysBackend.dto.mantenimiento.TipoItemRequestDTO;
+import pe.com.rebolsysBackend.repository.accesos.UsuarioRepository;
+import pe.com.rebolsysBackend.repository.caja.TipoMovimientoCajaRepository;
+import pe.com.rebolsysBackend.repository.caja.TurnoCajaRepository;
+import pe.com.rebolsysBackend.repository.caja.cobros.FormaPagoRepository;
+import pe.com.rebolsysBackend.repository.comun.documentos.TipoDocumentoRepository;
+import pe.com.rebolsysBackend.repository.configuracion.TipoHabitacionRepository;
+import pe.com.rebolsysBackend.repository.mantenimiento.CategoriaRepository;
+import pe.com.rebolsysBackend.repository.mantenimiento.HabitacionRepository;
+import pe.com.rebolsysBackend.repository.mantenimiento.ItemRepository;
+import pe.com.rebolsysBackend.repository.mantenimiento.ProductoRepository;
+import pe.com.rebolsysBackend.repository.mantenimiento.TipoItemRepository;
+import pe.com.rebolsysBackend.service.impl.comun.ReglasPropuesta;
+import pe.com.rebolsysBackend.service.impl.configuracion.TipoHabitacionServiceImpl;
+import pe.com.rebolsysBackend.service.impl.mantenimiento.CategoriaServiceImpl;
+import pe.com.rebolsysBackend.service.impl.mantenimiento.TipoItemServiceImpl;
+import pe.com.rebolsysBackend.service.impl.reservas.CatalogoServiceImpl;
+import pe.com.rebolsysBackend.service.impl.reservas.CatalogosEstaticosService;
+import pe.com.rebolsysBackend.service.service.configuracion.TipoHabitacionService;
+import pe.com.rebolsysBackend.service.service.mantenimiento.CategoriaService;
+import pe.com.rebolsysBackend.service.service.mantenimiento.TipoItemService;
+import pe.com.rebolsysBackend.service.service.reservas.CatalogoService;
+import pe.com.rebolsysBackend.dto.configuracion.SistemaDTO.ParametrosComerciales;
 import pe.com.rebolsysBackend.entity.*;
-import pe.com.rebolsysBackend.repository.*;
-import pe.com.rebolsysBackend.service.impl.*;
-import pe.com.rebolsysBackend.service.service.*;
 
 class CacheCatalogosTest {
   @Configuration(proxyBeanMethods = false)

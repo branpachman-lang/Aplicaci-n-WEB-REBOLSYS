@@ -12,15 +12,18 @@ import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import pe.com.rebolsysBackend.dto.caja.GastoFiltroDTO;
+import pe.com.rebolsysBackend.dto.caja.GastoRequestDTO;
+import pe.com.rebolsysBackend.dto.caja.GastoResponseDTO;
+import pe.com.rebolsysBackend.dto.reservas.CatalogoItemResponseDTO;
 import pe.com.rebolsysBackend.config.MockMvcReglasNegocio;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
-import pe.com.rebolsysBackend.dto.*;
 import pe.com.rebolsysBackend.entity.*;
 import pe.com.rebolsysBackend.enums.EstadoUsuario;
 import pe.com.rebolsysBackend.exception.*;
-import pe.com.rebolsysBackend.service.service.GastoService;
+import pe.com.rebolsysBackend.service.service.caja.GastoService;
 import tools.jackson.databind.ObjectMapper;
 
 @SpringBootTest(properties = {"spring.jpa.show-sql=false", "logging.level.pe.com.rebolsysBackend=INFO"})

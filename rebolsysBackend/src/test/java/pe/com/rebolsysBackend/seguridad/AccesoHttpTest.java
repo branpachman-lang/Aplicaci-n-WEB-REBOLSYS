@@ -37,7 +37,7 @@ import pe.com.rebolsysBackend.security.AccesosService;
 import pe.com.rebolsysBackend.security.CredencialesService;
 import pe.com.rebolsysBackend.security.JwtService;
 import pe.com.rebolsysBackend.security.PermisosEndpoint;
-import pe.com.rebolsysBackend.service.service.ProveedorFacturacionClient;
+import pe.com.rebolsysBackend.service.service.comun.comprobantes.ProveedorFacturacionClient;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 

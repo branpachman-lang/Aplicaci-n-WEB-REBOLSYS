@@ -3,9 +3,9 @@ package pe.com.rebolsysBackend.validation;
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
 import lombok.RequiredArgsConstructor;
-import pe.com.rebolsysBackend.dto.ClienteRegistroRequestDTO;
+import pe.com.rebolsysBackend.dto.mantenimiento.ClienteRegistroRequestDTO;
 import pe.com.rebolsysBackend.entity.TipoDocumento;
-import pe.com.rebolsysBackend.repository.TipoDocumentoRepository;
+import pe.com.rebolsysBackend.repository.comun.documentos.TipoDocumentoRepository;
 
 @RequiredArgsConstructor
 public class DocumentoIdentidadValidator implements ConstraintValidator<DocumentoIdentidadValido, ClienteRegistroRequestDTO> {

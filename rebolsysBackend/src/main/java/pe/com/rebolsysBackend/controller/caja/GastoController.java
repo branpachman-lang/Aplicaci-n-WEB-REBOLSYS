@@ -1,0 +1,64 @@
+package pe.com.rebolsysBackend.controller.caja;
+
+import org.springframework.security.access.prepost.PreAuthorize;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.*;
+import java.util.*;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.*;
+import org.springframework.web.bind.annotation.*;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springdoc.core.annotations.ParameterObject;
+import pe.com.rebolsysBackend.dto.caja.GastoFiltroDTO;
+import pe.com.rebolsysBackend.dto.caja.GastoHistorialDTO;
+import pe.com.rebolsysBackend.dto.caja.GastoRequestDTO;
+import pe.com.rebolsysBackend.dto.caja.GastoResponseDTO;
+import pe.com.rebolsysBackend.dto.reservas.CatalogoItemResponseDTO;
+import pe.com.rebolsysBackend.service.service.caja.GastoService;
+
+@RestController
+@RequestMapping("/api/v1/gastos")
+@RequiredArgsConstructor
+@Tag(name = "Gastos")
+public class GastoController {
+  private final GastoService servicio;
+
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('GASTOS:CREAR')")
+  @PostMapping
+  @ResponseStatus(HttpStatus.CREATED)
+  @Operation(summary = "Registrar gasto del turno abierto del recepcionista")
+  public GastoResponseDTO registrar(@Valid @RequestBody GastoRequestDTO r) {
+    return servicio.registrar(r);
+  }
+
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('GASTOS:VER')")
+  @GetMapping("/{id}")
+  @Operation(summary = "Consultar detalle de un gasto y su responsable")
+  public GastoResponseDTO obtener(@PathVariable Long id) {
+    return servicio.obtener(id);
+  }
+
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('GASTOS:VER')")
+  @GetMapping
+  @Operation(summary = "Consultar listado anterior de gastos de un turno")
+  public List<GastoResponseDTO> listar(@RequestParam @Positive Long idTurno) {
+    return servicio.listar(idTurno);
+  }
+
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('GASTOS:VER')")
+  @GetMapping("/historial")
+  @Operation(summary = "Consultar historial filtrable de gastos y total gastado",
+          description = "Fechas inclusivas en America/Lima. Página desde cero y tamaño por defecto 20. "
+                  + "El resumen usa todos los resultados filtrados, sin limitarse a la página.")
+  public GastoHistorialDTO historial(@Valid @ParameterObject @ModelAttribute GastoFiltroDTO filtros) {
+    return servicio.historial(filtros);
+  }
+
+  @PreAuthorize("hasRole('GERENTE') or hasAuthority('GASTOS:VER')")
+  @GetMapping("/tipos")
+  @Operation(summary = "Consultar categorías disponibles para registrar o filtrar gastos")
+  public List<CatalogoItemResponseDTO> tipos() {
+    return servicio.tipos();
+  }
+}

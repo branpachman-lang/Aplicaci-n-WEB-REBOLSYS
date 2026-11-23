@@ -1,6 +1,6 @@
 package pe.com.rebolsysBackend.security;
 
-import static pe.com.rebolsysBackend.service.impl.ReglasPropuesta.exigir;
+import static pe.com.rebolsysBackend.service.impl.comun.ReglasPropuesta.exigir;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.LockModeType;

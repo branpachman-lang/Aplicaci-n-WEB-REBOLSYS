@@ -11,17 +11,18 @@ import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import pe.com.rebolsysBackend.dto.comun.OperacionUsuarioDTO;
+import pe.com.rebolsysBackend.dto.comun.comprobantes.EmisionElectronicaRequestDTO;
 import pe.com.rebolsysBackend.config.MockMvcReglasNegocio;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 import pe.com.rebolsysBackend.config.FacturacionApisPeruProperties;
-import pe.com.rebolsysBackend.dto.*;
 import pe.com.rebolsysBackend.entity.*;
 import pe.com.rebolsysBackend.entity.id.SerieComprobanteId;
 import pe.com.rebolsysBackend.enums.*;
-import pe.com.rebolsysBackend.service.impl.ApisPeruFacturacionClient;
-import pe.com.rebolsysBackend.service.service.EmisionElectronicaService;
+import pe.com.rebolsysBackend.service.impl.comun.comprobantes.ApisPeruFacturacionClient;
+import pe.com.rebolsysBackend.service.service.comun.comprobantes.EmisionElectronicaService;
 import tools.jackson.databind.ObjectMapper;
 
 @SpringBootTest(properties={"spring.jpa.show-sql=false","logging.level.pe.com.rebolsysBackend=INFO",

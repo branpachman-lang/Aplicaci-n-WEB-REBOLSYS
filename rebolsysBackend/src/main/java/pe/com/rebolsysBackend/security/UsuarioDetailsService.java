@@ -10,7 +10,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import pe.com.rebolsysBackend.repository.UsuarioRepository;
+import pe.com.rebolsysBackend.repository.accesos.UsuarioRepository;
 
 /** Carga el estado y los permisos actuales, sin confiar en roles enviados por el cliente. */
 @Service

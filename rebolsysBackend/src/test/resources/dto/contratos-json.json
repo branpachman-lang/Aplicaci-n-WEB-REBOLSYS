@@ -1,6 +1,6 @@
 [ {
   "nombre" : "dni",
-  "tipo" : "pe.com.rebolsysBackend.dto.ApisPeruDniResponseDTO",
+  "tipo" : "pe.com.rebolsysBackend.dto.comun.documentos.ApisPeruDniResponseDTO",
   "entrada" : {
     "dni" : "48273619",
     "nombres" : "Lucía",
@@ -11,7 +11,7 @@
   "salida" : "{\"dni\":\"48273619\",\"nombres\":\"Lucía\",\"apellidoPaterno\":\"Rojas\",\"apellidoMaterno\":\"Medina\"}"
 }, {
   "nombre" : "ruc",
-  "tipo" : "pe.com.rebolsysBackend.dto.ApisPeruRucResponseDTO",
+  "tipo" : "pe.com.rebolsysBackend.dto.comun.documentos.ApisPeruRucResponseDTO",
   "entrada" : {
     "ruc" : "20601234567",
     "razonSocial" : "Hospedaje de prueba SAC",
@@ -23,7 +23,7 @@
   "salida" : "{\"ruc\":\"20601234567\",\"razonSocial\":\"Hospedaje de prueba SAC\",\"direccion\":\"Av. Central 123\",\"estado\":\"ACTIVO\",\"condicion\":\"HABIDO\"}"
 }, {
   "nombre" : "catalogo",
-  "tipo" : "pe.com.rebolsysBackend.dto.CatalogoItemResponseDTO",
+  "tipo" : "pe.com.rebolsysBackend.dto.reservas.CatalogoItemResponseDTO",
   "entrada" : {
     "id" : 1,
     "nombre" : "DNI",
@@ -32,14 +32,14 @@
   "salida" : "{\"codigoSunat\":\"1\",\"id\":1,\"nombre\":\"DNI\"}"
 }, {
   "nombre" : "categoria-request",
-  "tipo" : "pe.com.rebolsysBackend.dto.CategoriaRequestDTO",
+  "tipo" : "pe.com.rebolsysBackend.dto.mantenimiento.CategoriaRequestDTO",
   "entrada" : {
     "nombreCategoria" : "Bebidas"
   },
   "salida" : "{\"nombreCategoria\":\"Bebidas\"}"
 }, {
   "nombre" : "categoria-response",
-  "tipo" : "pe.com.rebolsysBackend.dto.CategoriaResponseDTO",
+  "tipo" : "pe.com.rebolsysBackend.dto.mantenimiento.CategoriaResponseDTO",
   "entrada" : {
     "idCategoria" : 2,
     "nombreCategoria" : "Bebidas"
@@ -47,7 +47,7 @@
   "salida" : "{\"idCategoria\":2,\"nombreCategoria\":\"Bebidas\"}"
 }, {
   "nombre" : "persona",
-  "tipo" : "pe.com.rebolsysBackend.dto.ClienteRegistroRequestDTO",
+  "tipo" : "pe.com.rebolsysBackend.dto.mantenimiento.ClienteRegistroRequestDTO",
   "entrada" : {
     "idTipoDocumento" : 1,
     "numeroDocumento" : "48273619",
@@ -63,7 +63,7 @@
   "salida" : "{\"idTipoDocumento\":1,\"numeroDocumento\":\"48273619\",\"empresa\":false,\"nombres\":\"Lucía\",\"apellidos\":\"Rojas Medina\",\"fechaNacimiento\":\"1992-03-14\",\"razonSocial\":null,\"direccionFiscal\":null,\"correo\":\"lucia@example.test\",\"telefono\":\"987654321\"}"
 }, {
   "nombre" : "cliente-resumen",
-  "tipo" : "pe.com.rebolsysBackend.dto.ClienteResumenResponseDTO",
+  "tipo" : "pe.com.rebolsysBackend.dto.mantenimiento.ClienteResumenResponseDTO",
   "entrada" : {
     "idCliente" : 12,
     "datos" : {
@@ -82,7 +82,7 @@
   "salida" : "{\"idCliente\":12,\"datos\":{\"idTipoDocumento\":1,\"numeroDocumento\":\"48273619\",\"empresa\":false,\"nombres\":\"Lucía\",\"apellidos\":\"Rojas Medina\",\"fechaNacimiento\":\"1992-03-14\",\"razonSocial\":null,\"direccionFiscal\":null,\"correo\":\"lucia@example.test\",\"telefono\":\"987654321\"}}"
 }, {
   "nombre" : "cliente-detalle",
-  "tipo" : "pe.com.rebolsysBackend.dto.ClienteDetalleDTO",
+  "tipo" : "pe.com.rebolsysBackend.dto.mantenimiento.ClienteDetalleDTO",
   "entrada" : {
     "idCliente" : 12,
     "persona" : {
@@ -102,7 +102,7 @@
   "salida" : "{\"idCliente\":12,\"persona\":{\"idTipoDocumento\":1,\"numeroDocumento\":\"48273619\",\"empresa\":false,\"nombres\":\"Lucía\",\"apellidos\":\"Rojas Medina\",\"fechaNacimiento\":\"1992-03-14\",\"razonSocial\":null,\"direccionFiscal\":null,\"correo\":\"lucia@example.test\",\"telefono\":\"987654321\"},\"restriccionesMedicas\":\"Ninguna\"}"
 }, {
   "nombre" : "cliente-guardar",
-  "tipo" : "pe.com.rebolsysBackend.dto.ClienteGuardarDTO",
+  "tipo" : "pe.com.rebolsysBackend.dto.mantenimiento.ClienteGuardarDTO",
   "entrada" : {
     "persona" : {
       "idTipoDocumento" : 1,
@@ -121,7 +121,7 @@
   "salida" : "{\"persona\":{\"idTipoDocumento\":1,\"numeroDocumento\":\"48273619\",\"empresa\":false,\"nombres\":\"Lucía\",\"apellidos\":\"Rojas Medina\",\"fechaNacimiento\":\"1992-03-14\",\"razonSocial\":null,\"direccionFiscal\":null,\"correo\":\"lucia@example.test\",\"telefono\":\"987654321\"},\"restriccionesMedicas\":\"Ninguna\"}"
 }, {
   "nombre" : "consulta",
-  "tipo" : "pe.com.rebolsysBackend.dto.DocumentoConsultaResponseDTO",
+  "tipo" : "pe.com.rebolsysBackend.dto.comun.documentos.DocumentoConsultaResponseDTO",
   "entrada" : {
     "numeroDocumento" : "48273619",
     "nombres" : "Lucía",
@@ -132,7 +132,7 @@
   "salida" : "{\"numeroDocumento\":\"48273619\",\"nombres\":\"Lucía\",\"apellidos\":\"Rojas Medina\",\"razonSocial\":null,\"direccionFiscal\":null}"
 }, {
   "nombre" : "ocupacion",
-  "tipo" : "pe.com.rebolsysBackend.dto.HabitacionReservaResponseDTO",
+  "tipo" : "pe.com.rebolsysBackend.dto.reservas.HabitacionReservaResponseDTO",
   "entrada" : {
     "referencia" : "RES-12",
     "cliente" : "Lucía Rojas Medina",
@@ -143,7 +143,7 @@
   "salida" : "{\"referencia\":\"RES-12\",\"cliente\":\"Lucía Rojas Medina\",\"ingreso\":\"2026-11-19T14:00:00\",\"salida\":\"2026-11-21T12:00:00\",\"estado\":\"EN_CURSO\"}"
 }, {
   "nombre" : "health",
-  "tipo" : "pe.com.rebolsysBackend.dto.HealthResponseDTO",
+  "tipo" : "pe.com.rebolsysBackend.dto.comun.HealthResponseDTO",
   "entrada" : {
     "application" : "rebolsysBackend",
     "status" : "UP"
@@ -151,7 +151,7 @@
   "salida" : "{\"application\":\"rebolsysBackend\",\"status\":\"UP\"}"
 }, {
   "nombre" : "pagina",
-  "tipo" : "pe.com.rebolsysBackend.dto.PaginaResponseDTO",
+  "tipo" : "pe.com.rebolsysBackend.dto.comun.PaginaResponseDTO",
   "entrada" : {
     "contenido" : [ {
       "idCategoria" : 2,
@@ -166,7 +166,7 @@
   "salida" : "{\"contenido\":[{\"idCategoria\":2,\"nombreCategoria\":\"Bebidas\"}],\"pagina\":0,\"tamanio\":10,\"totalElementos\":1,\"totalPaginas\":1,\"ultima\":true}"
 }, {
   "nombre" : "producto-request",
-  "tipo" : "pe.com.rebolsysBackend.dto.ProductoRequestDTO",
+  "tipo" : "pe.com.rebolsysBackend.dto.mantenimiento.ProductoRequestDTO",
   "entrada" : {
     "nombreProducto" : "Agua sin gas 625 ml",
     "precioActual" : 2.5,
@@ -182,7 +182,7 @@
   "salida" : "{\"descripcion\":\"Agua de mesa\",\"estadoProducto\":\"ACTIVO\",\"idCategoria\":2,\"idUsuario\":7,\"imagenRuta\":\"/productos/agua.webp\",\"nombreProducto\":\"Agua sin gas 625 ml\",\"precioActual\":2.5,\"stock\":8,\"stockAnterior\":8,\"stockMinimo\":10}"
 }, {
   "nombre" : "producto-stock-omitido",
-  "tipo" : "pe.com.rebolsysBackend.dto.ProductoRequestDTO",
+  "tipo" : "pe.com.rebolsysBackend.dto.mantenimiento.ProductoRequestDTO",
   "entrada" : {
     "nombreProducto" : "Agua sin gas 625 ml",
     "precioActual" : 2.5,
@@ -196,7 +196,7 @@
   "salida" : "{\"descripcion\":\"Agua de mesa\",\"estadoProducto\":\"ACTIVO\",\"idCategoria\":2,\"idUsuario\":7,\"imagenRuta\":\"/productos/agua.webp\",\"nombreProducto\":\"Agua sin gas 625 ml\",\"precioActual\":2.5,\"stock\":0,\"stockAnterior\":8,\"stockMinimo\":0}"
 }, {
   "nombre" : "producto-stock-nulo",
-  "tipo" : "pe.com.rebolsysBackend.dto.ProductoRequestDTO",
+  "tipo" : "pe.com.rebolsysBackend.dto.mantenimiento.ProductoRequestDTO",
   "entrada" : {
     "nombreProducto" : "Agua sin gas 625 ml",
     "precioActual" : 2.5,
@@ -212,7 +212,7 @@
   "salida" : "{\"descripcion\":\"Agua de mesa\",\"estadoProducto\":\"ACTIVO\",\"idCategoria\":2,\"idUsuario\":7,\"imagenRuta\":\"/productos/agua.webp\",\"nombreProducto\":\"Agua sin gas 625 ml\",\"precioActual\":2.5,\"stock\":null,\"stockAnterior\":8,\"stockMinimo\":null}"
 }, {
   "nombre" : "producto-response",
-  "tipo" : "pe.com.rebolsysBackend.dto.ProductoResponseDTO",
+  "tipo" : "pe.com.rebolsysBackend.dto.mantenimiento.ProductoResponseDTO",
   "entrada" : {
     "idProducto" : 18,
     "nombreProducto" : "Agua sin gas 625 ml",

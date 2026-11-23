@@ -20,13 +20,17 @@ import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
-import pe.com.rebolsysBackend.dto.*;
+import pe.com.rebolsysBackend.dto.configuracion.TipoHabitacionResponseDTO;
+import pe.com.rebolsysBackend.dto.mantenimiento.CategoriaRequestDTO;
+import pe.com.rebolsysBackend.dto.mantenimiento.CategoriaResponseDTO;
+import pe.com.rebolsysBackend.dto.mantenimiento.TipoItemResponseDTO;
+import pe.com.rebolsysBackend.dto.reservas.CatalogoItemResponseDTO;
 import pe.com.rebolsysBackend.entity.Categoria;
-import pe.com.rebolsysBackend.repository.CategoriaRepository;
-import pe.com.rebolsysBackend.repository.ProductoRepository;
-import pe.com.rebolsysBackend.service.impl.CategoriaServiceImpl;
-import pe.com.rebolsysBackend.service.impl.ReglasPropuesta;
-import pe.com.rebolsysBackend.service.service.CategoriaService;
+import pe.com.rebolsysBackend.repository.mantenimiento.CategoriaRepository;
+import pe.com.rebolsysBackend.repository.mantenimiento.ProductoRepository;
+import pe.com.rebolsysBackend.service.impl.mantenimiento.CategoriaServiceImpl;
+import pe.com.rebolsysBackend.service.impl.comun.ReglasPropuesta;
+import pe.com.rebolsysBackend.service.service.mantenimiento.CategoriaService;
 
 /** Redis local real y repositorio controlado: nunca conecta con Oracle. */
 @EnabledIfEnvironmentVariable(named = "RUN_REDIS_TESTS", matches = "true")

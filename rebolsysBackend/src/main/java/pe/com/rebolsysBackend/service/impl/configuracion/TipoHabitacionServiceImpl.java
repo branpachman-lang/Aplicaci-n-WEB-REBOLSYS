@@ -1,0 +1,108 @@
+package pe.com.rebolsysBackend.service.impl.configuracion;
+
+import static pe.com.rebolsysBackend.service.impl.comun.ReglasPropuesta.exigir;
+import static pe.com.rebolsysBackend.config.CacheConfig.TIPOS_HABITACION;
+
+import java.util.List;
+import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import pe.com.rebolsysBackend.dto.configuracion.TipoHabitacionRequestDTO;
+import pe.com.rebolsysBackend.dto.configuracion.TipoHabitacionResponseDTO;
+import pe.com.rebolsysBackend.repository.configuracion.TipoHabitacionRepository;
+import pe.com.rebolsysBackend.repository.mantenimiento.HabitacionRepository;
+import pe.com.rebolsysBackend.service.impl.comun.ReglasPropuesta;
+import pe.com.rebolsysBackend.dto.configuracion.SistemaDTO.ParametrosComerciales;
+import pe.com.rebolsysBackend.entity.TipoHabitacion;
+import pe.com.rebolsysBackend.exception.RecursoNoEncontradoException;
+import pe.com.rebolsysBackend.service.service.configuracion.TipoHabitacionService;
+
+@Service
+@RequiredArgsConstructor
+public class TipoHabitacionServiceImpl implements TipoHabitacionService {
+  private final TipoHabitacionRepository tipos;
+  private final HabitacionRepository habitaciones;
+  private final ReglasPropuesta reglas;
+
+  @Override
+  @Transactional
+  @CacheEvict(cacheNames = TIPOS_HABITACION, allEntries = true)
+  public TipoHabitacionResponseDTO create(TipoHabitacionRequestDTO r) {
+    reglas.validar(r);
+    var t = new TipoHabitacion();
+    completar(t, r);
+    return respuesta(tipos.saveAndFlush(t));
+  }
+
+  @Override
+  @Transactional
+  @CacheEvict(cacheNames = TIPOS_HABITACION, allEntries = true)
+  public TipoHabitacionResponseDTO update(Long id, TipoHabitacionRequestDTO r) {
+    reglas.validar(r);
+    var t = bloquear(id);
+    validarCapacidad(id, r.capacidadMax());
+    completar(t, r);
+    return respuesta(tipos.saveAndFlush(t));
+  }
+
+  @Override
+  @Transactional
+  @CacheEvict(cacheNames = TIPOS_HABITACION, allEntries = true)
+  public TipoHabitacionResponseDTO actualizarParametros(Long id, ParametrosComerciales datos) {
+    reglas.validar(datos);
+    var tipo = bloquear(id);
+    validarCapacidad(id, datos.capacidadMax());
+    tipo.setCapacidadMax(datos.capacidadMax());
+    tipo.setPrecioBase(datos.precioBase());
+    return respuesta(tipos.saveAndFlush(tipo));
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public TipoHabitacionResponseDTO read(Long id) {
+    return respuesta(tipos.findById(id)
+        .orElseThrow(() -> new RecursoNoEncontradoException("El tipo de habitación no existe")));
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  @Cacheable(cacheNames = TIPOS_HABITACION, key = "'todos'")
+  public List<TipoHabitacionResponseDTO> readAll() {
+    return tipos.findAll(Sort.by("nombreTipo")).stream().map(this::respuesta).toList();
+  }
+
+  @Override
+  @Transactional
+  @CacheEvict(cacheNames = TIPOS_HABITACION, allEntries = true)
+  public void delete(Long id) {
+    var t = bloquear(id);
+    exigir(!habitaciones.existsByTipoHabitacionIdTipoHabitacion(id),
+        "El tipo tiene habitaciones asociadas");
+    tipos.delete(t);
+    tipos.flush();
+  }
+
+  private TipoHabitacion bloquear(Long id) {
+    return tipos.bloquear(id)
+        .orElseThrow(() -> new RecursoNoEncontradoException("El tipo de habitación no existe"));
+  }
+
+  private void completar(TipoHabitacion t, TipoHabitacionRequestDTO r) {
+    t.setNombreTipo(r.nombreTipo().trim());
+    t.setCapacidadMax(r.capacidadMax());
+    t.setPrecioBase(r.precioBase());
+  }
+
+  private void validarCapacidad(Long id, int capacidad) {
+    exigir(!habitaciones.existsByTipoHabitacionIdTipoHabitacionAndCapacidadPersonasGreaterThan(id, capacidad),
+        "Hay habitaciones cuya capacidad supera el nuevo máximo del tipo");
+  }
+
+  private TipoHabitacionResponseDTO respuesta(TipoHabitacion t) {
+    return new TipoHabitacionResponseDTO(
+        t.getIdTipoHabitacion(), t.getNombreTipo(), t.getCapacidadMax(), t.getPrecioBase());
+  }
+}

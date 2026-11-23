@@ -1,0 +1,13 @@
+package pe.com.rebolsysBackend.dto.reservas;
+
+import jakarta.validation.constraints.*;
+import java.util.*;
+import pe.com.rebolsysBackend.enums.*;
+
+public record ReservaOcupanteRespuestaDTO(
+    Long idReservaOcupante,
+    Long idCliente,
+    String nombre,
+    Long idOcupanteResponsable,
+    ParentescoResponsable parentescoResponsable,
+    boolean ocupaPlazaCama) {}

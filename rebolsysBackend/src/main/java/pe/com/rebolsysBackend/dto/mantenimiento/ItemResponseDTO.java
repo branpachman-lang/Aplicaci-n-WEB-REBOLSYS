@@ -1,0 +1,15 @@
+package pe.com.rebolsysBackend.dto.mantenimiento;
+
+import jakarta.validation.constraints.*;
+import java.util.*;
+import pe.com.rebolsysBackend.enums.*;
+
+public record ItemResponseDTO(
+    Long idItem,
+    String nombreItem,
+    Long idTipoItem,
+    EstadoItem estadoItem,
+    Long idHabitacion,
+    EstadoConservacion estadoActualItem,
+    String nombreTipo,
+    String numeroCuarto) {}

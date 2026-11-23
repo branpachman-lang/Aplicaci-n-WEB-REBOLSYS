@@ -1,6 +1,6 @@
 package pe.com.rebolsysBackend.security;
 
-import static pe.com.rebolsysBackend.service.impl.ReglasPropuesta.*;
+import static pe.com.rebolsysBackend.service.impl.comun.ReglasPropuesta.*;
 
 import jakarta.persistence.EntityManager;
 import java.nio.charset.StandardCharsets;
@@ -15,8 +15,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pe.com.rebolsysBackend.entity.*;
 import pe.com.rebolsysBackend.enums.EstadoUsuario;
-import pe.com.rebolsysBackend.repository.TurnoCajaRepository;
-import pe.com.rebolsysBackend.repository.UsuarioRepository;
+import pe.com.rebolsysBackend.repository.caja.TurnoCajaRepository;
+import pe.com.rebolsysBackend.repository.accesos.UsuarioRepository;
 
 @Service
 @RequiredArgsConstructor

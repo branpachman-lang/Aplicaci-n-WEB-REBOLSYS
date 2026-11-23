@@ -1,9 +1,0 @@
-package pe.com.rebolsysBackend.dto;
-
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
-
-public record CategoriaRequestDTO(
-    @NotBlank(message = "nombreCategoria es obligatorio")
-    @Size(min = 1, max = 30, message = "nombreCategoria debe tener entre 1 y 30 caracteres")
-    String nombreCategoria) {}

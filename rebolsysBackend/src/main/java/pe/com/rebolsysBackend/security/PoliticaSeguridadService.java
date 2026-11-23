@@ -4,9 +4,9 @@ import java.time.Duration;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import pe.com.rebolsysBackend.dto.SistemaDTO.Politica;
+import pe.com.rebolsysBackend.dto.configuracion.SistemaDTO.Politica;
 import pe.com.rebolsysBackend.entity.ParametroSistema;
-import pe.com.rebolsysBackend.repository.SistemaRepository;
+import pe.com.rebolsysBackend.repository.configuracion.SistemaRepository;
 
 @Service
 @Transactional(readOnly = true)

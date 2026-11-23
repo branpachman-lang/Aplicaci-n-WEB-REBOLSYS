@@ -1,5 +1,10 @@
 package pe.com.rebolsysBackend.config;
 
+import pe.com.rebolsysBackend.dto.accesos.SesionActualDTO;
+import pe.com.rebolsysBackend.dto.caja.cobros.PagoCuentaDTO;
+import pe.com.rebolsysBackend.dto.mantenimiento.ProductoRequestDTO;
+import pe.com.rebolsysBackend.dto.ventas.VentaConfirmacionDTO;
+import pe.com.rebolsysBackend.dto.ventas.VentaRequestDTO;
 import pe.com.rebolsysBackend.security.OperacionUsuarioBodyAdvice;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -10,7 +15,6 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.*;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.bind.annotation.*;
-import pe.com.rebolsysBackend.dto.*;
 import pe.com.rebolsysBackend.exception.GlobalExceptionHandler;
 import pe.com.rebolsysBackend.security.SesionOperacionService;
 import tools.jackson.databind.json.JsonMapper;

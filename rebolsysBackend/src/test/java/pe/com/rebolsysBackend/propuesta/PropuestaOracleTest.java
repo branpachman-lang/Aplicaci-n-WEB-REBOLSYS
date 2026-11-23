@@ -12,16 +12,56 @@ import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import pe.com.rebolsysBackend.dto.accesos.SesionActualDTO;
+import pe.com.rebolsysBackend.dto.caja.GastoFiltroDTO;
+import pe.com.rebolsysBackend.dto.caja.GastoRequestDTO;
+import pe.com.rebolsysBackend.dto.caja.cobros.PagoCuentaDTO;
+import pe.com.rebolsysBackend.dto.comun.OperacionUsuarioDTO;
+import pe.com.rebolsysBackend.dto.comun.comprobantes.ComprobanteCuentaDTO;
+import pe.com.rebolsysBackend.dto.configuracion.TipoHabitacionRequestDTO;
+import pe.com.rebolsysBackend.dto.mantenimiento.AjusteStockDTO;
+import pe.com.rebolsysBackend.dto.mantenimiento.CategoriaRequestDTO;
+import pe.com.rebolsysBackend.dto.mantenimiento.ClienteGuardarDTO;
+import pe.com.rebolsysBackend.dto.mantenimiento.HabitacionEstadoGuardarDTO;
+import pe.com.rebolsysBackend.dto.mantenimiento.HabitacionRequestDTO;
+import pe.com.rebolsysBackend.dto.mantenimiento.ItemAsignacionDTO;
+import pe.com.rebolsysBackend.dto.mantenimiento.ItemConservacionDTO;
+import pe.com.rebolsysBackend.dto.mantenimiento.ItemHistorialDTO;
+import pe.com.rebolsysBackend.dto.mantenimiento.ItemRequestDTO;
+import pe.com.rebolsysBackend.dto.mantenimiento.ProductoRequestDTO;
+import pe.com.rebolsysBackend.dto.mantenimiento.ProductoResponseDTO;
+import pe.com.rebolsysBackend.dto.mantenimiento.TipoItemRequestDTO;
+import pe.com.rebolsysBackend.dto.reservas.ReservaComprobanteRegistroDTO;
+import pe.com.rebolsysBackend.dto.reservas.ReservaDetalleRegistroDTO;
+import pe.com.rebolsysBackend.dto.reservas.ReservaOcupanteRegistroDTO;
+import pe.com.rebolsysBackend.dto.reservas.ReservaOcupanteRespuestaDTO;
+import pe.com.rebolsysBackend.dto.reservas.ReservaOcupantesGuardarDTO;
+import pe.com.rebolsysBackend.dto.reservas.ReservaPagoRegistroDTO;
+import pe.com.rebolsysBackend.dto.reservas.ReservaRegistroRequestDTO;
+import pe.com.rebolsysBackend.dto.ventas.VentaEditarDTO;
+import pe.com.rebolsysBackend.dto.ventas.VentaLineaRegistroDTO;
+import pe.com.rebolsysBackend.dto.ventas.VentaLineaRespuestaDTO;
+import pe.com.rebolsysBackend.dto.ventas.VentaRequestDTO;
+import pe.com.rebolsysBackend.repository.mantenimiento.MovimientoInventarioRepository;
+import pe.com.rebolsysBackend.service.service.caja.GastoService;
+import pe.com.rebolsysBackend.service.service.configuracion.TipoHabitacionService;
+import pe.com.rebolsysBackend.service.service.mantenimiento.CategoriaService;
+import pe.com.rebolsysBackend.service.service.mantenimiento.ClienteService;
+import pe.com.rebolsysBackend.service.service.mantenimiento.HabitacionService;
+import pe.com.rebolsysBackend.service.service.mantenimiento.ItemService;
+import pe.com.rebolsysBackend.service.service.mantenimiento.ProductoService;
+import pe.com.rebolsysBackend.service.service.mantenimiento.TipoItemService;
+import pe.com.rebolsysBackend.service.service.reservas.CuentaReservaService;
+import pe.com.rebolsysBackend.service.service.reservas.ReservaService;
+import pe.com.rebolsysBackend.service.service.ventas.CuentaVentaService;
+import pe.com.rebolsysBackend.service.service.ventas.VentaService;
 import pe.com.rebolsysBackend.config.MockMvcReglasNegocio;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
-import pe.com.rebolsysBackend.dto.*;
 import pe.com.rebolsysBackend.entity.*;
 import pe.com.rebolsysBackend.enums.*;
 import pe.com.rebolsysBackend.exception.ReglaNegocioException;
-import pe.com.rebolsysBackend.repository.*;
-import pe.com.rebolsysBackend.service.service.*;
 import tools.jackson.databind.ObjectMapper;
 
 @SpringBootTest(
@@ -45,7 +85,7 @@ class PropuestaOracleTest {
   @Autowired TipoItemService tiposItem;
   @Autowired CategoriaService categorias;
   @Autowired CuentaReservaService cuentasReserva;
-  @Autowired pe.com.rebolsysBackend.service.impl.AuditoriaOperacionService auditoriaOperacion;
+  @Autowired pe.com.rebolsysBackend.service.impl.comun.AuditoriaOperacionService auditoriaOperacion;
   @Autowired MovimientoInventarioRepository movimientos;
   Long adulto,
       menor,
@@ -1341,7 +1381,7 @@ class PropuestaOracleTest {
     var borrador = ventas.registrar(carrito("otro-borrador", segundo, 1, 1));
     var t = em.find(TurnoCaja.class, turno);
     t.setEstadoSesion(0);
-    t.setFechaCierre(pe.com.rebolsysBackend.service.impl.ReglasPropuesta.ahora());
+    t.setFechaCierre(pe.com.rebolsysBackend.service.impl.comun.ReglasPropuesta.ahora());
     em.flush();
     assertThat(cuentasVenta.pagar(v.idVenta(), req).pagado()).isEqualByComparingTo("5");
     assertThatThrownBy(() -> ventas.confirmar(borrador.idVenta(), new OperacionUsuarioDTO(usuario)))

@@ -6,8 +6,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.*;
 import org.springframework.web.servlet.config.annotation.*;
-import pe.com.rebolsysBackend.dto.SesionActualDTO;
-import pe.com.rebolsysBackend.service.impl.*;
+import pe.com.rebolsysBackend.service.impl.comun.AuditoriaOperacionService;
+import pe.com.rebolsysBackend.dto.accesos.SesionActualDTO;
 
 @Configuration
 @RequiredArgsConstructor

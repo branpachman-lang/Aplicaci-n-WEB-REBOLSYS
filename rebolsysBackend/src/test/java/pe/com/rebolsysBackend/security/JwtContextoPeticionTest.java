@@ -12,8 +12,8 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
-import pe.com.rebolsysBackend.repository.FormaPagoRepository;
-import pe.com.rebolsysBackend.repository.TurnoCajaRepository;
+import pe.com.rebolsysBackend.repository.caja.cobros.FormaPagoRepository;
+import pe.com.rebolsysBackend.repository.caja.TurnoCajaRepository;
 
 class JwtContextoPeticionTest {
   @AfterEach void limpiar() {

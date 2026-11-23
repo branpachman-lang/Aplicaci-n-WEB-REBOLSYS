@@ -1,6 +1,6 @@
 package pe.com.rebolsysBackend.security;
 
-import static pe.com.rebolsysBackend.service.impl.ReglasPropuesta.*;
+import static pe.com.rebolsysBackend.service.impl.comun.ReglasPropuesta.*;
 
 import jakarta.persistence.EntityManager;
 import java.util.List;
@@ -8,11 +8,11 @@ import java.util.Locale;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import pe.com.rebolsysBackend.dto.SeguridadDTO.*;
+import pe.com.rebolsysBackend.dto.accesos.SeguridadDTO.*;
 import pe.com.rebolsysBackend.entity.*;
 import pe.com.rebolsysBackend.enums.EstadoUsuario;
 import pe.com.rebolsysBackend.exception.RecursoNoEncontradoException;
-import pe.com.rebolsysBackend.repository.UsuarioRepository;
+import pe.com.rebolsysBackend.repository.accesos.UsuarioRepository;
 
 @Service
 @RequiredArgsConstructor
