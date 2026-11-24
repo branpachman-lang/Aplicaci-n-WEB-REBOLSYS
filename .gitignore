@@ -7,12 +7,14 @@
 !/docs/
 /docs/*
 !/docs/despliegue/
+!/docs/calidad/
 
 # Dependencias, compilaciones y archivos de ejecucion.
 node_modules/
 target/
 dist/
 .angular/
+.scannerwork/
 .local/
 runtime/
 *.log

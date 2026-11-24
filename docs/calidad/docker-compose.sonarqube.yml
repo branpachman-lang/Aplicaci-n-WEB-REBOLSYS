@@ -1,0 +1,18 @@
+name: rebolsys-sonarqube
+
+services:
+  sonarqube:
+    image: sonarqube:26.11.0.134175-community
+    environment:
+      SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: 'true'
+    ports:
+      - '127.0.0.1:9000:9000'
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_extensions:/opt/sonarqube/extensions
+      - sonarqube_logs:/opt/sonarqube/logs
+
+volumes:
+  sonarqube_data:
+  sonarqube_extensions:
+  sonarqube_logs:
