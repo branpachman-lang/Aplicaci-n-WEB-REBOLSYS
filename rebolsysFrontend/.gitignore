@@ -70,6 +70,8 @@ proxy.qa.json
 !src/app/features/reservas/components/comprobante-dialog/comprobante-dialog.spec.ts
 !src/app/features/reservas/pages/reserva-list/reserva-list.spec.ts
 !src/app/features/reservas/services/reserva-service.spec.ts
+!src/app/features/caja/caja-panel.spec.ts
+!src/app/features/seguridad/acceso.spec.ts
 .env
 .env.*
 !.env.example
