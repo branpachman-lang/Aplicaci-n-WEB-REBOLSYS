@@ -7,7 +7,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://satellite-carmen-sofa-article.trycloudflare.com/api/:path*"
+      "destination": "https://stayed-kentucky-wilderness-retain.trycloudflare.com/api/:path*"
     },
     {
       "source": "/(.*)",
