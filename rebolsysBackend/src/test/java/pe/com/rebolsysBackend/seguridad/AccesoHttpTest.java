@@ -83,6 +83,36 @@ class AccesoHttpTest {
     assertThat(respuesta.getRequest().getSession(false)).isNull();
   }
 
+  /**
+   * Respaldo de java:S4502: CSRF está desactivado porque ninguna credencial viaja de forma
+   * automática. Las escrituras sin Bearer explícito se rechazan aunque el navegador adjunte
+   * cookies, credenciales Basic u orígenes ajenos, y ninguna respuesta crea una sesión.
+   */
+  @Test
+  void escriturasSinBearerExplicitoSeRechazanAunqueElNavegadorAdjunteCredenciales() throws Exception {
+    var cookie = new jakarta.servlet.http.Cookie("JSESSIONID", "sesion-de-otro-sitio");
+    var basic = "Basic " + java.util.Base64.getEncoder().encodeToString("gerencia:clave".getBytes());
+    List<AbstractMockHttpServletRequestBuilder<?>> escrituras = List.of(
+        post(API + "/gastos"), post(API + "/caja/turnos/1/cierre"), post(API + "/caja/turnos/1/movimientos"),
+        post(API + "/reservas"), post(API + "/sesion/cerrar"), post(API + "/sesion/contrasena"),
+        put(API + "/seguridad/usuarios/1/accesos"), delete(API + "/habitaciones/1"));
+    for (var escritura : escrituras) {
+      var resultado = mvc.perform(escritura.cookie(cookie)
+              .contentType(MediaType.APPLICATION_JSON).content("{}"))
+          .andExpect(status().isUnauthorized()).andReturn();
+      assertThat(resultado.getResponse().getHeader("Set-Cookie")).isNull();
+      assertThat(resultado.getRequest().getSession(false)).isNull();
+    }
+    mvc.perform(post(API + "/gastos").header("Authorization", basic)
+            .contentType(MediaType.APPLICATION_JSON).content("{}"))
+        .andExpect(status().isUnauthorized()).andExpect(header().string("WWW-Authenticate", "Bearer"));
+    // Un origen no autorizado no obtiene una respuesta CORS válida aunque intente adjuntar la cookie.
+    mvc.perform(post(API + "/gastos").cookie(cookie).header("Origin", "https://sitio-ajeno.example")
+            .contentType(MediaType.APPLICATION_JSON).content("{}"))
+        .andExpect(status().isForbidden()).andExpect(header().doesNotExist("Access-Control-Allow-Origin"))
+        .andExpect(header().doesNotExist("Access-Control-Allow-Credentials"));
+  }
+
   @Test
   void cadaRutaOperativaTieneReglaExplicita() throws Exception {
     var sinRegla = requestMappingHandlerMapping.getHandlerMethods().entrySet().stream()

@@ -21,6 +21,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -54,6 +55,7 @@ import tools.jackson.databind.ObjectMapper;
 })
 @AutoConfigureMockMvc
 @ActiveProfiles("limpieza-test")
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 class FlujoLimpiezaTest {
   private static final String API = "/api/v1/limpieza";
   @Autowired MockMvc mvc;
@@ -137,6 +139,51 @@ class FlujoLimpiezaTest {
     var token = jwt.emitir(principal, 30).token();
     mvc = MockMvcBuilders.webAppContextSetup(contexto).apply(springSecurity())
         .defaultRequest(get("/").header("Authorization", "Bearer " + token)).build();
+  }
+
+  @Test
+  void incluyeSoloItemsEnHabitacionYDeLaHabitacionCorrespondiente() throws Exception {
+    var ids = tx.execute(s -> {
+      var mueble = em.find(Item.class, item);
+      var otra = new Habitacion();
+      otra.setTipoHabitacion(mueble.getHabitacion().getTipoHabitacion());
+      otra.setNumeroCuarto("302");
+      otra.setCapacidadPersonas(2);
+      otra.setPlazasCama(2);
+      otra.setEstadoHabitacion(EstadoHabitacion.POR_LIMPIAR);
+      em.persist(otra);
+      var silla = new Item();
+      silla.setTipoItem(mueble.getTipoItem());
+      silla.setNombreItem("Silla");
+      em.persist(silla);
+      assertThat(silla.getEstadoItem()).isEqualTo(EstadoItem.ACTIVO);
+      var asignada = items.asignar(silla.getIdItem(), new ItemAsignacionDTO("asignacion-silla", usuarioId,
+          otra.getIdHabitacion(), EstadoConservacion.BUENO, "Asignación de prueba"));
+      assertThat(asignada.estadoItem()).isEqualTo(EstadoItem.EN_HABITACION);
+      var libre = new Item();
+      libre.setTipoItem(mueble.getTipoItem());
+      libre.setNombreItem("Banco");
+      em.persist(libre);
+      return Map.of(habitacion, item, otra.getIdHabitacion(), silla.getIdItem());
+    });
+
+    for (var asignacion : ids.entrySet()) {
+      long cuarto = asignacion.getKey();
+      long idItem = asignacion.getValue();
+      mvc.perform(get("/api/v1/items/configuracion").param("idHabitacion", Long.toString(cuarto)))
+          .andExpect(status().isOk()).andExpect(jsonPath("$.contenido.length()").value(1))
+          .andExpect(jsonPath("$.contenido[0].idItem").value(idItem));
+      mvc.perform(get(API + "/habitaciones/" + cuarto))
+          .andExpect(status().isOk()).andExpect(jsonPath("$.items.length()").value(1))
+          .andExpect(jsonPath("$.items[0].idItem").value(idItem));
+      var borrador = respuesta(mvc.perform(post(API + "/habitaciones/" + cuarto + "/iniciar"))
+          .andExpect(status().isOk()).andExpect(jsonPath("$.items.length()").value(1))
+          .andExpect(jsonPath("$.items[0].idItem").value(idItem)));
+      var entrada = Map.of("idItem", idItem, "estadoEncontrado", "BUENO");
+      mvc.perform(post(API + "/borradores/" + borrador.path("idInformeRevision").asLong() + "/enviar")
+          .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsBytes(Map.of("items", List.of(entrada)))))
+          .andExpect(status().isOk()).andExpect(jsonPath("$.items[0].idItem").value(idItem));
+    }
   }
 
   @Test

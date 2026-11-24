@@ -174,7 +174,7 @@ BEGIN
         INSERT INTO tipo_item(nombreItem) SELECT m.tipo FROM dual WHERE NOT EXISTS(SELECT 1 FROM tipo_item WHERE nombreItem=m.tipo);
         SELECT idTipoItem INTO v_tipo FROM tipo_item WHERE nombreItem=m.tipo;
         INSERT INTO item(nombreItem,idTipoItem,idHabitacion,estadoItem,condicionItem)
-        VALUES(m.nombre,v_tipo,v_habitacion,'ACTIVO','OPTIMO') RETURNING idItem INTO v_item;
+        VALUES(m.nombre,v_tipo,v_habitacion,'EN_HABITACION','OPTIMO') RETURNING idItem INTO v_item;
         INSERT INTO movimiento_inventario(idItem,idHabitacion,idTipoMovimientoAlmacen,cantidad,idUsuario,condicionItem,observacion,fechaMovimiento,claveOperacion)
         VALUES(v_item,v_habitacion,v_asignacion,1,v_usuarios(101),'OPTIMO','Asignación inicial a la habitación '||h.numero,
           v_ahora-INTERVAL '140' DAY(3),c_lote||'-MUEBLE-'||v_item);

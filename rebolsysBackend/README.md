@@ -120,6 +120,18 @@ docker compose exec -T redis redis-cli ping
 
 El contenedor escucha internamente en `6379` y publica Redis en `127.0.0.1:6380`. Para detenerlo: `docker compose stop redis`. Si no usarás caché, configura `CACHE_ENABLED=false`. Ante una caída de Redis, las consultas continúan en Oracle; al recuperarse, el proceso descarta la caché afectada antes de reutilizarla.
 
+## Actualizaciones manuales de datos
+
+[V21](src/main/resources/db/iteration/V21__estado_mobiliario_asignado.sql) corrige
+los artículos que tienen habitación pero quedaron como `ACTIVO` en la carga de
+datos. Ejecuta el script con la aplicación detenida, revisa los conteos por
+habitación y confirma con `COMMIT`.
+
+Para cualquier actualización manual de datos en SQL Developer, usa una hoja
+no compartida por cada cambio. Ejecuta el `COMMIT` en esa misma hoja y verifica
+el resultado desde otra conexión. Así evitas confirmar cambios pendientes de
+otros scripts y compruebas que la aplicación ya puede ver los datos.
+
 ## Ejecución local
 
 Configura la conexión privada a Oracle. Para probar también la caché, inicia Redis como se indicó arriba. Luego ejecuta:

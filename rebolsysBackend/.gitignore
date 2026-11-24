@@ -47,3 +47,6 @@ application-local-private.*
 *.bak
 *.dmp
 *.zip
+
+# Cache local de SonarQube for IDE.
+.sonar/
