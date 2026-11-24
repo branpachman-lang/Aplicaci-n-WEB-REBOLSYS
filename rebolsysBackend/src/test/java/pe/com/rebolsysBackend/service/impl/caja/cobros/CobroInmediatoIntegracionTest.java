@@ -311,6 +311,12 @@ class CobroInmediatoIntegracionTest {
         .content(json.writeValueAsBytes(cuerpo))).andExpect(status().isBadRequest());
     mvc.perform(post("/api/v1/reservas").contentType(MediaType.APPLICATION_JSON)
         .content(json.writeValueAsBytes(r))).andExpect(status().isCreated());
+    mvc.perform(get("/api/v1/reservas").param("incluirCuenta", "true")).andExpect(status().isOk())
+        .andExpect(jsonPath("$.contenido[0].cuenta.saldoAlojamiento").value(0))
+        .andExpect(jsonPath("$.contenido[0].cuenta.totalPagado").value(80))
+        .andExpect(jsonPath("$.contenido[0].detalles[0].ocupantes[0].nombre").isNotEmpty());
+    mvc.perform(get("/api/v1/reservas")).andExpect(status().isOk())
+        .andExpect(jsonPath("$.contenido[0].cuenta").doesNotExist());
     mvc.perform(get("/v3/api-docs")).andExpect(status().isOk())
         .andExpect(jsonPath("$.components.schemas.CobroInmediatoDTO.required").isArray())
         .andExpect(jsonPath("$.paths['/api/v1/ventas/{id}/confirmacion'].post.requestBody.content['application/json'].schema['$ref']")
@@ -356,6 +362,8 @@ class CobroInmediatoIntegracionTest {
     });
     Long estancia = reservas.obtener(id).detalles().getFirst().idDetalleReserva();
     assertThat(cuentasReserva.cuenta(id).saldoPendiente()).isEqualByComparingTo("80");
+    assertThat(reservas.listar(0, 1, true).contenido().getFirst().cuenta().saldoAlojamiento())
+        .isEqualByComparingTo("80");
     cuentasReserva.pagar(id, new ReservaPagoRegistroDTO(UUID.randomUUID().toString(), usuario, turno,
         forma, new BigDecimal("40.00"), null, null));
     ventas.registrarConfirmada(venta(UUID.randomUUID().toString(), estancia, cobro("7.00")));
@@ -363,6 +371,12 @@ class CobroInmediatoIntegracionTest {
     assertThat(cuenta.totalCargos()).isEqualByComparingTo("87");
     assertThat(cuenta.totalPagado()).isEqualByComparingTo("47");
     assertThat(cuenta.saldoPendiente()).isEqualByComparingTo("40");
+    var fila = reservas.listar(0, 1, true).contenido().getFirst();
+    assertThat(fila.detalles()).isEqualTo(reservas.obtener(id).detalles());
+    assertThat(fila.cuenta().totalCargos()).isEqualByComparingTo(cuenta.totalCargos());
+    assertThat(fila.cuenta().totalPagado()).isEqualByComparingTo(cuenta.totalPagado());
+    assertThat(fila.cuenta().saldoPendiente()).isEqualByComparingTo(cuenta.saldoPendiente());
+    assertThat(fila.cuenta().saldoAlojamiento()).isEqualByComparingTo("40");
     assertThatThrownBy(() -> reservas.cambiarEstado(estancia, "salida", new OperacionUsuarioDTO(usuario)))
         .hasMessageContaining("Liquida el saldo");
   }

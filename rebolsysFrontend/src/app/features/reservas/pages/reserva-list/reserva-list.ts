@@ -6,7 +6,7 @@ import { CurrencyPipe, DatePipe } from "@angular/common";
 import { FormsModule } from "@angular/forms";
 import { RouterLink,Router,ActivatedRoute } from "@angular/router";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
-import { filter, forkJoin, interval } from 'rxjs';
+import { forkJoin, Subscription } from 'rxjs';
 import { DialogFocus } from "../../../../shared/directives/dialog-focus";
 import { NotificacionService } from "../../../../core/services/notificacion.service";
 import { CatalogoService } from "../../../../core/services/catalogo-service";
@@ -18,6 +18,7 @@ import { PagoModal } from "../../../../shared/components/pago-modal/pago-modal";
 import { ComprobanteDialog } from '../../components/comprobante-dialog/comprobante-dialog';
 import {
   ReservaService,
+  ReservaFila,
   ReservaResumen,
   PagoPendiente,
 } from "../../services/reserva-service";
@@ -25,6 +26,8 @@ import {
   ConfirmacionPago,
   CuentaReserva,
   DetalleReserva,
+  ReservaApi,
+  ResumenCuentaReserva,
   estadoReserva,
 } from "../../models/reserva-api.model";
 
@@ -52,7 +55,7 @@ export class ReservaList implements OnDestroy {
   private readonly ruta=inject(ActivatedRoute);
   private readonly router=inject(Router);
   private comprobanteInicial=Number(this.ruta.snapshot.queryParamMap.get('comprobante'));
-  respuesta = signal<Pagina<ReservaResumen> | null>(null);
+  respuesta = signal<Pagina<ReservaFila> | null>(null);
   catalogos = signal<Catalogos | null>(null);
   cargando = signal(true);
   error = signal("");
@@ -63,72 +66,61 @@ export class ReservaList implements OnDestroy {
   estado = "";
   pagando = signal<ReservaResumen | null>(null);
   detalle = signal<ReservaResumen | null>(null);
-  comprobante = signal<ReservaResumen|null>(null);
-  abrirComprobante(r:ReservaResumen){this.detalle.set(null);this.comprobante.set(r);}
+  comprobante = signal<ReservaApi | null>(null);
+  abrirComprobante(r: ReservaApi) {
+    if (this.comprobante()) return;
+    this.detalle.set(null);
+    this.comprobante.set(r);
+    if (this.catalogos()) return;
+    this.catalogoService.listar().pipe(takeUntilDestroyed(this.destroy)).subscribe({
+      next: (catalogos) => this.catalogos.set(catalogos),
+      error: (e) => {
+        this.comprobante.set(null);
+        this.avisos.mostrar(mensajeError(e), true);
+      },
+    });
+  }
   ocupado = signal(false);
   modalError = signal("");
   pagoFijado = signal(false);
   private clavePago = "";
   private solicitudPago: ConfirmacionPago | null = null;
   private searchTimer?: ReturnType<typeof setTimeout>;
-  private requestId = 0;
+  private carga?: Subscription;
   private detalleId = 0;
-  private actualizando = false;
   estadoReserva = estadoReserva;
   pagosPendientes = this.servicio.pagosPendientes;
   registroPendiente = this.servicio.registroPendiente;
 
   constructor() {
     this.cargar();
-    interval(30000)
-      .pipe(
-        filter(() => !this.actualizando && !this.ocupado() && !this.detalle()
-          && !this.pagando() && !this.comprobante()),
-        takeUntilDestroyed(this.destroy),
-      )
-      .subscribe(() => this.cargar(false));
   }
   ngOnDestroy() {
     clearTimeout(this.searchTimer);
   }
-  cargar(mostrarCarga = true) {
-    const id = ++this.requestId;
-    this.actualizando = true;
-    if (mostrarCarga) {
-      this.error.set('');
-      this.cargando.set(true);
-    }
-    forkJoin({
-      pagina: this.servicio.listar(
-        this.pagina,
-        this.tamanio,
-        this.busqueda,
-        this.estado,
-      ),
-      catalogos: this.catalogoService.listar(),
-    })
+  cargar() {
+    this.carga?.unsubscribe();
+    this.error.set('');
+    this.cargando.set(true);
+    this.carga = this.servicio.listar(this.pagina, this.tamanio, this.busqueda, this.estado)
       .pipe(takeUntilDestroyed(this.destroy))
       .subscribe({
-        next: ({ pagina, catalogos }) => {
-          if (id !== this.requestId) return;
+        next: (pagina) => {
           this.respuesta.set(pagina);
-          this.catalogos.set(catalogos);
-          this.actualizando = false;
           this.error.set('');
           this.cargando.set(false);
           if(Number.isInteger(this.comprobanteInicial)&&this.comprobanteInicial>0){
             const reservaId=this.comprobanteInicial;this.comprobanteInicial=0;
             void this.router.navigate([],{relativeTo:this.ruta,queryParams:{comprobante:null},queryParamsHandling:'merge',replaceUrl:true});
-            forkJoin({reserva:this.servicio.obtener(reservaId),cuenta:this.servicio.cuenta(reservaId)})
-              .pipe(takeUntilDestroyed(this.destroy)).subscribe({next:({reserva,cuenta})=>this.abrirComprobante({...reserva,cuenta}),error:e=>this.avisos.mostrar(mensajeError(e),true)});
+            this.servicio.obtener(reservaId).pipe(takeUntilDestroyed(this.destroy)).subscribe({
+              next: (reserva) => this.abrirComprobante(reserva),
+              error: (e) => this.avisos.mostrar(mensajeError(e), true),
+            });
           }
         },
         error: (e) => {
-          if (id === this.requestId) {
-            this.actualizando = false;
-            if (mostrarCarga) this.error.set(mensajeError(e));
-            this.cargando.set(false);
-          }
+          this.error.set(mensajeError(e));
+          this.cargando.set(false);
         },
       });
   }
@@ -139,7 +131,7 @@ export class ReservaList implements OnDestroy {
       this.cargar();
     }, 300);
   }
-  numeroHuespedes(r: ReservaResumen) {
+  numeroHuespedes(r: ReservaApi) {
     return r.detalles.reduce((n, h) => n + h.ocupantes.length, 0);
   }
   estadoTexto(s: string) {
@@ -154,7 +146,7 @@ export class ReservaList implements OnDestroy {
       )[s] || s
     );
   }
-  estadoCobro(cuenta: CuentaReserva) {
+  estadoCobro(cuenta: ResumenCuentaReserva) {
     return cuenta.saldoPendiente === 0
       ? "PAGADO"
       : cuenta.totalPagado > 0
@@ -163,12 +155,6 @@ export class ReservaList implements OnDestroy {
   }
   saldoPrincipal(cuenta: CuentaReserva) {
     return cuenta.cuentas.find((c) => c.idVenta === null)?.saldo ?? 0;
-  }
-  formaPago(id: number) {
-    return (
-      this.catalogos()?.pagos.find((p) => p.id === id)?.nombre ??
-      "Forma de pago #" + id
-    );
   }
   tienePagos(cuenta: CuentaReserva) {
     return cuenta.cuentas.some((c) => c.pagos.length > 0);
@@ -179,7 +165,7 @@ export class ReservaList implements OnDestroy {
       "Responsable registrado"
     );
   }
-  verDetalle(r: ReservaResumen) {
+  verDetalle(r: ReservaApi) {
     const id = ++this.detalleId;
     forkJoin({ reserva: this.servicio.obtener(r.idReserva), cuenta: this.servicio.cuenta(r.idReserva) })
       .pipe(takeUntilDestroyed(this.destroy))
@@ -190,7 +176,7 @@ export class ReservaList implements OnDestroy {
         error: (e) => this.avisos.mostrar(mensajeError(e), true),
       });
   }
-  abrirPago(r: ReservaResumen) {
+  abrirPago(r: ReservaApi) {
     const pendiente = this.pagosPendientes().find(
       (p) => p.idReserva === r.idReserva,
     );
@@ -246,7 +232,7 @@ export class ReservaList implements OnDestroy {
           this.avisos.mostrar(
             `Pago registrado. Saldo: S/ ${cuenta.saldoPendiente.toFixed(2)}. Vuelto: S/ ${vuelto.toFixed(2)}`,
           );
-          this.comprobante.set({ ...r, cuenta });
+          this.comprobante.set(r);
           this.cargar();
         },
         error: (e) => {

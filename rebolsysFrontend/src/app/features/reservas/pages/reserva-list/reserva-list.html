@@ -57,6 +57,7 @@
       ><button
         class="icon-button"
         aria-label="Actualizar reservas"
+        [disabled]="cargando()"
         (click)="cargar()"
       >
         <app-icon name="calendar" />
@@ -148,7 +149,7 @@
               @if(estadoReserva(r)!=='CANCELADA' && acceso.permite('RESERVAS:EMITIR_COMPROBANTE', 'FACTURACION:VER')){
                 <button class="button small receipt-button" (click)="abrirComprobante(r)"><app-icon name="receipt"/>Boleta / Factura</button>
               }
-              @if (acceso.permite('RESERVAS:COBRAR') && saldoPrincipal(r.cuenta) > 0 && estadoReserva(r) !==
+              @if (acceso.permite('RESERVAS:COBRAR') && r.cuenta.saldoAlojamiento > 0 && estadoReserva(r) !==
               "CANCELADA") {
               <button class="button small pay-button" (click)="abrirPago(r)">
                 <app-icon name="wallet" />Pagar
@@ -301,7 +302,7 @@
       <strong>{{p.monto | currency:'PEN':'S/ '}}</strong>
       <small
         >{{p.fechaPago | date:'dd/MM/yyyy HH:mm'}} ·
-        {{formaPago(p.idFormaPago)}} · Turno #{{p.idTurno}}</small
+          {{p.medioPago || ('Forma de pago #' + p.idFormaPago)}} · Turno #{{p.idTurno}}</small
       >
       @if(p.numeroOperacion) { <small>Operación: {{p.numeroOperacion}}</small> }
     </div>

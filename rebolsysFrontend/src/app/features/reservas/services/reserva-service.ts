@@ -6,7 +6,6 @@ import {
   catchError,
   concatMap,
   expand,
-  forkJoin,
   map,
   of,
   reduce,
@@ -27,10 +26,12 @@ import {
   DetalleReserva,
   RegistroReservaApi,
   ReservaApi,
+  ResumenCuentaReserva,
   estadoReserva,
 } from "../models/reserva-api.model";
 
 export type ReservaResumen = ReservaApi & { cuenta: CuentaReserva };
+export type ReservaFila = ReservaApi & { cuenta: ResumenCuentaReserva };
 export interface PagoPendiente {
   idReserva: number;
   claveOperacion: string;
@@ -53,21 +54,20 @@ export class ReservaService {
   }
 
   listar(pagina = 0, tamanio = 10, buscar = "", estado = "") {
-    // La API pagina sin filtros. Solo una búsqueda explícita recorre las páginas;
-    // las cuentas se consultan únicamente para las filas que se van a mostrar.
+    // La API pagina sin filtros. Solo una búsqueda explícita recorre las páginas.
     const paginaApi = (numero: number, size: number) =>
-      this.http.get<Pagina<ReservaApi>>(this.base, {
-        params: { pagina: numero, tamanio: size },
+      this.http.get<Pagina<ReservaFila>>(this.base, {
+        params: { pagina: numero, tamanio: size, incluirCuenta: true },
       });
-    const datos =
+    return (
       buscar.trim() || estado
         ? paginaApi(0, 100).pipe(
             expand((p) => (p.ultima ? EMPTY : paginaApi(p.pagina + 1, 100))),
             reduce(
               (lista, p) => [...lista, ...p.contenido],
-              [] as ReservaApi[],
+              [] as ReservaFila[],
             ),
-            map((lista): Pagina<ReservaApi> => {
+            map((lista): Pagina<ReservaFila> => {
               const texto = buscar.trim().toLocaleLowerCase("es");
               const filtradas = lista.filter(
                 (r) =>
@@ -94,21 +94,7 @@ export class ReservaService {
               };
             }),
           )
-        : paginaApi(pagina, tamanio);
-    return datos.pipe(
-      concatMap((p) =>
-        p.contenido.length
-          ? forkJoin(
-              p.contenido.map((r) =>
-                this.cuenta(r.idReserva).pipe(
-                  map((cuenta) => ({ ...r, cuenta })),
-                ),
-              ),
-            ).pipe(
-              map((contenido): Pagina<ReservaResumen> => ({ ...p, contenido })),
-            )
-          : of({ ...p, contenido: [] } as Pagina<ReservaResumen>),
-      ),
+        : paginaApi(pagina, tamanio)
     );
   }
 

@@ -2275,6 +2275,16 @@
               "format": "int32",
               "default": 10
             }
+          },
+          {
+            "name": "incluirCuenta",
+            "in": "query",
+            "description": "Incluir importes resumidos de la cuenta por reserva",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
           }
         ],
         "responses": {
@@ -8108,7 +8118,19 @@
             "items": {
               "$ref": "#/components/schemas/ReservaDetalleRespuestaDTO"
             }
+          },
+          "cuenta": {
+            "$ref": "#/components/schemas/ResumenCuentaReservaDTO"
           }
+        }
+      },
+      "ResumenCuentaReservaDTO": {
+        "type": "object",
+        "properties": {
+          "totalCargos": { "type": "number" },
+          "totalPagado": { "type": "number" },
+          "saldoPendiente": { "type": "number" },
+          "saldoAlojamiento": { "type": "number" }
         }
       },
       "ReservaPagoRegistroDTO": {

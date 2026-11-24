@@ -9,6 +9,12 @@ import pe.com.rebolsysBackend.entity.*;
 public interface ReservaOcupanteRepository extends JpaRepository<ReservaOcupante, Long> {
   List<ReservaOcupante> findByDetalleReservaIdDetalleReservaOrderByIdReservaOcupante(Long id);
 
+  @Query("""
+      select o from ReservaOcupante o join fetch o.huesped
+      where o.detalleReserva.reserva.idReserva in :ids order by o.idReservaOcupante
+      """)
+  List<ReservaOcupante> ocupantesDeReservas(Collection<Long> ids);
+
   @Query(
       "select o from ReservaOcupante o where o.detalleReserva.habitacion.idHabitacion=:id and"
           + " o.detalleReserva.estadoDetalle in"

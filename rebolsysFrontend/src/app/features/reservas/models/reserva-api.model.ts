@@ -52,6 +52,13 @@ export interface CuentaReserva {
   cuentas: CuentaDocumento[];
 }
 
+export interface ResumenCuentaReserva {
+  totalCargos: number;
+  totalPagado: number;
+  saldoPendiente: number;
+  saldoAlojamiento: number;
+}
+
 export interface CuentaDocumento {
   idCuenta: number | null;
   idReserva?: number;
