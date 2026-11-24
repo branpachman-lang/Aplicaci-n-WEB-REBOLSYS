@@ -8,7 +8,7 @@ import pe.com.rebolsysBackend.enums.EstadoHabitacion;
 import pe.com.rebolsysBackend.enums.EstadoInforme;
 import pe.com.rebolsysBackend.security.AccesosService;
 
-/** Autorización común para las respuestas y las operaciones del flujo. */
+
 public final class PoliticaAccionesLimpieza {
   private static final Set<String> MANTENIMIENTO = Set.of(
       "APROBAR_INFORME", "CREAR_TICKET", "EDITAR_TICKET", "ELIMINAR_TICKET");
