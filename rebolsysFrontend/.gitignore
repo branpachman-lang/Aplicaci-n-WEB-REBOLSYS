@@ -72,6 +72,9 @@ proxy.qa.json
 !src/app/features/reservas/services/reserva-service.spec.ts
 !src/app/features/caja/caja-panel.spec.ts
 !src/app/features/seguridad/acceso.spec.ts
+!src/app/core/utils/http-error.spec.ts
+!src/app/shared/components/aviso-sesion/aviso-sesion.spec.ts
+!src/app/layout/header/header.spec.ts
 .env
 .env.*
 !.env.example

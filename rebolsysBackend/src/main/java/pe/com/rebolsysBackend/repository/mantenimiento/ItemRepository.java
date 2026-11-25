@@ -2,11 +2,15 @@ package pe.com.rebolsysBackend.repository.mantenimiento;
 
 import jakarta.persistence.LockModeType;
 import java.util.*;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 import pe.com.rebolsysBackend.entity.*;
 
 public interface ItemRepository extends JpaRepository<Item, Long> {
+  @Override
+  @EntityGraph(attributePaths = {"tipoItem", "habitacion"})
+  List<Item> findAll(Sort sort);
   boolean existsByTipoItemIdTipoItem(Long id);
 
   boolean existsByHabitacionIdHabitacion(Long id);

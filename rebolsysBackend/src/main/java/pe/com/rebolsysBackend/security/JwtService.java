@@ -17,15 +17,20 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import javax.crypto.Mac;
 import javax.crypto.SecretKey;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.env.Environment;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.stereotype.Service;
 
-/** Firma y verifica JWT. La revocación pertenece a la instancia única de la API. */
+/** Firma y verifica JWT, con revocación en memoria y respaldo opcional en Redis para múltiples réplicas. */
 @Service
 public class JwtService {
+  private static final Logger log = LoggerFactory.getLogger(JwtService.class);
   public static final String ATRIBUTO = "rebolsys.jwt";
   public static final String CABECERA_TOKEN = "X-Auth-Token";
   public static final String CABECERA_VIGENCIA = "X-Auth-Expires-In";
@@ -34,15 +39,30 @@ public class JwtService {
   private final Duration duracionMaxima;
   private final Clock reloj;
   private final String instancia = UUID.randomUUID().toString();
+  private final boolean validarInstancia;
+  private final boolean revocarEnRedis;
+  private final String prefijoRedis;
+  private final StringRedisTemplate redis;
   private final Map<String, Instant> revocados = new ConcurrentHashMap<>();
 
   @Autowired
   public JwtService(@Value("${app.jwt.secret:}") String secreto,
-      @Value("${app.jwt.duracion-maxima:8h}") Duration duracionMaxima, Environment entorno) {
-    this(secreto, duracionMaxima, Clock.systemUTC(), entorno.matchesProfiles("prod"));
+      @Value("${app.jwt.duracion-maxima:8h}") Duration duracionMaxima,
+      @Value("${app.jwt.validar-instancia:true}") boolean validarInstancia,
+      @Value("${app.jwt.revocar-en-redis:false}") boolean revocarEnRedis,
+      @Value("${app.cache.prefijo:rebolsys:dev:v1:}") String prefijoRedis,
+      ObjectProvider<StringRedisTemplate> redisProvider,
+      Environment entorno) {
+    this(secreto, duracionMaxima, Clock.systemUTC(), entorno.matchesProfiles("prod"),
+        validarInstancia, revocarEnRedis, prefijoRedis, redisProvider.getIfAvailable());
   }
 
   JwtService(String secreto, Duration duracionMaxima, Clock reloj, boolean produccion) {
+    this(secreto, duracionMaxima, reloj, produccion, true, false, "rebolsys:test:", null);
+  }
+
+  JwtService(String secreto, Duration duracionMaxima, Clock reloj, boolean produccion,
+      boolean validarInstancia, boolean revocarEnRedis, String prefijoRedis, StringRedisTemplate redis) {
     if (duracionMaxima.compareTo(Duration.ofSeconds(1)) < 0 || duracionMaxima.compareTo(Duration.ofHours(24)) > 0) {
       throw new IllegalArgumentException("La duración máxima JWT debe estar entre un segundo y 24 horas");
     }
@@ -58,6 +78,10 @@ public class JwtService {
     }
     this.duracionMaxima = duracionMaxima;
     this.reloj = reloj;
+    this.validarInstancia = validarInstancia;
+    this.revocarEnRedis = revocarEnRedis;
+    this.prefijoRedis = (prefijoRedis == null ? "" : prefijoRedis) + "jwt:revocado:";
+    this.redis = redis;
   }
 
   public record Emitido(String token, long expiraEnSegundos) {
@@ -93,11 +117,12 @@ public class JwtService {
       var inicio = Instant.ofEpochSecond(datos.get("inicio", Long.class));
       var expira = datos.getExpiration().toInstant();
       var usuario = Long.valueOf(datos.getSubject());
-      if (usuario <= 0 || id == null || id.length() > 64 || !instancia.equals(datos.get("instancia", String.class))
+      if (usuario <= 0 || id == null || id.length() > 64
+          || (validarInstancia && !instancia.equals(datos.get("instancia", String.class)))
           || !expira.isAfter(reloj.instant())
           || datos.getIssuedAt() == null || datos.getIssuedAt().toInstant().isAfter(reloj.instant())
           || inicio.isAfter(reloj.instant()) || !inicio.plus(duracionMaxima).isAfter(reloj.instant())
-          || expira.isAfter(inicio.plus(duracionMaxima)) || revocados.containsKey(id)) throw invalido();
+          || expira.isAfter(inicio.plus(duracionMaxima)) || estaRevocado(id)) throw invalido();
       var version = datos.get("cv", String.class);
       if (version == null) throw invalido();
       return new Verificado(usuario, id, version, inicio, expira);
@@ -112,7 +137,7 @@ public class JwtService {
   }
 
   public Emitido renovar(Verificado token, CredencialesService.Principal principal, int minutos) {
-    if (!vigente(token, principal) || revocados.containsKey(token.id())) throw invalido();
+    if (!vigente(token, principal) || estaRevocado(token.id())) throw invalido();
     var expira = reloj.instant().truncatedTo(java.time.temporal.ChronoUnit.SECONDS)
         .plus(Duration.ofMinutes(Math.max(1, minutos)));
     if (expira.isAfter(token.inicio().plus(duracionMaxima))) expira = token.inicio().plus(duracionMaxima);
@@ -120,8 +145,31 @@ public class JwtService {
   }
 
   public void revocar(Verificado token) {
-    revocados.put(token.id(), token.inicio().plus(duracionMaxima));
+    var hasta = token.inicio().plus(duracionMaxima);
+    revocados.put(token.id(), hasta);
+    if (revocarEnRedis && redis != null) {
+      var ttl = Duration.between(reloj.instant(), hasta);
+      if (!ttl.isNegative() && !ttl.isZero()) {
+        try {
+          redis.opsForValue().set(prefijoRedis + token.id(), "1", ttl);
+        } catch (RuntimeException ex) {
+          log.warn("No se pudo registrar la revocación JWT en Redis ({}); se mantiene en memoria local", ex.getClass().getSimpleName());
+        }
+      }
+    }
     limpiarRevocados();
+  }
+
+  private boolean estaRevocado(String id) {
+    if (revocados.containsKey(id)) return true;
+    if (revocarEnRedis && redis != null) {
+      try {
+        return Boolean.TRUE.equals(redis.hasKey(prefijoRedis + id));
+      } catch (RuntimeException ex) {
+        log.warn("No se pudo consultar la revocación JWT en Redis ({}); se continúa con caché local", ex.getClass().getSimpleName());
+      }
+    }
+    return false;
   }
 
   private String version(CredencialesService.Principal principal) {

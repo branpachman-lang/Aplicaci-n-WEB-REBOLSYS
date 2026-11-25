@@ -47,8 +47,7 @@ public class AuditoriaWebConfig implements WebMvcConfigurer {
         if(tabla==null)return;
         if(id==null&&req.getAttribute("rebolsys.registro") instanceof Long valor)id=valor;
         if(id==null)return;
-        try{auditoria.registrar(actual,tabla,id,req.getMethod(),req.getRequestURI(),req.getRemoteAddr());}
-        catch(RuntimeException error){org.slf4j.LoggerFactory.getLogger(AuditoriaWebConfig.class).error("No se pudo registrar la auditoría de {} {}",req.getMethod(),req.getRequestURI(),error);}
+        auditoria.publicarPostCommit(actual,tabla,id,req.getMethod(),req.getRequestURI(),req.getRemoteAddr());
       }
     }).addPathPatterns("/api/v1/**");
   }

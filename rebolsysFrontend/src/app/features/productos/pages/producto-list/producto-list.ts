@@ -4,7 +4,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { CurrencyPipe } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ProductoService } from '../../services/producto-service';
 import { CategoriaService } from '../../../categorias/services/categoria-service';
 import { AjusteStock, MovimientoInventario, Producto } from '../../models/producto.model';
@@ -27,17 +27,32 @@ export class ProductoList {
   private productos = inject(ProductoService);
   private categoriasService = inject(CategoriaService);
   private avisos = inject(NotificacionService);
+  private readonly ruta = inject(ActivatedRoute);
+  private readonly router = inject(Router);
 
   categoriasAbiertas = signal(false);
   fallidas = signal<Set<number>>(new Set());
 
   // Filtros y paginación
-  pagina = 0;
+  pagina = this.enteroQuery('pagina', 0);
   tamanio = 12;
-  buscar = '';
-  estado = '';
-  categoria: number | null = null;
-  stockBajo: boolean | null = null;
+  buscar = this.ruta.snapshot.queryParamMap.get('buscar') ?? '';
+  estado = this.ruta.snapshot.queryParamMap.get('estado') ?? '';
+  categoria: number | null = this.enteroOpcionalQuery('categoria');
+  stockBajo: boolean | null =
+    this.ruta.snapshot.queryParamMap.get('stockBajo') === 'true' ? true : null;
+
+  private enteroQuery(clave: string, defecto: number): number {
+    const n = Number(this.ruta.snapshot.queryParamMap.get(clave));
+    return Number.isInteger(n) && n >= 0 ? n : defecto;
+  }
+
+  private enteroOpcionalQuery(clave: string): number | null {
+    const raw = this.ruta.snapshot.queryParamMap.get(clave);
+    if (raw === null || raw === '') return null;
+    const n = Number(raw);
+    return Number.isInteger(n) && n > 0 ? n : null;
+  }
 
   private readonly consulta = signal(this.parametrosListado());
   private readonly listado = rxResource({
@@ -112,6 +127,18 @@ export class ProductoList {
 
   cargar() {
     if (this.catalogoCategorias.error()) this.catalogoCategorias.reload();
+    void this.router.navigate([], {
+      relativeTo: this.ruta,
+      queryParams: {
+        pagina: this.pagina > 0 ? this.pagina : null,
+        buscar: this.buscar.trim() || null,
+        estado: this.estado || null,
+        categoria: this.categoria ?? null,
+        stockBajo: this.stockBajo === true ? 'true' : null,
+      },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
     this.consulta.set(this.parametrosListado());
   }
 

@@ -2,11 +2,16 @@ package pe.com.rebolsysBackend.repository.ventas;
 
 import jakarta.persistence.LockModeType;
 import java.util.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 import pe.com.rebolsysBackend.entity.*;
 
 public interface VentaRepository extends JpaRepository<Venta, Long> {
+  @Override
+  @EntityGraph(attributePaths = {"clienteComprador", "detalleReserva", "usuario"})
+  Page<Venta> findAll(Pageable pageable);
   List<Venta> findByDetalleReservaReservaIdReservaOrderByIdVenta(Long id);
 
   Optional<Venta> findByClaveRegistro(String clave);
