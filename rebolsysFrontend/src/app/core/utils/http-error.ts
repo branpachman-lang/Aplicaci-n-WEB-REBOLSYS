@@ -15,10 +15,14 @@ export function mensajeError(error: HttpErrorResponse|Error): string {
   if (err.status === 0 || ((err.status === 502 || err.status === 504) && !mensajeServidor)) {
     return 'No se pudo conectar con REBOLSYS. Comprueba que el backend esté iniciado.';
   }
+  const respuesta = err.error as Partial<ErrorResponse> | null;
+  const requestId =
+    (typeof respuesta?.requestId === 'string' ? respuesta.requestId.trim() : '') ||
+    (err.headers?.get('X-Request-Id')?.trim() ?? '');
+  const sufijo = requestId ? ` · Código de seguimiento: ${requestId}` : '';
   const validaciones = Object.values(erroresDeValidacion(err));
   if (validaciones.length) {
-    return [...new Set(validaciones)].join('. ');
+    return [...new Set(validaciones)].join('. ') + sufijo;
   }
-  const respuesta = err.error as Partial<ErrorResponse> | null;
-  return respuesta?.message || `Error ${err.status}: ${err.statusText}`;
+  return (respuesta?.message || `Error ${err.status}: ${err.statusText}`) + sufijo;
 }

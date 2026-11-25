@@ -1,4 +1,15 @@
+import { inject } from '@angular/core';
 import { Routes } from '@angular/router';
+import { PermisosUi } from '../../core/services/permisos-ui';
+
+function destinoInicialConfiguracion(): string {
+  const acceso = inject(PermisosUi);
+  if (acceso.permite('HABITACIONES:VER')) return 'habitaciones';
+  if (acceso.permite('PRODUCTOS:VER')) return 'productos';
+  if (acceso.permite('MOBILIARIO:VER')) return 'mobiliario';
+  if (acceso.esGerente()) return 'sistema';
+  return 'habitaciones';
+}
 
 export const CONFIGURACIONES_ROUTES: Routes = [
   {
@@ -6,7 +17,7 @@ export const CONFIGURACIONES_ROUTES: Routes = [
     loadComponent: () =>
       import('../mantenimiento/mantenimiento').then((m) => m.Mantenimiento),
     children: [
-      { path: '', pathMatch: 'full', redirectTo: 'habitaciones' },
+      { path: '', pathMatch: 'full', redirectTo: destinoInicialConfiguracion },
       {
         path: 'sistema',
         title: 'Configuración del sistema · REBOLSYS',

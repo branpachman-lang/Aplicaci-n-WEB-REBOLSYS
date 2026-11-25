@@ -50,6 +50,7 @@ public class CredencialesService {
     var c = u == null ? null : credencial(u.getIdUsuario());
     var fecha = ahora();
     if (c == null || c.getValorHash() == null || u.getEstadoUsuario() != EstadoUsuario.ACTIVO
+        || u.getEmpleado().getFechaCese() != null
         || (c.getFechaBloqueo() != null && c.getFechaBloqueo().isAfter(fecha))) {
       coincide(contrasena, HASH_SIMULADO);
       throw invalida();

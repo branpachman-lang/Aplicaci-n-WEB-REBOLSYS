@@ -2,6 +2,7 @@
 /*
 !/.gitignore
 !/AGENTS.md
+!/.github/
 !/rebolsysBackend/
 !/rebolsysFrontend/
 !/docs/

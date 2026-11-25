@@ -2,7 +2,7 @@ import { notificarCambios } from '../../../../core/services/avisos-formulario';
 import { Component, OnInit, inject, signal } from "@angular/core";
 import { PermisosUi } from "../../../../core/services/permisos-ui";
 import { CurrencyPipe, DatePipe } from "@angular/common";
-import { RouterLink } from "@angular/router";
+import { ActivatedRoute, Router, RouterLink } from "@angular/router";
 import { VentaService } from "../../services/venta-service";
 import { Venta } from "../../models/venta.model";
 import { Pagina } from "../../../../core/models/pagina-response";
@@ -17,16 +17,33 @@ import { Icon } from "../../../../shared/components/icono/icono";
 export class VentaList implements OnInit {
   readonly acceso = inject(PermisosUi);
   private servicio = inject(VentaService);
+  private readonly ruta = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   respuesta = signal<Pagina<Venta> | null>(null);
   error = signal("");
   private readonly alertaError = notificarCambios(this.error, 'error');
   cargando = signal(true);
-  pagina = 0;
+  pagina = this.paginaInicial();
   tamanio = 10;
-  ngOnInit() {
-    this.cargar();
+
+  private paginaInicial(): number {
+    const raw = Number(this.ruta.snapshot.queryParamMap.get("pagina"));
+    return Number.isInteger(raw) && raw >= 0 ? raw : 0;
   }
-  cargar() {
+
+  ngOnInit() {
+    this.cargar(false);
+  }
+
+  cargar(sincronizar = true) {
+    if (sincronizar) {
+      void this.router.navigate([], {
+        relativeTo: this.ruta,
+        queryParams: { pagina: this.pagina > 0 ? this.pagina : null },
+        queryParamsHandling: "merge",
+        replaceUrl: true,
+      });
+    }
     this.error.set("");
     this.cargando.set(true);
     this.servicio.listar(this.pagina, this.tamanio).subscribe({

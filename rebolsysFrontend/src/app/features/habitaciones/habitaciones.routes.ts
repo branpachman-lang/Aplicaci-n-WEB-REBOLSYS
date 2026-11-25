@@ -1,8 +1,13 @@
 import { Routes } from '@angular/router';
-import { HabitacionList } from './pages/habitacion-list/habitacion-list';
 
 export const HABITACIONES_ROUTES: Routes = [
-  { path: '', component: HabitacionList },
+  {
+    path: '',
+    loadComponent: () =>
+      import('./pages/habitacion-list/habitacion-list').then(
+        (m) => m.HabitacionList,
+      ),
+  },
 ];
 
 export const HABITACIONES_CONFIGURACION_ROUTES: Routes = [

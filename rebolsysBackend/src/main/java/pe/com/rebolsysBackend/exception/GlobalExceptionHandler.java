@@ -3,6 +3,7 @@ package pe.com.rebolsysBackend.exception;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -31,6 +32,7 @@ import pe.com.rebolsysBackend.exception.dto.ErrorResponseDTO;
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+    private static final ZoneId ZONA_LIMA = ZoneId.of("America/Lima");
 
     @ExceptionHandler({AuthenticationException.class, AccessDeniedException.class})
     public ResponseEntity<ErrorResponseDTO> handleSecurity(RuntimeException ex, HttpServletRequest request) {
@@ -42,7 +44,7 @@ public class GlobalExceptionHandler {
                 ? "Cambia la contraseña temporal para continuar" : "Tu usuario no tiene acceso a esta función";
         }
         return ResponseEntity.status(estado).header("Cache-Control", "no-store").body(new ErrorResponseDTO(
-            LocalDateTime.now(), estado.value(), estado.getReasonPhrase(), mensaje, request.getRequestURI(), null));
+            LocalDateTime.now(ZONA_LIMA), estado.value(), estado.getReasonPhrase(), mensaje, request.getRequestURI(), null));
     }
 
     @ExceptionHandler(ServicioExternoException.class)
@@ -51,7 +53,7 @@ public class GlobalExceptionHandler {
         HttpServletRequest request
     ) {
         ErrorResponseDTO error = new ErrorResponseDTO(
-            LocalDateTime.now(),
+            LocalDateTime.now(ZONA_LIMA),
             ex.getStatus().value(),
             ex.getStatus().getReasonPhrase(),
             ex.getMessage(),
@@ -67,7 +69,7 @@ public class GlobalExceptionHandler {
         HttpServletRequest request
     ) {
         ErrorResponseDTO error = new ErrorResponseDTO(
-            LocalDateTime.now(),
+            LocalDateTime.now(ZONA_LIMA),
             HttpStatus.NOT_FOUND.value(),
             "Not Found",
             ex.getMessage(),
@@ -80,7 +82,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ReglaNegocioException.class)
     public ResponseEntity<ErrorResponseDTO> handleBusinessRule(ReglaNegocioException ex, HttpServletRequest request) {
         ErrorResponseDTO error = new ErrorResponseDTO(
-            LocalDateTime.now(),
+            LocalDateTime.now(ZONA_LIMA),
             HttpStatus.CONFLICT.value(),
             "Conflict",
             ex.getMessage(),
@@ -105,7 +107,7 @@ public class GlobalExceptionHandler {
             .getGlobalErrors()
             .forEach(error -> validationErrors.putIfAbsent(error.getObjectName(), error.getDefaultMessage()));
         ErrorResponseDTO error = new ErrorResponseDTO(
-            LocalDateTime.now(),
+            LocalDateTime.now(ZONA_LIMA),
             HttpStatus.BAD_REQUEST.value(),
             "Bad Request",
             "Existen errores de validación",
@@ -125,7 +127,7 @@ public class GlobalExceptionHandler {
             .getConstraintViolations()
             .forEach(error -> validationErrors.putIfAbsent(error.getPropertyPath().toString(), error.getMessage()));
         ErrorResponseDTO error = new ErrorResponseDTO(
-            LocalDateTime.now(),
+            LocalDateTime.now(ZONA_LIMA),
             HttpStatus.BAD_REQUEST.value(),
             "Bad Request",
             "Existen errores de validación",
@@ -150,7 +152,7 @@ public class GlobalExceptionHandler {
                     .forEach(error -> validationErrors.putIfAbsent(parameter, error.getDefaultMessage()));
             });
         ErrorResponseDTO error = new ErrorResponseDTO(
-            LocalDateTime.now(),
+            LocalDateTime.now(ZONA_LIMA),
             HttpStatus.BAD_REQUEST.value(),
             "Bad Request",
             "Existen errores de validación",
@@ -168,7 +170,7 @@ public class GlobalExceptionHandler {
         log.warn("Conflicto de integridad en {} {}", request.getMethod(), request.getRequestURI());
         String message = "Los datos entran en conflicto con un registro existente o relacionado. Revisa la operación.";
         ErrorResponseDTO error = new ErrorResponseDTO(
-            LocalDateTime.now(),
+            LocalDateTime.now(ZONA_LIMA),
             HttpStatus.CONFLICT.value(),
             "Conflict",
             message,
@@ -184,7 +186,7 @@ public class GlobalExceptionHandler {
         HttpServletRequest request
     ) {
         ErrorResponseDTO error = new ErrorResponseDTO(
-            LocalDateTime.now(),
+            LocalDateTime.now(ZONA_LIMA),
             HttpStatus.CONFLICT.value(),
             "Conflict",
             "El registro está siendo modificado por otra operación",
@@ -200,7 +202,7 @@ public class GlobalExceptionHandler {
         HttpServletRequest request
     ) {
         ErrorResponseDTO error = new ErrorResponseDTO(
-            LocalDateTime.now(),
+            LocalDateTime.now(ZONA_LIMA),
             HttpStatus.BAD_REQUEST.value(),
             "Bad Request",
             "La solicitud no tiene un formato válido",
@@ -218,7 +220,7 @@ public class GlobalExceptionHandler {
         Map<String, String> validationErrors = new LinkedHashMap<>();
         validationErrors.put(ex.getName(), "El parámetro " + ex.getName() + " no tiene un formato válido");
         ErrorResponseDTO error = new ErrorResponseDTO(
-            LocalDateTime.now(),
+            LocalDateTime.now(ZONA_LIMA),
             HttpStatus.BAD_REQUEST.value(),
             "Bad Request",
             "Existen errores de validación",
@@ -232,7 +234,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponseDTO> handleMissingParameter(
         MissingServletRequestParameterException ex, HttpServletRequest request
     ) {
-        var error = new ErrorResponseDTO(LocalDateTime.now(), HttpStatus.BAD_REQUEST.value(),
+        var error = new ErrorResponseDTO(LocalDateTime.now(ZONA_LIMA), HttpStatus.BAD_REQUEST.value(),
             "Bad Request", "Falta un parámetro obligatorio", request.getRequestURI(),
             Map.of(ex.getParameterName(), "El parámetro " + ex.getParameterName() + " es obligatorio"));
         return ResponseEntity.badRequest().body(error);
@@ -244,7 +246,7 @@ public class GlobalExceptionHandler {
         HttpServletRequest request
     ) {
         ErrorResponseDTO error = new ErrorResponseDTO(
-            LocalDateTime.now(),
+            LocalDateTime.now(ZONA_LIMA),
             HttpStatus.METHOD_NOT_ALLOWED.value(),
             "Method Not Allowed",
             "El método HTTP no está permitido para este recurso",
@@ -258,7 +260,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponseDTO> handleUnexpected(Exception ex, HttpServletRequest request) {
         log.error("Error no controlado en {}", request.getRequestURI(), ex);
         ErrorResponseDTO error = new ErrorResponseDTO(
-            LocalDateTime.now(),
+            LocalDateTime.now(ZONA_LIMA),
             HttpStatus.INTERNAL_SERVER_ERROR.value(),
             "Internal Server Error",
             "Ocurrió un error interno",
@@ -274,7 +276,7 @@ public class GlobalExceptionHandler {
         var estado = excedeLimite ? HttpStatus.CONTENT_TOO_LARGE : HttpStatus.BAD_REQUEST;
         var mensaje = excedeLimite ? "El archivo supera el tamaño permitido" : "Falta el archivo adjunto";
         var error = new ErrorResponseDTO(
-            LocalDateTime.now(), estado.value(), estado.getReasonPhrase(), mensaje, request.getRequestURI(), null
+            LocalDateTime.now(ZONA_LIMA), estado.value(), estado.getReasonPhrase(), mensaje, request.getRequestURI(), null
         );
         return ResponseEntity.status(estado).body(error);
     }

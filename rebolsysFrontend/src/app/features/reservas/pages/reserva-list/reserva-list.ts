@@ -79,19 +79,43 @@ export class ReservaList implements OnDestroy {
   registroPendiente = this.servicio.registroPendiente;
 
   constructor() {
-    this.cargar();
+    this.leerParametrosIniciales();
+    this.cargar(true, false);
     interval(30000)
       .pipe(
         filter(() => !this.actualizando && !this.ocupado() && !this.detalle()
           && !this.pagando() && !this.comprobante()),
         takeUntilDestroyed(this.destroy),
       )
-      .subscribe(() => this.cargar(false));
+      .subscribe(() => this.cargar(false, false));
   }
   ngOnDestroy() {
     clearTimeout(this.searchTimer);
   }
-  cargar(mostrarCarga = true) {
+  private leerParametrosIniciales() {
+    const q = this.ruta.snapshot.queryParamMap;
+    const pag = Number(q.get("pagina"));
+    if (Number.isInteger(pag) && pag >= 0) this.pagina = pag;
+    const tam = Number(q.get("tamanio"));
+    if (tam === 5 || tam === 10 || tam === 20) this.tamanio = tam;
+    this.busqueda = q.get("buscar") ?? "";
+    this.estado = q.get("estado") ?? "";
+  }
+  private sincronizarUrl() {
+    void this.router.navigate([], {
+      relativeTo: this.ruta,
+      queryParams: {
+        pagina: this.pagina > 0 ? this.pagina : null,
+        tamanio: this.tamanio !== 10 ? this.tamanio : null,
+        buscar: this.busqueda.trim() || null,
+        estado: this.estado || null,
+      },
+      queryParamsHandling: "merge",
+      replaceUrl: true,
+    });
+  }
+  cargar(mostrarCarga = true, sincronizar = true) {
+    if (sincronizar) this.sincronizarUrl();
     const id = ++this.requestId;
     this.actualizando = true;
     if (mostrarCarga) {

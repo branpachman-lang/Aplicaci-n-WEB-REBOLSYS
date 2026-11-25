@@ -1,7 +1,10 @@
 package pe.com.rebolsysBackend.repository.mantenimiento;
 
 import jakarta.persistence.LockModeType;
+import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -9,6 +12,9 @@ import org.springframework.data.repository.query.Param;
 import pe.com.rebolsysBackend.entity.Habitacion;
 
 public interface HabitacionRepository extends JpaRepository<Habitacion, Long> {
+    @Override
+    @EntityGraph(attributePaths = "tipoHabitacion")
+    List<Habitacion> findAll(Sort sort);
     boolean existsByNumeroCuarto(String numero);
     boolean existsByNumeroCuartoAndIdHabitacionNot(String numero, Long id);
 

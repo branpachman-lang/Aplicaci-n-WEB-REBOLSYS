@@ -231,8 +231,30 @@ public class ReservaServiceImpl implements ReservaService {
     @Transactional(readOnly = true)
     public PaginaResponseDTO<ReservaRespuestaDTO> listar(int pagina, int tamanio) {
         var p = reservas.findAll(PageRequest.of(pagina, tamanio, Sort.by("idReserva").descending()));
+        var listaReservas = p.getContent();
+        if (listaReservas.isEmpty()) {
+            return new PaginaResponseDTO<>(List.of(), pagina, tamanio, p.getTotalElements(), p.getTotalPages(), p.isLast());
+        }
+        var reservaIds = listaReservas.stream().map(Reserva::getIdReserva).toList();
+        var detallesPorReserva = detalles.findConHabitacionPorReservas(reservaIds).stream()
+            .collect(java.util.stream.Collectors.groupingBy(d -> d.getReserva().getIdReserva()));
+        var detalleIds = detallesPorReserva.values().stream()
+            .flatMap(List::stream).map(DetalleReserva::getIdDetalleReserva).toList();
+        var ocupantesPorDetalle = detalleIds.isEmpty()
+            ? Map.<Long, List<ReservaOcupante>>of()
+            : ocupantes.findConHuespedPorDetalles(detalleIds).stream()
+                .collect(java.util.stream.Collectors.groupingBy(o -> o.getDetalleReserva().getIdDetalleReserva()));
+        var perfilIds = new HashSet<Long>();
+        listaReservas.forEach(r -> perfilIds.add(r.getCliente().getIdPerfil()));
+        ocupantesPorDetalle.values().stream().flatMap(List::stream)
+            .forEach(o -> perfilIds.add(o.getHuesped().getPerfil().getIdPerfil()));
+        var nombres = nombresPorPerfil(perfilIds);
+        var contenido = listaReservas.stream()
+            .map(r -> respuesta(r, detallesPorReserva.getOrDefault(r.getIdReserva(), List.of()),
+                ocupantesPorDetalle, nombres))
+            .toList();
         return new PaginaResponseDTO<>(
-                p.getContent().stream().map(this::respuesta).toList(),
+                contenido,
                 pagina,
                 tamanio,
                 p.getTotalElements(),
@@ -345,6 +367,55 @@ public class ReservaServiceImpl implements ReservaService {
         ocupantes.flush();
         guardarOcupantes(d, r.ocupantes());
         return respuestaDetalle(d);
+    }
+
+    private Map<Long, String> nombresPorPerfil(Collection<Long> ids) {
+        if (ids.isEmpty()) return Map.of();
+        Map<Long, String> resultado = new HashMap<>();
+        naturales.findAllById(ids).forEach(n -> resultado.put(n.getIdPerfil(), n.getNombres() + " " + n.getApellidos()));
+        juridicas.findAllById(ids).forEach(j -> resultado.put(j.getIdPerfil(), j.getRazonSocial()));
+        return resultado;
+    }
+
+    private ReservaRespuestaDTO respuesta(
+            Reserva r,
+            List<DetalleReserva> detallesReserva,
+            Map<Long, List<ReservaOcupante>> ocupantesPorDetalle,
+            Map<Long, String> nombres) {
+        return new ReservaRespuestaDTO(
+                r.getIdReserva(),
+                r.getCliente().getIdPerfil(),
+                r.getUsuario().getIdUsuario(),
+                nombres.getOrDefault(r.getCliente().getIdPerfil(), personas.nombre(r.getCliente())),
+                r.getFechaRegistro(),
+                r.getClaveRegistro(),
+                detallesReserva.stream()
+                    .map(d -> respuestaDetalle(d, ocupantesPorDetalle.getOrDefault(d.getIdDetalleReserva(), List.of()), nombres))
+                    .toList());
+    }
+
+    private ReservaDetalleRespuestaDTO respuestaDetalle(
+            DetalleReserva d, List<ReservaOcupante> ocupantesDetalle, Map<Long, String> nombres) {
+        return new ReservaDetalleRespuestaDTO(
+                d.getIdDetalleReserva(),
+                d.getHabitacion().getIdHabitacion(),
+                d.getHabitacion().getNumeroCuarto(),
+                d.getFechaIngreso(),
+                d.getFechaSalida(),
+                d.getFechaIngresoReal(),
+                d.getFechaSalidaReal(),
+                d.getCostoEstadia(),
+                d.getEstadoDetalle(),
+                ocupantesDetalle.stream()
+                    .map(o -> new ReservaOcupanteRespuestaDTO(
+                        o.getIdReservaOcupante(),
+                        o.getHuesped().getPerfil().getIdPerfil(),
+                        nombres.getOrDefault(o.getHuesped().getPerfil().getIdPerfil(),
+                            personas.nombre(o.getHuesped().getPerfil())),
+                        o.getIdOcupanteResponsable(),
+                        o.getParentescoResponsable(),
+                        o.getOcupaPlazaCama() == 1))
+                    .toList());
     }
 
     private ReservaRespuestaDTO respuesta(Reserva r) {
