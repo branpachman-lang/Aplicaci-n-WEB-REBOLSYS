@@ -59,8 +59,8 @@ public interface DetalleReservaRepository extends JpaRepository<DetalleReserva, 
       "select count(d) from DetalleReserva d where d.habitacion.idHabitacion=:habitacion and"
           + " ((d.estadoDetalle=pe.com.rebolsysBackend.enums.EstadoReserva.CONFIRMADA and"
           + " d.fechaIngreso<:salida and d.fechaSalida>:ingreso) or"
-          + " (d.estadoDetalle=pe.com.rebolsysBackend.enums.EstadoReserva.EN_CURSO and"
-          + " d.fechaIngreso<:salida)) and (:excluir is null or d.idDetalleReserva<>:excluir)")
+          + " d.estadoDetalle=pe.com.rebolsysBackend.enums.EstadoReserva.EN_CURSO)"
+          + " and d.idDetalleReserva<>:excluir")
   long superpuestas(
       @Param("habitacion") Long habitacion,
       @Param("ingreso") LocalDateTime ingreso,
@@ -72,7 +72,7 @@ public interface DetalleReservaRepository extends JpaRepository<DetalleReserva, 
           + " where (d.estadoDetalle=pe.com.rebolsysBackend.enums.EstadoReserva.CONFIRMADA"
           + " and d.fechaIngreso<:salida and d.fechaSalida>:ingreso) or"
           + " (d.estadoDetalle=pe.com.rebolsysBackend.enums.EstadoReserva.EN_CURSO and"
-          + " d.fechaIngreso<:salida)")
+          + " d.fechaIngreso<:salida and d.fechaSalida>:ingreso)")
   List<DetalleReserva> buscarEnPeriodo(
       @Param("ingreso") LocalDateTime ingreso, @Param("salida") LocalDateTime salida);
 

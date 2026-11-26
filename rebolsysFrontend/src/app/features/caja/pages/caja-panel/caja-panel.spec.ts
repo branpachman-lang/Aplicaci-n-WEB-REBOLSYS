@@ -39,7 +39,7 @@ describe('Panel de caja', () => {
       registrar: vi.fn((_id: number, _datos: DatosMovimiento, _archivo: File | null) => of({} as MovimientoCaja)),
       cerrar: vi.fn((_id: number, _revision: string, _arqueos: unknown) => of(turno({ abierto: false }))),
     };
-    const sesion = { permite: vi.fn(() => true), refrescar: vi.fn(() => of(null)) };
+    const sesion = { actual: () => ({ gerente: true, roles: [] }), permite: vi.fn(() => true), refrescar: vi.fn(() => of(null)) };
     const avisos = { mostrar: vi.fn() };
     TestBed.configureTestingModule({
       imports: [CajaPanel],

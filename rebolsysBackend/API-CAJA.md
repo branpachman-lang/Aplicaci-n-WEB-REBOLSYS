@@ -11,6 +11,7 @@ Gerencia tiene acceso al módulo. Asigna `CAJA:VER`, `CAJA:REGISTRAR_INGRESO`, `
 | Método y ruta bajo `/api/v1/caja` | Uso |
 | --- | --- |
 | `GET /actual` | Devuelve el turno abierto o el último cierre propio. Sin turno disponible devuelve un cuerpo vacío. |
+| `POST /turnos` | Abre el turno propio con `{"montoBase": 0}` o el importe contado. Repetir el mismo fondo con el turno abierto devuelve ese turno. |
 | `GET /turnos/{id}` | Consulta los importes esperados o el arqueo guardado. |
 | `GET /turnos/{id}/movimientos` | Lista el historial con `pagina` y `tamanio` opcionales. |
 | `POST /turnos/{id}/movimientos` | Recibe `datos` JSON con `idTipoMovimiento`, `concepto`, `monto` positivo y `claveRegistro` única (por ejemplo, un UUID). Acepta `archivo` opcional JPG o PNG de hasta 5 MB. |
@@ -18,3 +19,5 @@ Gerencia tiene acceso al módulo. Asigna `CAJA:VER`, `CAJA:REGISTRAR_INGRESO`, `
 | `POST /turnos/{id}/cierre` | Recibe `revision` de la consulta y `arqueos` con `idFormaPago` y `montoDeclarado` para cada medio. |
 
 El importe esperado suma los cobros verificados por medio. En efectivo suma también el fondo de apertura y los ingresos manuales, y resta los gastos manuales. La diferencia es el declarado menos el esperado. La revisión y la escritura se hacen bajo el bloqueo del turno. Si los importes cambiaron, la API devuelve `409` para solicitar un nuevo conteo. Si se pierde la respuesta al cerrar, consulta el turno por ID. Para recuperar el resultado de un ingreso o gasto, reenvía los mismos datos y adjunto con la misma `claveRegistro`.
+
+Al entrar a Caja, un gerente o recepcionista con acceso al módulo puede abrir su turno declarando su fondo. El inicio de sesión no crea turnos. El registro de gastos valida el efectivo esperado con el turno bloqueado.

@@ -11,6 +11,7 @@ import {
   ItemOperacion,
   ItemRequest,
 } from '../models/mobiliario.model';
+/** Servicio HTTP de Mobiliario / Ítems (CU_22): CRUD, asignación/traslado, conservación, baja e historial. */
 @Injectable({ providedIn: 'root' })
 export class MobiliarioService {
   item(id: number) {

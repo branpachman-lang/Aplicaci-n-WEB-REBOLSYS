@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { environment } from '../../../../environments/environment';
 import { TipoItem } from '../models/tipo-item.model';
+/** Servicio HTTP de Tipos de Mobiliario / Ítem (CU_22): listar y crear nuevos tipos. */
 @Injectable({ providedIn: 'root' })
 export class TipoItemService {
   private readonly http = inject(HttpClient);

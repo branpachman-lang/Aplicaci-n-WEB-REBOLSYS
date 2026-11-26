@@ -30,7 +30,14 @@ import { HabitacionService } from '../../services/habitacion-service';
   templateUrl: './habitacion-form.html',
   styleUrl: './habitacion-form.css',
 })
+/**
+ * CU_21 - Formulario de Habitación (Crear / Editar):
+ * - Controla reglas de capacidad, plazas de cama, menores sin cama y tarifa.
+ * - Incluye carga y vista previa de imagen referencial (JPEG/PNG <= 5 MB).
+ * - Al guardar, encadena con switchMap: (1) guardar habitación -> (2) subir imagen.
+ */
 export class HabitacionForm implements OnInit, OnDestroy {
+  // === 1. INYECCIÓN DE DEPENDENCIAS Y ESTADO DEL FORMULARIO ===
   private readonly habitacionesService = inject(HabitacionService);
   private readonly tiposService = inject(TipoHabitacionService);
   private readonly notificacionService = inject(NotificacionService);
@@ -44,6 +51,7 @@ export class HabitacionForm implements OnInit, OnDestroy {
 
   idHabitacionEditando = signal<number | null>(null);
 
+  /** Ruta persistida en BD (si ya tiene imagen), URL blob: temporal de vista previa y archivo seleccionado. */
   imagenActual = signal<string | null>(null);
   vistaPreviaImagen = signal<string | null>(null);
   archivoImagen = signal<File | null>(null);
@@ -65,6 +73,7 @@ export class HabitacionForm implements OnInit, OnDestroy {
 
   formPrecioPorNoche = signal<number | null>(null);
 
+  // === 2. SEÑALES COMPUTADAS (TIPO, ESTADO OCUPADA, CAPACIDAD Y TARIFA BASE) ===
   tipoSeleccionado = computed(() => {
     const id = this.formIdTipo();
     return this.tipos().find((t) => t.idTipoHabitacion === id) ?? null;
@@ -82,6 +91,7 @@ export class HabitacionForm implements OnInit, OnDestroy {
     return this.tipoSeleccionado()?.precioBase ?? 0;
   });
 
+  // === 3. INICIALIZACIÓN EN MODO CREAR O EDITAR ===
   abrirCrear(): void {
     this.modoEdicion.set(false);
     this.idHabitacionEditando.set(null);
@@ -119,10 +129,13 @@ export class HabitacionForm implements OnInit, OnDestroy {
     this.formError.set('');
   }
 
+  // === 4. CARGA Y VISTA PREVIA DE IMAGEN (JPEG/PNG <= 5 MB, URL blob:) ===
+  /** Prioriza la vista previa local (blob:) sobre la imagen ya guardada en el servidor. */
   vistaImagen(): string | null {
     return this.vistaPreviaImagen() ?? this.imagenActual();
   }
 
+  /** Valida formato JPEG/PNG y tamaño <= 5 MB en el cliente y crea una URL temporal en memoria. */
   seleccionarImagen(inputEl: HTMLInputElement): void {
     const archivo = inputEl.files?.[0];
     this.limpiarVistaPrevia();
@@ -141,6 +154,7 @@ export class HabitacionForm implements OnInit, OnDestroy {
     this.vistaPreviaImagen.set(URL.createObjectURL(archivo));
   }
 
+  /** Libera la URL blob: anterior para evitar fugas de memoria al cambiar archivo o salir. */
   private limpiarVistaPrevia(): void {
     const actual = this.vistaPreviaImagen();
     if (actual?.startsWith('blob:')) URL.revokeObjectURL(actual);
@@ -151,6 +165,7 @@ export class HabitacionForm implements OnInit, OnDestroy {
     this.limpiarVistaPrevia();
   }
 
+  // === 5. REGLAS DE CAPACIDAD, PLAZAS DE CAMA Y MENORES SIN CAMA ===
   onTipoChange(nuevoId: number | null): void {
     this.formIdTipo.set(nuevoId);
     const tipo = this.tipos().find((t) => t.idTipoHabitacion === nuevoId);
@@ -210,6 +225,7 @@ export class HabitacionForm implements OnInit, OnDestroy {
     );
   }
 
+  // === 6. VALIDACIÓN Y GUARDADO ENCADENADO CON SUBIDA DE IMAGEN (switchMap) ===
   formValido(): boolean {
     const num = this.formNumero().trim();
     if (!num || num.length > 10) return false;
@@ -256,6 +272,8 @@ export class HabitacionForm implements OnInit, OnDestroy {
 
     const id = this.modoEdicion() ? this.idHabitacionEditando() : null;
     const archivo = this.archivoImagen();
+    // Paso 1: guardar/actualizar datos de la habitación para asegurar su ID.
+    // Paso 2: si el usuario eligió archivo, subirlo con multipart/form-data (POST /api/v1/imagenes/habitaciones/{id}).
     this.habitacionesService
       .guardarHabitacion(id, req)
       .pipe(
@@ -287,6 +305,7 @@ export class HabitacionForm implements OnInit, OnDestroy {
       },
     });
   }
+  // === 7. CARGA INICIAL DESDE PARÁMETRO DE RUTA Y NAVEGACIÓN ===
   readonly id = input<string>();
   tipos = signal<TipoHabitacion[]>([]);
   cargando = signal(true);

@@ -23,6 +23,7 @@ interface HuespedEditable extends OcupanteRegistro {
 export class HuespedesEstadia implements OnInit {
   readonly estancia = input.required<DetalleReserva>();
   readonly documentos = input.required<Catalogo[]>();
+  readonly textoVolver = input('Volver');
   readonly guardados = output<DetalleReserva>();
   readonly cerrar = output<void>();
 
@@ -37,12 +38,14 @@ export class HuespedesEstadia implements OnInit {
   nombres = '';
   apellidos = '';
   nacimiento = '';
+  telefono = '';
   idClienteSinNacimiento: number | null = null;
   readonly nuevo = signal(false);
   readonly ocupado = signal(false);
   readonly error = signal('');
 
   ngOnInit() {
+    this.tipoDocumento = this.documentos().find(d => d.codigoSunat !== '6')?.id ?? null;
     const ocupantes = this.estancia().ocupantes;
     const idsPorOcupacion = new Map(ocupantes.map(o => [o.idReservaOcupante, o.idCliente]));
     this.huespedes = ocupantes.map(o => ({
@@ -61,6 +64,7 @@ export class HuespedesEstadia implements OnInit {
     this.nombres = '';
     this.apellidos = '';
     this.nacimiento = '';
+    this.telefono = '';
     this.error.set('');
   }
 
@@ -102,7 +106,7 @@ export class HuespedesEstadia implements OnInit {
       razonSocial: null,
       direccionFiscal: null,
       correo: null,
-      telefono: null,
+      telefono: this.telefono.trim() || null,
     };
     const request = this.idClienteSinNacimiento === null
       ? this.clientes.registrar(persona)

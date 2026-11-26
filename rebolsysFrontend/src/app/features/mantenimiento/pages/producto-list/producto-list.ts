@@ -23,7 +23,14 @@ import { ImagenProtegida } from '../../../../shared/directives/imagen-protegida'
   templateUrl: './producto-list.html',
   styleUrl: './producto-list.css',
 })
+/**
+ * CU_23 - Administrar Productos (Listado, stock y baja lógica):
+ * - Sincroniza filtros y paginación en la URL y consulta con rxResource.
+ * - Renderiza imagen protegida (o SVG de respaldo sin-imagen.svg si falla).
+ * - Gestiona retiro de venta (baja lógica), detalle/movimientos y ajuste de stock con control 409.
+ */
 export class ProductoList {
+  // === 1. INYECCIÓN DE DEPENDENCIAS, FILTROS EN URL Y rxResource ===
   protected readonly sesion = inject(SesionService);
   private productos = inject(ProductoService);
   private categoriasService = inject(CategoriaService);
@@ -32,6 +39,7 @@ export class ProductoList {
   private readonly router = inject(Router);
 
   categoriasAbiertas = signal(false);
+  /** IDs de productos cuya imagen protegida falló para mostrar el SVG de respaldo. */
   fallidas = signal<Set<number>>(new Set());
 
   // Filtros y paginación
@@ -85,6 +93,7 @@ export class ProductoList {
   });
   private readonly alertaError = notificarCambios(this.error, 'error');
 
+  // === 2. ESTADO DE MODALES (BAJA, DETALLE/MOVIMIENTOS Y AJUSTE DE STOCK) ===
   // Modal de baja / retiro
   desactivando = signal<Producto | null>(null);
   ocupado = signal(false);
@@ -108,6 +117,7 @@ export class ProductoList {
   ajusteError = signal('');
   ajusteConflicto = signal('');
 
+  // === 3. CONSULTA, FILTROS, CATEGORÍAS E IMAGEN CON RESPALDO ===
   categoriaCreada(categoria: Categoria) {
     if (!this.catalogoCategorias.hasValue()) {
       this.revisionCategorias.update((revision) => revision + 1);
@@ -154,12 +164,14 @@ export class ProductoList {
     };
   }
 
+  /** Devuelve la ruta protegida del producto o el SVG local de respaldo si no tiene imagen o falló. */
   imagen(p: Producto): string {
     return p.imagenRuta && !this.fallidas().has(p.idProducto)
       ? p.imagenRuta
       : '/imagenes/productos/sin-imagen.svg';
   }
 
+  /** Registra un fallo de carga de imagen para sustituirla automáticamente por sin-imagen.svg. */
   marcarImagenFallida(id: number) {
     this.fallidas.update((set) => {
       const next = new Set(set);
@@ -172,7 +184,7 @@ export class ProductoList {
     return p.stockBajo ?? p.stock <= p.stockMinimo;
   }
 
-  // Operación: Retiro de venta (Baja lógica mediante DELETE /productos/{id})
+  // === 4. RETIRO DE VENTA (BAJA LÓGICA MEDIANTE DELETE /productos/{id}) ===
   iniciarDesactivacion(p: Producto) {
     this.modalError.set('');
     this.desactivando.set(p);
@@ -200,7 +212,7 @@ export class ProductoList {
     });
   }
 
-  // Operación: Consultar detalle completo y movimientos
+  // === 5. CONSULTA DE DETALLE COMPLETO Y MOVIMIENTOS DE INVENTARIO ===
   abrirDetalle(p: Producto) {
     this.detalleProducto.set(p);
     this.cargandoMovimientos.set(true);
@@ -229,7 +241,7 @@ export class ProductoList {
     this.errorMovimientos.set('');
   }
 
-  // Operación: Ajuste de existencias
+  // === 6. AJUSTE DE EXISTENCIAS (IDEMPOTENCIA Y CONTROL DE CONCURRENCIA 409) ===
   iniciarAjuste(p: Producto) {
     this.ajustandoProducto.set(p);
     this.ajusteStockAnterior = p.stock;

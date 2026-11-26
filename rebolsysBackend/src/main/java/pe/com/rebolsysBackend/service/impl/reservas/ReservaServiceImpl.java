@@ -311,8 +311,9 @@ public class ReservaServiceImpl implements ReservaService {
                         h,
                         id, true);
                 exigir(
-                        !ahora.isBefore(d.getFechaIngreso()) && ahora.isBefore(d.getFechaSalida()),
-                        "El ingreso debe estar dentro del periodo reservado");
+                        !ahora.isBefore(d.getFechaIngreso().minusMinutes(30))
+                                && ahora.isBefore(d.getFechaSalida()),
+                        "El check-in puede registrarse desde 30 minutos antes del ingreso reservado y antes de la salida");
                 exigir(
                         h.getEstadoHabitacion() == EstadoHabitacion.DISPONIBLE,
                         "La habitación debe estar disponible");

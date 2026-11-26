@@ -1,13 +1,14 @@
 import { notificarCambios } from '../../../../core/services/avisos-formulario';
 import { generarClaveOperacion } from '../../../../core/utils/clave-operacion';
 import { PermisosUi } from "../../../../core/auth/permisos-ui";
-import { Component, DestroyRef, OnDestroy, inject, signal } from "@angular/core";
+import { Component, computed, DestroyRef, OnDestroy, inject, signal, viewChild } from "@angular/core";
 import { CurrencyPipe, DatePipe } from "@angular/common";
 import { FormsModule } from "@angular/forms";
 import { RouterLink,Router,ActivatedRoute } from "@angular/router";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
-import { forkJoin, Subscription } from 'rxjs';
+import { finalize, forkJoin, Subscription } from 'rxjs';
 import { DialogFocus } from "../../../../shared/directives/dialog-focus";
+import { Tooltip } from '../../../../shared/directives/tooltip';
 import { NotificacionService } from "../../../../core/services/notificacion.service";
 import { CatalogoService } from "../../../../core/services/catalogo-service";
 import { Catalogos } from "../../../../core/models/catalogo.model";
@@ -37,6 +38,7 @@ import {
 } from "../../models/reserva-api.model";
 
 type AccionEstadia = 'ingreso' | 'salida' | 'cancelacion';
+type AccionRapida = 'ingreso' | 'salida' | 'historial';
 
 const PERMISOS_ESTADIA: Record<AccionEstadia, string> = {
   ingreso: 'RESERVAS:REGISTRAR_INGRESO',
@@ -60,6 +62,7 @@ const MENSAJES_ESTADIA: Record<AccionEstadia, string> = {
     Icon,
     PagoModal,
     DialogFocus,
+    Tooltip,
     ComprobanteDialog,
     PagoYape,
     HuespedesEstadia,
@@ -93,8 +96,19 @@ export class ReservaList implements OnDestroy {
   detalle = signal<ReservaResumen | null>(null);
   accionEstadia = signal<{ id: number; accion: AccionEstadia } | null>(null);
   procesandoEstadia = signal(false);
+  accionRapida = signal<{ reserva: ReservaResumen; accion: AccionRapida } | null>(null);
+  cargandoAccionRapida = signal(false);
+  habitacionRapidaId = signal<number | null>(null);
+  habitacionesRapidas = computed(() => {
+    const operacion = this.accionRapida();
+    return operacion ? this.habitacionesParaAccion(operacion.reserva, operacion.accion) : [];
+  });
+  habitacionRapida = computed(() => this.habitacionesRapidas().find(
+    h => h.idDetalleReserva === this.habitacionRapidaId(),
+  ));
+  editandoOcupantes = signal<DetalleReserva | null>(null);
+  readonly editorOcupantes = viewChild(HuespedesEstadia);
   errorEstadia = signal('');
-  estanciaEditando = signal<number | null>(null);
   comprobante = signal<ReservaApi | null>(null);
   abrirComprobante(r: ReservaApi) {
     if (this.comprobante()) return;
@@ -276,10 +290,68 @@ export class ReservaList implements OnDestroy {
       "Responsable registrado"
     );
   }
+  habitacionesParaAccion(reserva: ReservaApi, accion: AccionRapida) {
+    return reserva.detalles.filter(h => accion === 'historial'
+      ? h.estadoDetalle === 'FINALIZADA'
+      : this.puedeGestionarEstadia(h, accion));
+  }
+
+  abrirAccionRapida(r: ReservaApi, accion: AccionRapida) {
+    if (this.cargandoAccionRapida() || this.accionRapida() || this.ocupado()) return;
+    this.cargandoAccionRapida.set(true);
+    this.errorEstadia.set('');
+    forkJoin({ reserva: this.servicio.obtener(r.idReserva), cuenta: this.servicio.cuenta(r.idReserva) })
+      .pipe(takeUntilDestroyed(this.destroy), finalize(() => this.cargandoAccionRapida.set(false)))
+      .subscribe({
+        next: ({ reserva, cuenta }) => {
+          const candidatas = this.habitacionesParaAccion(reserva, accion);
+          if (!candidatas.length) {
+            this.avisos.mostrar('Ya no hay habitaciones disponibles para esta acción.');
+            this.cargar();
+            return;
+          }
+          this.habitacionRapidaId.set(candidatas.length === 1 ? candidatas[0].idDetalleReserva : null);
+          this.accionRapida.set({ reserva: { ...reserva, cuenta }, accion });
+        },
+        error: e => this.avisos.mostrar(mensajeError(e), true),
+      });
+  }
+
+  cerrarAccionRapida() {
+    if (this.procesandoEstadia()) return;
+    this.accionRapida.set(null);
+    this.errorEstadia.set('');
+  }
+
+  confirmarAccionRapida() {
+    const operacion = this.accionRapida();
+    const habitacion = this.habitacionRapida();
+    if (!operacion || !habitacion || this.procesandoEstadia() || this.ocupado() || this.editandoOcupantes()) return;
+    const { reserva, accion } = operacion;
+    if (accion === 'salida' && this.puedeGestionarEstadia(habitacion, 'salida')) {
+      if (this.abrirSalida(reserva, habitacion)) this.cerrarAccionRapida();
+    }
+    if (accion !== 'ingreso' || !habitacion.ocupantes.length || !this.puedeGestionarEstadia(habitacion, 'ingreso')) return;
+    this.procesandoEstadia.set(true);
+    this.errorEstadia.set('');
+    this.servicio.ingresar(habitacion.idDetalleReserva).pipe(takeUntilDestroyed(this.destroy)).subscribe({
+      next: () => {
+        this.procesandoEstadia.set(false);
+        this.cerrarAccionRapida();
+        this.avisos.mostrar(`Se registró el ingreso de la habitación ${habitacion.numeroCuarto}.`);
+        this.cargar();
+      },
+      error: e => {
+        this.procesandoEstadia.set(false);
+        this.errorEstadia.set(mensajeError(e));
+      },
+    });
+  }
+
   verDetalle(r: ReservaApi) {
     this.cancelarDetalle.set(null);
     this.eliminarPagoId.set(null);
-    this.estanciaEditando.set(null);
+    this.editandoOcupantes.set(null);
     const id = ++this.detalleId;
     this.accionEstadia.set(null);
     this.errorEstadia.set('');
@@ -301,30 +373,35 @@ export class ReservaList implements OnDestroy {
     return this.acceso.permite('RESERVAS:EDITAR_OCUPANTES')
       && h.estadoDetalle === 'CONFIRMADA' && !h.fechaIngresoReal;
   }
-  editarHuespedes(h: DetalleReserva) {
-    if (!this.puedeEditarHuespedes(h) || this.procesandoEstadia()) return;
+  abrirEditorOcupantes(h: DetalleReserva) {
+    if (!this.puedeEditarHuespedes(h) || this.procesandoEstadia() || this.editandoOcupantes()) return;
     this.accionEstadia.set(null);
-    this.estanciaEditando.set(h.idDetalleReserva);
+    this.editandoOcupantes.set(h);
     if (this.catalogos()) return;
     this.catalogoService.listar().pipe(takeUntilDestroyed(this.destroy)).subscribe({
       next: catalogos => this.catalogos.set(catalogos),
       error: e => {
-        this.estanciaEditando.set(null);
+        this.editandoOcupantes.set(null);
         this.avisos.mostrar(mensajeError(e), true);
       },
     });
   }
+  cerrarEditorOcupantes() {
+    if (!this.editorOcupantes()?.ocupado()) this.editandoOcupantes.set(null);
+  }
   actualizarHuespedes(actualizada: DetalleReserva) {
-    this.detalle.update(reserva => reserva && ({
+    const actualizar = (reserva: ReservaResumen): ReservaResumen => ({
       ...reserva,
       detalles: reserva.detalles.map(h => h.idDetalleReserva === actualizada.idDetalleReserva ? actualizada : h),
-    }));
-    this.estanciaEditando.set(null);
+    });
+    this.detalle.update(reserva => reserva && actualizar(reserva));
+    this.accionRapida.update(operacion => operacion && ({ ...operacion, reserva: actualizar(operacion.reserva) }));
+    this.editandoOcupantes.set(null);
     this.avisos.mostrar('Se guardaron los huéspedes de la habitación.');
-    this.cargar();
+    this.cargar(false);
   }
   pedirAccionEstadia(h: DetalleReserva, accion: AccionEstadia) {
-    if (this.procesandoEstadia() || this.estanciaEditando() !== null || !this.puedeGestionarEstadia(h, accion)) return;
+    if (this.procesandoEstadia() || this.editandoOcupantes() !== null || !this.puedeGestionarEstadia(h, accion)) return;
     this.errorEstadia.set('');
     this.accionEstadia.set({ id: h.idDetalleReserva, accion });
   }
@@ -456,15 +533,15 @@ export class ReservaList implements OnDestroy {
   }
 
   abrirSalida(r: ReservaResumen, detalle: DetalleReserva) {
+    if (this.ocupado()) return false;
     const pendiente = this.salidasPendientes().find(s => s.idDetalleReserva === detalle.idDetalleReserva);
     if (pendiente) {
       this.confirmarSalida(pendiente);
-      return;
+      return true;
     }
-    if (this.ocupado()) return;
     if (r.cuenta.cuentas.some(c => c.idVenta !== null && c.saldo !== 0)) {
       this.avisos.mostrar('Liquida las cuentas separadas antes de registrar la salida.', true);
-      return;
+      return false;
     }
     const salida = { idReserva: r.idReserva, idDetalleReserva: detalle.idDetalleReserva,
       claveOperacion: generarClaveOperacion() };
@@ -477,7 +554,9 @@ export class ReservaList implements OnDestroy {
       this.pagando.set(r);
     } else {
       this.avisos.mostrar('Un recepcionista con permiso de cobro debe liquidar el saldo.', true);
+      return false;
     }
+    return true;
   }
 
   confirmarSalida(salida: SalidaPendiente) {

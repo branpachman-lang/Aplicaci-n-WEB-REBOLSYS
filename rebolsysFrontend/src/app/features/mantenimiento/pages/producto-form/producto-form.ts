@@ -32,7 +32,14 @@ import { ImagenProtegida } from "../../../../shared/directives/imagen-protegida"
   templateUrl: "./producto-form.html",
   styleUrl: "./producto-form.css",
 })
+/**
+ * CU_23 - Formulario de Producto (Crear / Editar):
+ * - Usa ReactiveForms con validaciones de precio, stock, categoría y ruta de imagen.
+ * - Permite subir imagen local (JPEG/PNG <= 5 MB) con vista previa blob: o indicar ruta manual.
+ * - Al guardar, encadena con switchMap: (1) crear/actualizar producto -> (2) subir imagen al backend.
+ */
 export class ProductoForm implements OnInit, OnDestroy {
+  // === 1. INYECCIÓN DE DEPENDENCIAS, ESTADO Y FORMULARIO REACTIVO ===
   id = input<string>();
   private productos = inject(ProductoService);
   private categoriasService = inject(CategoriaService);
@@ -49,6 +56,7 @@ export class ProductoForm implements OnInit, OnDestroy {
   categoriasAbiertas = signal(false);
   usuarios = signal<Catalogo[]>([]);
   confirmacionPendiente = signal(false);
+  /** Estado de respaldo visual, archivo local seleccionado y URL blob: temporal de vista previa. */
   imagenFallida = signal(false);
   archivoImagen = signal<File | null>(null);
   vistaPreviaArchivo = signal<string | null>(null);
@@ -96,6 +104,7 @@ export class ProductoForm implements OnInit, OnDestroy {
     ],
     stockAnterior: [null],
   });
+  // === 2. CARGA INICIAL (CREAR / EDITAR) Y CATEGORÍAS ===
   ngOnInit() {
     if (this.id()) this.form.get("stock")!.disable();
     this.cargar();
@@ -144,6 +153,8 @@ export class ProductoForm implements OnInit, OnDestroy {
     );
     this.form.get("idCategoria")!.setValue(c.idCategoria);
   }
+  // === 3. VISTA PREVIA Y CARGA DE IMAGEN (ARCHIVO LOCAL JPEG/PNG <= 5 MB O RUTA MANUAL) ===
+  /** Orden de prioridad: (1) archivo local blob:, (2) imagenRuta válida del servidor, (3) sin-imagen.svg. */
   vistaImagen() {
     if (this.vistaPreviaArchivo()) return this.vistaPreviaArchivo()!;
     const ruta = this.form.get("imagenRuta")!.value;
@@ -151,6 +162,8 @@ export class ProductoForm implements OnInit, OnDestroy {
       ? ruta
       : "/imagenes/productos/sin-imagen.svg";
   }
+
+  /** Valida formato JPEG/PNG y tamaño <= 5 MB en el cliente y crea URL blob: en memoria. */
   seleccionarArchivo(input: HTMLInputElement) {
     const archivo = input.files?.[0];
     this.limpiarVistaPrevia();
@@ -169,6 +182,7 @@ export class ProductoForm implements OnInit, OnDestroy {
     this.archivoImagen.set(archivo);
     this.vistaPreviaArchivo.set(URL.createObjectURL(archivo));
   }
+  /** Libera la URL blob: temporal al cambiar de imagen o salir del formulario. */
   private limpiarVistaPrevia() {
     const actual = this.vistaPreviaArchivo();
     if (actual?.startsWith("blob:")) URL.revokeObjectURL(actual);
@@ -177,6 +191,8 @@ export class ProductoForm implements OnInit, OnDestroy {
   ngOnDestroy() {
     this.limpiarVistaPrevia();
   }
+
+  // === 4. VALIDACIÓN Y GUARDADO ENCADENADO CON SUBIDA DE IMAGEN (switchMap) ===
   guardar() {
     if (this.guardando() || this.confirmacionPendiente()) return;
     this.form.markAllAsTouched();
@@ -206,6 +222,8 @@ export class ProductoForm implements OnInit, OnDestroy {
     const archivo = this.archivoImagen();
     this.guardando.set(true);
     this.form.disable({ emitEvent: false });
+    // Paso 1: crear o actualizar el producto para obtener su idProducto.
+    // Paso 2: si hay archivo seleccionado, subirlo vía multipart/form-data (POST /api/v1/imagenes/productos/{id}).
     (this.id()
       ? this.productos.actualizar(this.id()!, datos)
       : this.productos.crear(datos)

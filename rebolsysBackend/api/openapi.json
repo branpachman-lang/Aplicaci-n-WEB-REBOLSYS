@@ -3963,6 +3963,45 @@
         ]
       }
     },
+    "/api/v1/caja/turnos": {
+      "post": {
+        "tags": [
+          "Caja"
+        ],
+        "summary": "Abrir el turno propio con el efectivo inicial contado",
+        "operationId": "abrirCaja",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AbrirCaja"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Turno abierto",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Contexto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Ya existe un turno abierto con otro fondo"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/caja/turnos/{id}/movimientos": {
       "get": {
         "tags": [
@@ -9452,6 +9491,20 @@
             "minLength": 0,
             "type": "string",
             "format": "email"
+          }
+        }
+      },
+      "AbrirCaja": {
+        "type": "object",
+        "required": [
+          "montoBase"
+        ],
+        "properties": {
+          "montoBase": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 99999999.99,
+            "multipleOf": 0.01
           }
         }
       },

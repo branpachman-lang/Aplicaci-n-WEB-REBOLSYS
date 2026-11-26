@@ -1,5 +1,7 @@
 package pe.com.rebolsysBackend.service.impl.caja;
 
+import pe.com.rebolsysBackend.repository.accesos.UsuarioRepository;
+import pe.com.rebolsysBackend.security.AccesosService;
 import pe.com.rebolsysBackend.repository.caja.ArqueoCajaRepository;
 import pe.com.rebolsysBackend.repository.caja.FlujoCajaRepository;
 import pe.com.rebolsysBackend.repository.caja.TipoMovimientoCajaRepository;
@@ -37,6 +39,8 @@ public class CajaService {
   private final EntityManager em;
   private final SesionOperacionService sesion;
   private final TurnoCajaRepository turnos;
+  private final UsuarioRepository usuarios;
+  private final AccesosService accesos;
   private final ArqueoCajaRepository arqueos;
   private final FormaPagoRepository formas;
   private final PagoRepository pagos;
@@ -54,6 +58,30 @@ public class CajaService {
         "Tu usuario tiene más de un turno abierto. Revisa los turnos antes de operar la caja");
     return turnos.findFirstByUsuarioIdUsuarioAndEstadoSesionAndFechaCierreIsNotNullOrderByIdTurnoDesc(
         actor.idUsuario(), 0).map(this::contexto).orElse(null);
+  }
+
+  @Transactional
+  public Contexto abrir(Abrir datos, String ip) {
+    var actor = sesion.actual();
+    var usuario = usuarios.bloquear(actor.idUsuario())
+        .orElseThrow(() -> new RecursoNoEncontradoException("El usuario no existe"));
+    if (!accesos.perfil(actor.idUsuario()).operaCaja())
+      throw new AccessDeniedException("Tu rol no permite abrir un turno de caja");
+    var abiertos = turnos.findByUsuarioIdUsuarioAndEstadoSesionAndFechaCierreIsNullOrderByIdTurno(actor.idUsuario(), 1);
+    if (!abiertos.isEmpty()) {
+      exigir(abiertos.size() == 1, "Tu usuario tiene más de un turno abierto. Revisa los turnos antes de operar la caja");
+      var abierto = abiertos.getFirst();
+      exigir(abierto.getMontoBase().compareTo(datos.montoBase()) == 0, "Ya tienes un turno abierto con otro fondo");
+      return contexto(abierto);
+    }
+    var turno = new TurnoCaja();
+    turno.setUsuario(usuario);
+    turno.setEstadoSesion(1);
+    turno.setFechaApertura(ahora());
+    turno.setMontoBase(datos.montoBase());
+    turnos.saveAndFlush(turno);
+    auditoria.publicarPostCommit(actor, "TURNO_CAJA", turno.getIdTurno(), "POST", "/api/v1/caja/turnos", ip);
+    return contexto(turno);
   }
 
   public Contexto consultar(Long id) {
@@ -91,6 +119,7 @@ public class CajaService {
       return movimiento(anterior);
     }
     exigirTurnoVigente(turno, actor);
+    if (tipo.getSigno() == -1) validarGastoEnEfectivo(turno, datos.monto());
 
     var flujo = new FlujoCaja();
     flujo.setTurnoCaja(turno);
@@ -183,6 +212,33 @@ public class CajaService {
     }
     return new Contexto(id, turno.getFechaApertura(), turno.getFechaCierre(), turno.getMontoBase(), abierto,
         disponibles, ingresos, gastos, filas, revision, bloqueo);
+  }
+
+  private BigDecimal efectivoDisponible(TurnoCaja turno) {
+    var manuales = flujos.sumarManuales(turno.getIdTurno()).stream()
+        .collect(toMap(FlujoCajaRepository.ImporteManual::getSigno,
+            FlujoCajaRepository.ImporteManual::getMonto));
+    var efectivos = formas.findAll().stream().filter(this::efectivo).toList();
+    exigir(efectivos.size() == 1, "Configura una única forma de pago Efectivo antes de registrar egresos");
+    var cobrosEfectivo = pagos.sumarVerificados(turno.getIdTurno()).stream()
+        .filter(p -> p.getIdFormaPago().equals(efectivos.getFirst().getIdFormaPago()))
+        .map(PagoRepository.ImporteForma::getMonto).reduce(BigDecimal.ZERO, BigDecimal::add);
+    return turno.getMontoBase().add(manuales.getOrDefault(1, BigDecimal.ZERO))
+        .add(cobrosEfectivo).subtract(manuales.getOrDefault(-1, BigDecimal.ZERO));
+  }
+
+  public void validarGastoEnEfectivo(TurnoCaja turno, BigDecimal monto) {
+    validarEgresoEnEfectivo(turno, monto, "El gasto");
+  }
+
+  public void validarDevolucionEnEfectivo(TurnoCaja turno, BigDecimal monto) {
+    validarEgresoEnEfectivo(turno, monto, "La devolución");
+  }
+
+  private void validarEgresoEnEfectivo(TurnoCaja turno, BigDecimal monto, String movimiento) {
+    var disponible = efectivoDisponible(turno);
+    exigir(monto.compareTo(disponible) <= 0,
+        movimiento + " supera el efectivo disponible en caja. Disponible: S/ " + disponible.max(BigDecimal.ZERO).toPlainString());
   }
 
   private TurnoCaja turnoPropio(Long id, SesionActualDTO actor) {

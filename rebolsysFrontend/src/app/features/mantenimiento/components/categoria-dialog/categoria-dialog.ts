@@ -20,6 +20,10 @@ import { mensajeError } from "../../../../core/utils/http-error";
   templateUrl: "./categoria-dialog.html",
   styleUrl: "./categoria-dialog.css",
 })
+/**
+ * Modal reutilizable de Categorías de Producto (CU_23):
+ * Permite consultar categorías existentes y crear nuevas validando duplicados (máx. 30 caracteres).
+ */
 export class CategoriaDialog implements OnInit {
   cerrar = output<void>();
   creada = output<Categoria>();

@@ -968,6 +968,7 @@ class PropuestaOracleTest {
     assertThat(cuentasReserva.cuenta(r.idReserva()).totalAlojamiento()).isZero();
     var r2 = reservas.registrar(reserva("con-anticipo", false));
     cuentasReserva.pagar(r2.idReserva(), pago("anticipo-anulacion", "10", null));
+    em.find(TurnoCaja.class, turno).setMontoBase(BigDecimal.TEN);
     var cancelada = reservas.cambiarEstado(r2.detalles().getFirst().idDetalleReserva(),
         "cancelacion", new OperacionUsuarioDTO(usuario));
     assertThat(cancelada.montoDevuelto()).isEqualByComparingTo("10");

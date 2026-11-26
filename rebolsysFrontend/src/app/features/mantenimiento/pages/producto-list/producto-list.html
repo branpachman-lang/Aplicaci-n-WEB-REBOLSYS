@@ -1,3 +1,4 @@
+<!-- === 1. ENCABEZADO Y ACCIONES PRINCIPALES (CU_23 PRODUCTOS) === -->
 <div class="page-heading no-print">
   <div>
     <h2>Productos de la tiendita</h2>
@@ -17,6 +18,7 @@
   </div>
 </div>
 
+<!-- === 2. BARRA DE BÚSQUEDA Y FILTROS (CATEGORÍA, ESTADO, STOCK BAJO) === -->
 <section class="panel">
   <div class="panel-toolbar">
     <div class="search-field focus-group">
@@ -64,10 +66,12 @@
       <button class="button" (click)="cargar()">Reintentar</button>
     </div>
   } @else {
+    <!-- === 3. GRILLA DE TARJETAS DE PRODUCTOS Y PAGINACIÓN === -->
     <div class="catalog-container">
       <div class="products-grid">
         @for (p of respuesta()?.contenido; track p.idProducto) {
           <article class="product-card" [class.product-inactivo]="p.estadoProducto === 'INACTIVO'">
+            <!-- Imagen protegida con JWT vía [imagenProtegida]; fallback automático a sin-imagen.svg -->
             <div class="product-card-media">
               <img
                 [imagenProtegida]="imagen(p)"
@@ -189,7 +193,7 @@
   }
 </section>
 
-<!-- Modal: Retirar de venta / Desactivar producto -->
+<!-- === 4. MODAL: RETIRAR PRODUCTO DE VENTA (BAJA LÓGICA) === -->
 @if (desactivando(); as p) {
   <div class="modal-backdrop" (click)="!ocupado() && desactivando.set(null)">
     <section
@@ -244,7 +248,7 @@
   </div>
 }
 
-<!-- Modal: Detalle completo y movimientos de inventario -->
+<!-- === 5. MODAL: DETALLE COMPLETO E HISTORIAL DE MOVIMIENTOS === -->
 @if (detalleProducto(); as prod) {
   <div class="modal-backdrop" (click)="cerrarDetalle()">
     <section
@@ -404,7 +408,7 @@
   </div>
 }
 
-<!-- Modal: Ajuste de existencias de almacén (POST /productos/{id}/ajustes-stock) -->
+<!-- === 6. MODAL: AJUSTE DE EXISTENCIAS (IDEMPOTENTE + CONTROL 409) === -->
 @if (ajustandoProducto(); as prod) {
   <div class="modal-backdrop" (click)="cerrarAjuste()">
     <section
@@ -536,6 +540,7 @@
   </div>
 }
 
+<!-- === 7. MODAL REUTILIZABLE: GESTIÓN DE CATEGORÍAS === -->
 @if (categoriasAbiertas()) {
   <app-categoria-dialog
     (cerrar)="categoriasAbiertas.set(false)"

@@ -26,7 +26,14 @@ import { MobiliarioService } from '../../services/mobiliario-service';
   templateUrl: './mobiliario-form.html',
   styleUrl: './mobiliario-form.css',
 })
+/**
+ * CU_22 - Formulario de Mobiliario / Ítem (Crear / Editar):
+ * - Permite registrar una unidad en almacén o asignada directamente a una habitación.
+ * - Incluye carga y vista previa de imagen referencial (JPEG/PNG <= 5 MB).
+ * - Usa clave de operación (idempotencia) en la etapa 2 de asignación para evitar duplicados al reintentar.
+ */
 export class MobiliarioForm implements OnInit, OnDestroy {
+  // === 1. INYECCIÓN DE DEPENDENCIAS Y ESTADO DEL FORMULARIO ===
   private readonly mobiliarioService = inject(MobiliarioService);
   private readonly habitacionesService = inject(HabitacionService);
   private readonly tiposService = inject(TipoItemService);
@@ -38,6 +45,7 @@ export class MobiliarioForm implements OnInit, OnDestroy {
   modoEdicion = signal(false);
 
   itemEnEdicion = signal<Item | null>(null);
+  /** Ruta persistida en BD, URL blob: temporal de vista previa y archivo seleccionado. */
   imagenActual = signal<string | null>(null);
   vistaPreviaImagen = signal<string | null>(null);
   archivoImagen = signal<File | null>(null);
@@ -75,6 +83,7 @@ export class MobiliarioForm implements OnInit, OnDestroy {
 
   nuevoTipoOcupado = signal(false);
 
+  // === 2. INICIALIZACIÓN EN MODO CREAR O EDITAR ===
   abrirRegistrar(): void {
     this.formNombreItem = '';
     this.formIdTipoItem =
@@ -119,10 +128,13 @@ export class MobiliarioForm implements OnInit, OnDestroy {
     this.imagenError.set('');
   }
 
+  // === 3. CARGA Y VISTA PREVIA DE IMAGEN (JPEG/PNG <= 5 MB, URL blob:) ===
+  /** Prioriza la vista previa local (blob:) sobre la imagen ya guardada en el servidor. */
   vistaImagen(): string | null {
     return this.vistaPreviaImagen() ?? this.imagenActual();
   }
 
+  /** Valida formato JPEG/PNG y tamaño <= 5 MB en el cliente y crea una URL temporal en memoria. */
   seleccionarImagen(inputEl: HTMLInputElement): void {
     const archivo = inputEl.files?.[0];
     this.limpiarVistaPrevia();
@@ -141,6 +153,7 @@ export class MobiliarioForm implements OnInit, OnDestroy {
     this.vistaPreviaImagen.set(URL.createObjectURL(archivo));
   }
 
+  /** Libera la URL blob: temporal al cambiar archivo o destruir el componente. */
   private limpiarVistaPrevia(): void {
     const actual = this.vistaPreviaImagen();
     if (actual?.startsWith('blob:')) URL.revokeObjectURL(actual);
@@ -151,6 +164,7 @@ export class MobiliarioForm implements OnInit, OnDestroy {
     this.limpiarVistaPrevia();
   }
 
+  // === 4. GUARDADO EN 2 ETAPAS (ALTA + SUBIDA DE IMAGEN + ASIGNACIÓN IDEMPOTENTE) ===
   guardarRegistro(): void {
     if (this.registroOcupado()) return;
 
@@ -236,7 +250,7 @@ export class MobiliarioForm implements OnInit, OnDestroy {
       return;
     }
 
-    // Etapa 1: Crear unidad en estado Activo
+    // Etapa 1: Crear unidad en estado Activo y, si hay archivo, subir su imagen (POST /api/v1/imagenes/mobiliario/{id})
     const archivoNuevo = this.archivoImagen();
     this.mobiliarioService
       .guardarItem(null, {
@@ -321,6 +335,7 @@ export class MobiliarioForm implements OnInit, OnDestroy {
       });
   }
 
+  // === 5. MODAL RÁPIDO PARA CREAR NUEVO TIPO DE MOBILIARIO ===
   abrirNuevoTipo(): void {
     this.nuevoTipoNombre = '';
     this.nuevoTipoError.set('');
@@ -366,6 +381,7 @@ export class MobiliarioForm implements OnInit, OnDestroy {
       },
     });
   }
+  // === 6. CARGA INICIAL DESDE RUTA, NAVEGACIÓN Y UTILIDADES VISUALES ===
   readonly id = input<string>();
   habitaciones = signal<HabitacionConfiguracion[]>([]);
   tiposItem = signal<TipoItem[]>([]);

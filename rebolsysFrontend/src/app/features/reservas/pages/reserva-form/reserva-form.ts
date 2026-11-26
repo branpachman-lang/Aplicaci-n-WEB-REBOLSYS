@@ -1,6 +1,7 @@
 import { notificarCambios } from '../../../../core/services/avisos-formulario';
 import { generarClaveOperacion } from '../../../../core/utils/clave-operacion';
 import { DialogFocus } from "../../../../shared/directives/dialog-focus";
+import { Tooltip } from '../../../../shared/directives/tooltip';
 import { NotificacionService } from "../../../../core/services/notificacion.service";
 import { Catalogos } from "../../../../core/models/catalogo.model";
 import { Cliente, ClienteDatos, nombreCliente } from "../../../clientes/models/cliente.model";
@@ -68,6 +69,7 @@ import {
     Icon,
     PagoModal,
     DialogFocus,
+    Tooltip,
     ClienteBuscador,
   ],
   templateUrl: "./reserva-form.html",

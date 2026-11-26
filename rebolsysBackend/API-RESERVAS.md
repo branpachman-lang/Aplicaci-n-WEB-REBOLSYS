@@ -14,8 +14,8 @@ una persona natural adulta o una empresa; los ocupantes son personas naturales.
    sus estancias y, cuando se incluye un anticipo, el pago en una transacción.
 4. Completar o corregir los huéspedes de cada habitación desde el detalle de la reserva,
    hasta que recepción registre su check-in. Cada menor necesita un responsable adulto en su habitación.
-5. Registrar check-in dentro del periodo reservado y con la habitación físicamente DISPONIBLE.
-   La habitación pasa a OCUPADO.
+5. Registrar check-in desde 30 minutos antes del ingreso programado y antes de la salida.
+   La habitación debe estar físicamente DISPONIBLE y pasa a OCUPADO.
 6. Las ventas a huéspedes pueden cargarse a la cuenta principal de la reserva.
    Las ventas que se cobran de inmediato conservan su propia cuenta.
 7. El check-out liquida el importe pendiente de la cuenta principal y deja la
@@ -90,6 +90,7 @@ admiteConsumosConsolidados indica si la cuenta admite cargos de una estancia en 
 La cancelación devuelve hasta el costo de la habitación, limitado a los pagos verificados
 que aún no se devolvieron. Si corresponde devolver dinero, el sistema crea un egreso
 de efectivo en el turno abierto del operador y expone su monto como `montoDevuelto`.
+Si el turno no tiene efectivo suficiente, la estancia y sus pagos conservan su estado.
 Los abonos y sus referencias originales quedan en el historial. La devolución queda
 registrada en caja, incluido cuando el abono original se hizo por Yape. No se envía
 una transferencia a través del proveedor. Si se reintenta la cancelación, se recupera

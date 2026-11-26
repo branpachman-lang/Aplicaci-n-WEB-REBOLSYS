@@ -19,6 +19,7 @@ import pe.com.rebolsysBackend.repository.comun.comprobantes.SerieComprobanteRepo
 import pe.com.rebolsysBackend.repository.comun.comprobantes.TipoComprobanteRepository;
 import pe.com.rebolsysBackend.repository.reservas.DetalleReservaRepository;
 import pe.com.rebolsysBackend.repository.reservas.ReservaRepository;
+import pe.com.rebolsysBackend.service.impl.caja.CajaService;
 import pe.com.rebolsysBackend.entity.*;
 import pe.com.rebolsysBackend.enums.*;
 import pe.com.rebolsysBackend.exception.*;
@@ -38,6 +39,7 @@ public class CuentaReservaGestion {
   private final TurnoCajaRepository turnos;
   private final FlujoCajaRepository flujos;
   private final TipoMovimientoCajaRepository movimientos;
+  private final CajaService caja;
 
   public Reserva bloquear(Long id) {
     var r = reservas.bloquear(id).orElseThrow(() -> new RecursoNoEncontradoException("La reserva no existe"));
@@ -320,6 +322,7 @@ public class CuentaReservaGestion {
     var monto = pagado(c).max(BigDecimal.ZERO).min(d.getCostoEstadia());
     if (monto.signum() > 0) {
       var turno = turnoOperador(operador);
+      caja.validarDevolucionEnEfectivo(turno, monto);
       var tipo = movimientos.findByNombreMovimiento(TipoMovimientoCaja.DEVOLUCION_RESERVA)
           .orElseThrow(() -> new ReglaNegocioException("Falta configurar el movimiento de devolución de reservas"));
       exigir(tipo.getSigno() == -1, "La devolución de reserva debe estar configurada como salida de caja");
