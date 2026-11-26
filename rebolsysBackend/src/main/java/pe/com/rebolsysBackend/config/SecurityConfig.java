@@ -1,6 +1,7 @@
 package pe.com.rebolsysBackend.config;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -28,6 +29,13 @@ public class SecurityConfig {
   @Bean
   PasswordEncoder passwordEncoder() {
     return new BCryptPasswordEncoder(12);
+  }
+
+  @Bean
+  FilterRegistrationBean<LoginRateLimitFilter> registroServletRateLimit(LoginRateLimitFilter filtro) {
+    var registro = new FilterRegistrationBean<>(filtro);
+    registro.setEnabled(false);
+    return registro;
   }
 
   @Bean

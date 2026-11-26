@@ -107,6 +107,8 @@ Configura las variables del entorno o el archivo local ignorado `.local/applicat
 
 El esquema de Oracle se administra manualmente: Flyway está deshabilitado y Hibernate usa `ddl-auto=validate`. La aplicación no crea ni actualiza tablas. Verifica el DDL antes de ejecutar y no apliques scripts históricos sobre una base poblada sin revisar sus instrucciones.
 
+Conserva `FLYWAY_ENABLED=false` en instalaciones que usan el DDL final o los scripts de `db/iteration`. El `V1` de `db/migration` corresponde a una estructura histórica. Para automatizar una instalación existente, establece primero una línea base a partir de un esquema de prueba restaurado y verifica el arranque con `ddl-auto=validate`.
+
 Para ejecutar el DDL completo desde SQL*Plus, activa `SET SQLBLANKLINES ON` antes de cargar el archivo. Hay sentencias que contienen líneas en blanco.
 
 ## Redis para catálogos
@@ -170,7 +172,9 @@ Para crear el paquete y ejecutar las pruebas automatizadas:
 
 Las operaciones funcionales requieren JWT Bearer. `GET /api/health`, `POST /api/v1/sesion/iniciar` y Swagger/OpenAPI en desarrollo están habilitados sin sesión. Los permisos se validan en el backend por funcionalidad; los datos del usuario autenticado se consultan en `/api/v1/sesion/actual`. Las operaciones exitosas se registran en `AUDITORIA_GENERAL`.
 
-El endpoint de salud es `GET /api/health`. En desarrollo, OpenAPI se sirve desde `/v3/api-docs` y [`api/openapi.json`](api/openapi.json) contiene una copia versionada del contrato.
+El código de seguimiento `X-Request-Id` aparece en los logs, los errores JSON y el detalle de las operaciones HTTP auditadas. `/actuator/health` y sus probes responden sin sesión. `/actuator/metrics` requiere un JWT de gerencia y está pensado para la red interna. En desarrollo, OpenAPI se sirve desde `/v3/api-docs` y [`api/openapi.json`](api/openapi.json) contiene una copia versionada del contrato.
+
+El inicio de sesión se limita por dirección de origen y por instancia. Una respuesta `429` indica en `Retry-After` cuántos segundos esperar. Detrás de un proxy, limita también en el ingreso por cliente y configura el reenvío de IP solo desde proxies de confianza antes de usar la IP reenviada para los límites del backend.
 
 ## Comprobantes y reportes
 
@@ -181,6 +185,8 @@ La numeración conserva series como `F002-00003848` y `B002-00000001`. Los preci
 ## Despliegue
 
 Empaqueta con `.\mvnw.cmd package` y despliega el JAR generado en `target/` en un entorno Java 21. En el servidor configura `SPRING_PROFILES_ACTIVE=prod`, las credenciales Oracle, `JWT_SECRET`, `SERVER_PORT` y los orígenes permitidos en `CORS_ALLOWED_ORIGINS`. Configura Redis solo si se habilitará la caché. Usa HTTPS en el proxy o balanceador y guarda credenciales solo en el gestor de secretos del entorno.
+
+Antes de aplicar un cambio de esquema, genera un respaldo cifrado de Oracle y comprueba que se restaure en un esquema aislado. Para una reversión, verifica que el JAR anterior pueda arrancar contra el esquema que quedará en uso. Configura las alertas del entorno sobre disponibilidad y latencia de la API, salud de Oracle y degradación de Redis si se usa la caché.
 
 No se incluyen credenciales de demostración en el repositorio. Para probar la aplicación se necesita una base preparada y un usuario habilitado en ese esquema.
 
