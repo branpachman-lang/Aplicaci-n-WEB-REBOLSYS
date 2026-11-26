@@ -296,6 +296,11 @@
             <p class="muted">Huéspedes pendientes de completar antes del check-in.</p>
           }
         }
+        @if (h.estadoDetalle === 'CONFIRMADA' && acceso.permite('RESERVAS:EDITAR_OCUPANTES')) {
+          <button class="button small" type="button" (click)="abrirEditorOcupantes(h)">
+            <app-icon name="users" /> {{ h.ocupantes.length ? 'Editar huéspedes' : 'Completar huéspedes' }}
+          </button>
+        }
         @let gestion = accionEstadia();
         @if (gestion?.id === h.idDetalleReserva && gestion) {
           @switch (gestion.accion) {
@@ -434,3 +439,68 @@
   }
 }
 @if(comprobante();as r){@if(catalogos();as cat){<app-comprobante-dialog [reserva]="r" [catalogos]="cat" (cerrar)="comprobante.set(null)" (actualizado)="cargar()"/>}}
+
+@if (editandoOcupantes(); as h) {
+<div class="modal-backdrop no-print" (click)="cerrarEditorOcupantes()">
+  <section class="modal wide-modal" appDialog (dialogEscape)="cerrarEditorOcupantes()"
+    role="dialog" aria-modal="true" aria-labelledby="ocupantes-title" (click)="$event.stopPropagation()">
+    <header class="modal-header">
+      <p class="eyebrow">HABITACIÓN {{ h.numeroCuarto }}</p>
+      <button class="icon-button" type="button" aria-label="Cerrar edición de huéspedes" [disabled]="ocupantesOcupado()" (click)="cerrarEditorOcupantes()"><app-icon name="close" /></button>
+    </header>
+    <h2 id="ocupantes-title">{{ h.ocupantes.length ? 'Editar huéspedes' : 'Completar huéspedes' }}</h2>
+    <p class="subtitle">Busca una persona registrada o crea su perfil desde aquí. Los cambios solo afectan esta habitación.</p>
+    <div class="form-grid">
+      <label class="field">Tipo de documento
+        <select [(ngModel)]="tipoDocumentoHuesped">
+          @for (doc of catalogos()?.documentos ?? []; track doc.id) { <option [ngValue]="doc.id">{{ doc.nombre }}</option> }
+        </select>
+      </label>
+      <label class="field">Número de documento
+        <div class="input-with-button"><input [(ngModel)]="documentoHuesped" (keydown.enter)="$event.preventDefault(); buscarHuespedParaAgregar()" />
+          <button class="button small" type="button" [disabled]="ocupantesOcupado()" (click)="buscarHuespedParaAgregar()"><app-icon name="search" />{{ buscandoHuesped() ? 'Buscando…' : 'Buscar y agregar' }}</button>
+        </div>
+      </label>
+    </div>
+    @if (acceso.permite('CLIENTES:CREAR')) {
+      <details class="spaced-title">
+        <summary>Registrar una persona nueva y agregarla</summary>
+        <div class="form-grid">
+          <label class="field">Nombres<input [(ngModel)]="nuevoHuesped.nombres" maxlength="100" /></label>
+          <label class="field">Apellidos<input [(ngModel)]="nuevoHuesped.apellidos" maxlength="100" /></label>
+          <label class="field">Fecha de nacimiento<input type="date" [(ngModel)]="nuevoHuesped.fechaNacimiento" /></label>
+          <label class="field">Teléfono opcional<input type="tel" [(ngModel)]="nuevoHuesped.telefono" maxlength="15" /></label>
+        </div>
+        <button class="button small" type="button" [disabled]="ocupantesOcupado()" (click)="registrarHuespedNuevo()">
+          <app-icon name="plus" /> {{ registrandoHuesped() ? 'Registrando…' : 'Registrar y agregar huésped' }}
+        </button>
+      </details>
+    }
+    @for (g of ocupantesEditados(); track g.idCliente) {
+      <div class="detail-line">
+        <strong>{{ g.nombre }}</strong>
+        <label><input type="checkbox" [(ngModel)]="g.ocupaPlazaCama" /> Usa plaza de cama</label>
+        <label class="field">Responsable adulto
+          <select [(ngModel)]="g.idClienteResponsable">
+            <option [ngValue]="null">Sin responsable</option>
+            @for (adulto of ocupantesEditados(); track adulto.idCliente) {
+              @if (adulto.idCliente !== g.idCliente) { <option [ngValue]="adulto.idCliente">{{ adulto.nombre }}</option> }
+            }
+          </select>
+        </label>
+        @if (g.idClienteResponsable) {
+          <label class="field">Parentesco
+            <select [(ngModel)]="g.parentescoResponsable"><option [ngValue]="'PADRE'">Padre</option><option [ngValue]="'MADRE'">Madre</option><option [ngValue]="'TUTOR'">Tutor</option></select>
+          </label>
+        }
+        <button class="button danger-outline small" type="button" [disabled]="ocupantesEditados().length <= 1" (click)="ocupantesEditados.update(lista => lista.filter(item => item.idCliente !== g.idCliente))"><app-icon name="close" />Quitar</button>
+      </div>
+    } @empty { <p class="inline-note">Agrega al menos un huésped para habilitar el check-in.</p> }
+    @if (errorOcupantes()) { <p class="field-error" role="alert">{{ errorOcupantes() }}</p> }
+    <div class="modal-actions">
+      <button class="button" type="button" [disabled]="ocupantesOcupado()" (click)="cerrarEditorOcupantes()">Cancelar</button>
+      <button class="button primary" type="button" [disabled]="ocupantesOcupado() || !ocupantesEditados().length" (click)="guardarEdicionOcupantes()">{{ guardandoOcupantes() ? 'Guardando…' : 'Guardar huéspedes' }}</button>
+    </div>
+  </section>
+</div>
+}

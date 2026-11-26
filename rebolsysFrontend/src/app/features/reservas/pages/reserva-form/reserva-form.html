@@ -81,13 +81,11 @@
                 <option
                   [ngValue]="r.idHabitacion"
                   [disabled]="
-                          r.estado !== 'DISPONIBLE' ||
-                          r.ocupadaActualmente || r.precio <= 0 || yaElegida(r.idHabitacion, i)
+                          r.estado === 'MANTENIMIENTO' || r.precio <= 0 || yaElegida(r.idHabitacion, i)
                         "
                 >
                   {{ r.numero }} · {{ r.tipo }} · {{ r.precio > 0 ? (r.precio | currency : "PEN"
-                  : "S/ " : "1.0-2") + ' / noche' : 'Tarifa pendiente' }}{{ r.estado !== "DISPONIBLE" ? " ·
-                  " + r.estado : "" }}
+                  : "S/ " : "1.0-2") + ' / noche' : 'Tarifa pendiente' }}{{ r.estado === "MANTENIMIENTO" ? " · En mantenimiento" : "" }}
                 </option>
                 }
               </select>

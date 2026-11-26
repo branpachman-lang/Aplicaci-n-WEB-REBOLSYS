@@ -868,18 +868,17 @@ export class ReservaForm implements OnInit {
     const room = this.roomFor(i);
     if (room) {
       if (room.precio <= 0) return 'La tarifa de esta habitación está pendiente. Configura el precio antes de registrar una reserva.';
-      if (room.estado !== "DISPONIBLE" || room.ocupadaActualmente)
-        return "La habitación no está disponible físicamente.";
+      if (room.estado === "MANTENIMIENTO")
+        return "La habitación está en mantenimiento.";
       if (this.yaElegida(room.idHabitacion, i))
         return "Selecciona cada habitación una sola vez.";
       if (
         room.reservas.some(
           (r) =>
-            r.estado === "EN_CURSO" ||
-            (new Date(line.fechaIngreso).getTime() <
+            new Date(line.fechaIngreso).getTime() <
               new Date(r.salida).getTime() &&
               new Date(line.fechaSalida).getTime() >
-                new Date(r.ingreso).getTime()),
+                new Date(r.ingreso).getTime(),
         )
       )
         return "La habitación ya tiene una reserva en este horario. Elige otra habitación o cambia las fechas.";

@@ -138,16 +138,16 @@ class AccesoHttpTest {
         .andExpect(status().isOk()).andExpect(jsonPath("$.sesion.requiereCambio").value(true))
         .andExpect(jsonPath("$.sesion.idTurno").isEmpty()));
     mvc.perform(get(API + "/seguridad/usuarios").header("Authorization", "Bearer " + temporalGerente)).andExpect(status().isForbidden());
-    var activacionGerente = peticion(post(API + "/sesion/contrasena"), temporalGerente,
+    peticion(post(API + "/sesion/contrasena"), temporalGerente,
         Map.of("actual", CLAVE_GERENTE, "nueva", "Gerente permanente de prueba"))
         .andExpect(status().isOk()).andExpect(jsonPath("$.sesion.gerente").value(true))
-        .andExpect(jsonPath("$.sesion.idTurno").isNumber());
-    int turnoGerente = cuerpo(activacionGerente).path("sesion").path("idTurno").asInt();
+        .andExpect(jsonPath("$.sesion.idTurno").isEmpty());
     mvc.perform(get(API + "/sesion/actual").header("Authorization", "Bearer " + temporalGerente))
         .andExpect(status().isUnauthorized());
     var gerente = token(peticion(post(API + "/sesion/iniciar"), null,
         Map.of("usuario", "gerencia", "contrasena", "Gerente permanente de prueba"))
-        .andExpect(status().isOk()).andExpect(jsonPath("$.sesion.idTurno").value(turnoGerente)));
+        .andExpect(status().isOk()).andExpect(jsonPath("$.sesion.idTurno").isEmpty()));
+    int turnoGerente = abrirCaja(gerente, 50);
     var empleadoGerente = cuerpo(mvc.perform(get(API + "/seguridad/empleados").header("Authorization", "Bearer " + gerente))
         .andExpect(status().isOk()).andExpect(jsonPath("$[0].protegido").value(true))).get(0).path("idEmpleado").asLong();
     peticion(put(API + "/seguridad/empleados/" + empleadoGerente + "/estado"), gerente, Map.of("activo", false))
@@ -232,15 +232,14 @@ class AccesoHttpTest {
     var primera = token(peticion(post(API + "/sesion/iniciar"), null, Map.of("usuario", "OPERADORA@EXAMPLE.TEST", "contrasena", clave))
         .andExpect(status().isOk()).andExpect(jsonPath("$.sesion.permisos").isEmpty()));
     mvc.perform(get(API + "/reservas").header("Authorization", "Bearer " + primera)).andExpect(status().isForbidden());
-    var activacionRecepcion = peticion(post(API + "/sesion/contrasena"), primera,
+    peticion(post(API + "/sesion/contrasena"), primera,
         Map.of("actual", clave, "nueva", "Clave elegida por operadora"))
         .andExpect(status().isOk()).andExpect(jsonPath("$.sesion.requiereCambio").value(false))
-        .andExpect(jsonPath("$.sesion.permisos").isArray()).andExpect(jsonPath("$.sesion.idTurno").isNumber());
-    int turnoRecepcion = cuerpo(activacionRecepcion).path("sesion").path("idTurno").asInt();
-    assertThat(turnoRecepcion).isNotEqualTo(turnoGerente);
+        .andExpect(jsonPath("$.sesion.permisos").isArray()).andExpect(jsonPath("$.sesion.idTurno").isEmpty());
     var operadora = token(peticion(post(API + "/sesion/iniciar"), null,
         Map.of("usuario", "operadora@example.test", "contrasena", "Clave elegida por operadora"))
-        .andExpect(status().isOk()).andExpect(jsonPath("$.sesion.idTurno").value(turnoRecepcion)));
+        .andExpect(status().isOk()).andExpect(jsonPath("$.sesion.idTurno").isEmpty()));
+    assertThat(abrirCaja(operadora, 0)).isNotEqualTo(turnoGerente);
     tx.executeWithoutResult(s -> {
       accesos.permisos(roles.get("ROL_ANTERIOR"), java.util.Set.of("PRODUCTOS:VER"));
       accesos.vincular(id, roles.get("ROL_ANTERIOR"));
@@ -357,6 +356,18 @@ class AccesoHttpTest {
         Map.of("usuario", "gerencia", "contrasena", "Gerente permanente de prueba")).andExpect(status().isUnauthorized());
   }
 
+  private int abrirCaja(String token, int fondo) throws Exception {
+    String ruta = API + "/caja/turnos";
+    peticion(post(ruta), token, Map.of("montoBase", -1)).andExpect(status().isBadRequest());
+    int id = cuerpo(peticion(post(ruta), token, Map.of("montoBase", fondo))
+        .andExpect(status().isOk()).andExpect(jsonPath("$.montoBase").value(fondo)))
+        .path("idTurno").asInt();
+    peticion(post(ruta), token, Map.of("montoBase", fondo))
+        .andExpect(status().isOk()).andExpect(jsonPath("$.idTurno").value(id));
+    peticion(post(ruta), token, Map.of("montoBase", fondo + 1)).andExpect(status().isConflict());
+    return id;
+  }
+
   private void probarCaja(String gerente, String operadora, long idTurno) throws Exception {
     var catalogo = tx.execute(s -> prepararMovimientosCaja(idTurno));
     String ruta = API + "/caja/turnos/" + idTurno;
@@ -387,6 +398,11 @@ class AccesoHttpTest {
 
     mvc.perform(get(ruta + "/movimientos").header("Authorization", "Bearer " + gerente)).andExpect(status().isOk())
         .andExpect(jsonPath("$.totalElementos").value(3));
+    peticion(multipart(ruta + "/movimientos").file(datosMovimiento(catalogo.get("gasto"), "Excede efectivo", "130.51")), gerente, null)
+        .andExpect(status().isConflict());
+    peticion(post(API + "/gastos"), gerente, Map.of("idUsuario", catalogo.get("usuario"), "idTurno", idTurno,
+        "idTipoMovimiento", catalogo.get("gasto"), "concepto", "Excede efectivo", "monto", new BigDecimal("130.51")))
+        .andExpect(status().isConflict());
     var arqueos = List.of(Map.of("idFormaPago", catalogo.get("efectivo"), "montoDeclarado", new BigDecimal("129.50")),
         Map.of("idFormaPago", catalogo.get("yape"), "montoDeclarado", 25));
     peticion(post(ruta + "/cierre"), gerente, Map.of("revision", inicial.path("revision").asText(), "arqueos", arqueos))
@@ -413,7 +429,6 @@ class AccesoHttpTest {
 
   private Map<String, Long> prepararMovimientosCaja(long idTurno) {
     var turno = em.find(TurnoCaja.class, idTurno);
-    turno.setMontoBase(new BigDecimal("50.00"));
     var efectivo = new FormaPago(null, "EFECTIVO"); em.persist(efectivo);
     var yape = new FormaPago(null, "YAPE"); em.persist(yape);
     var ingreso = new TipoMovimientoCaja(null, "INGRESO_MANUAL", 1); em.persist(ingreso);

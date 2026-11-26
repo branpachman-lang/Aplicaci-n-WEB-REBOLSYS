@@ -164,11 +164,15 @@ describe("Formulario de reserva", () => {
     expect(opciones.some(o => o.textContent!.includes('402') && o.textContent!.includes('50') && !o.disabled)).toBe(true);
     expect(opciones.some(o => o.textContent!.includes('506') && o.textContent!.includes('40') && !o.disabled)).toBe(true);
   });
-  it('bloquea una habitación ocupada actualmente aunque el estado físico esté desactualizado', async () => {
+  it('permite una reserva futura en habitación ocupada y rechaza el cruce con su estancia activa', async () => {
     const c = (await fixture()).componentInstance;
-    c.habitaciones.at(0).patchValue({idHabitacion: 1});
-    c.rooms.update(lista => lista.map(h => ({...h, ocupadaActualmente: true})));
-    expect(c.lineError(0)).toContain('no está disponible');
+    c.habitaciones.at(0).patchValue({idHabitacion: 1, fechaIngreso: '2027-01-02T12:00', fechaSalida: '2027-01-03T12:00'});
+    c.rooms.update(lista => lista.map(h => ({ ...h, estado: 'OCUPADO', ocupadaActualmente: true,
+      reservas: [{ referencia: 'R1', cliente: 'Prueba', ingreso: '2027-01-01T14:00', salida: '2027-01-02T12:00', estado: 'EN_CURSO' }],
+    })));
+    expect(c.lineError(0)).toBe('');
+    c.habitaciones.at(0).patchValue({ fechaIngreso: '2027-01-02T11:59' });
+    expect(c.lineError(0)).toContain('ya tiene una reserva');
   });
   it('reintenta registro y pago juntos con la misma clave si se pierde la respuesta', async () => {
     const r = {idReserva:30,idCliente:1,idUsuario:1,titular:'Empresa prueba',fechaRegistro:'',claveRegistro:'prueba',detalles:[]};

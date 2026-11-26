@@ -1,7 +1,7 @@
 import { notificarCambios } from '../../../../core/services/avisos-formulario';
 import { generarClaveOperacion } from '../../../../core/utils/clave-operacion';
 import { PermisosUi } from "../../../../core/auth/permisos-ui";
-import { Component, DestroyRef, OnDestroy, inject, signal } from "@angular/core";
+import { Component, computed, DestroyRef, OnDestroy, inject, signal } from "@angular/core";
 import { CurrencyPipe, DatePipe } from "@angular/common";
 import { FormsModule } from "@angular/forms";
 import { RouterLink,Router,ActivatedRoute } from "@angular/router";
@@ -9,6 +9,7 @@ import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { forkJoin, Subscription } from 'rxjs';
 import { DialogFocus } from "../../../../shared/directives/dialog-focus";
 import { NotificacionService } from "../../../../core/services/notificacion.service";
+import { ClienteService } from "../../../clientes/services/cliente-service";
 import { CatalogoService } from "../../../../core/services/catalogo-service";
 import { Catalogos } from "../../../../core/models/catalogo.model";
 import { Pagina } from "../../../../core/models/pagina-response";
@@ -68,6 +69,7 @@ const MENSAJES_ESTADIA: Record<AccionEstadia, string> = {
 export class ReservaList implements OnDestroy {
   readonly acceso = inject(PermisosUi);
   private readonly servicio = inject(ReservaService);
+  private readonly clienteService = inject(ClienteService);
   private readonly catalogoService = inject(CatalogoService);
   private readonly avisos = inject(NotificacionService);
   private readonly destroy = inject(DestroyRef);
@@ -91,6 +93,16 @@ export class ReservaList implements OnDestroy {
   detalle = signal<ReservaResumen | null>(null);
   accionEstadia = signal<{ id: number; accion: AccionEstadia } | null>(null);
   procesandoEstadia = signal(false);
+  editandoOcupantes = signal<DetalleReserva | null>(null);
+  ocupantesEditados = signal<{ idCliente: number; nombre: string; ocupaPlazaCama: boolean; idClienteResponsable: number | null; parentescoResponsable: 'PADRE' | 'MADRE' | 'TUTOR' | null }[]>([]);
+  documentoHuesped = '';
+  tipoDocumentoHuesped: number | null = null;
+  nuevoHuesped = { nombres: '', apellidos: '', fechaNacimiento: '', telefono: '' };
+  registrandoHuesped = signal(false);
+  buscandoHuesped = signal(false);
+  guardandoOcupantes = signal(false);
+  errorOcupantes = signal('');
+  ocupantesOcupado = computed(() => this.buscandoHuesped() || this.registrandoHuesped() || this.guardandoOcupantes());
   errorEstadia = signal('');
   comprobante = signal<ReservaApi | null>(null);
   abrirComprobante(r: ReservaApi) {
@@ -271,6 +283,142 @@ export class ReservaList implements OnDestroy {
       habitacion.ocupantes.find((g) => g.idReservaOcupante === id)?.nombre ??
       "Responsable registrado"
     );
+  }
+  cerrarEditorOcupantes() {
+    if (!this.ocupantesOcupado()) this.editandoOcupantes.set(null);
+  }
+  abrirEditorOcupantes(h: DetalleReserva) {
+    if (this.editandoOcupantes() || h.estadoDetalle !== 'CONFIRMADA' || !this.acceso.permite('RESERVAS:EDITAR_OCUPANTES')) return;
+    if (!this.catalogos()) {
+      this.catalogoService.listar().pipe(takeUntilDestroyed(this.destroy)).subscribe({
+        next: catalogos => {
+          this.catalogos.set(catalogos);
+          const vigente = this.detalle()?.detalles.find(d => d.idDetalleReserva === h.idDetalleReserva);
+          if (vigente) this.abrirEditorOcupantes(vigente);
+        },
+        error: e => this.avisos.mostrar(mensajeError(e), true),
+      });
+      return;
+    }
+    const porId = new Map(h.ocupantes.map(g => [g.idReservaOcupante, g.idCliente]));
+    this.ocupantesEditados.set(h.ocupantes.map(g => ({
+      idCliente: g.idCliente,
+      nombre: g.nombre,
+      ocupaPlazaCama: g.ocupaPlazaCama,
+      idClienteResponsable: g.idOcupanteResponsable ? porId.get(g.idOcupanteResponsable) ?? null : null,
+      parentescoResponsable: g.parentescoResponsable,
+    })));
+    this.documentoHuesped = '';
+    this.nuevoHuesped = { nombres: '', apellidos: '', fechaNacimiento: '', telefono: '' };
+    this.tipoDocumentoHuesped = this.catalogos()?.documentos[0]?.id ?? null;
+    this.errorOcupantes.set('');
+    this.editandoOcupantes.set(h);
+  }
+  buscarHuespedParaAgregar() {
+    const tipo = this.tipoDocumentoHuesped;
+    const documento = this.documentoHuesped.trim();
+    if (!tipo || !documento || this.ocupantesOcupado()) return;
+    this.buscandoHuesped.set(true);
+    this.errorOcupantes.set('');
+    this.clienteService.buscarPorDocumento(tipo, documento).pipe(takeUntilDestroyed(this.destroy)).subscribe({
+      next: cliente => {
+        this.buscandoHuesped.set(false);
+        if (!cliente.idCliente) {
+          this.errorOcupantes.set('Registra primero a esta persona en Clientes y vuelve a buscar su documento.');
+          return;
+        }
+        if (cliente.datos.empresa) {
+          this.errorOcupantes.set('Selecciona a una persona natural como huésped.');
+          return;
+        }
+        if (this.ocupantesEditados().some(g => g.idCliente === cliente.idCliente)) {
+          this.errorOcupantes.set('Este huésped ya está agregado a la habitación.');
+          return;
+        }
+        this.ocupantesEditados.update(lista => [...lista, {
+          idCliente: cliente.idCliente!,
+          nombre: [cliente.datos.nombres, cliente.datos.apellidos].filter(Boolean).join(' ') || 'Huésped',
+          ocupaPlazaCama: true,
+          idClienteResponsable: null,
+          parentescoResponsable: null,
+        }]);
+        this.documentoHuesped = '';
+      },
+      error: e => {
+        this.buscandoHuesped.set(false);
+        this.errorOcupantes.set(mensajeError(e));
+      },
+    });
+  }
+  registrarHuespedNuevo() {
+    const tipo = this.tipoDocumentoHuesped;
+    const numeroDocumento = this.documentoHuesped.trim();
+    const { nombres, apellidos, fechaNacimiento, telefono } = this.nuevoHuesped;
+    if (!tipo || !numeroDocumento || !nombres.trim() || !apellidos.trim() || !fechaNacimiento || this.ocupantesOcupado()) {
+      this.errorOcupantes.set('Completa documento, nombres, apellidos y fecha de nacimiento del huésped.');
+      return;
+    }
+    this.registrandoHuesped.set(true);
+    this.errorOcupantes.set('');
+    this.clienteService.registrar({
+      idTipoDocumento: tipo,
+      numeroDocumento,
+      empresa: false,
+      nombres: nombres.trim(),
+      apellidos: apellidos.trim(),
+      fechaNacimiento,
+      razonSocial: null,
+      direccionFiscal: null,
+      correo: null,
+      telefono: telefono.trim() || null,
+    }).pipe(takeUntilDestroyed(this.destroy)).subscribe({
+      next: cliente => {
+        this.registrandoHuesped.set(false);
+        if (this.ocupantesEditados().some(g => g.idCliente === cliente.idCliente)) {
+          this.errorOcupantes.set('Este huésped ya está agregado a la habitación.');
+          return;
+        }
+        this.ocupantesEditados.update(lista => [...lista, {
+          idCliente: cliente.idCliente,
+          nombre: [cliente.persona.nombres, cliente.persona.apellidos].filter(Boolean).join(' '),
+          ocupaPlazaCama: true,
+          idClienteResponsable: null,
+          parentescoResponsable: null,
+        }]);
+        this.documentoHuesped = '';
+        this.nuevoHuesped = { nombres: '', apellidos: '', fechaNacimiento: '', telefono: '' };
+      },
+      error: e => {
+        this.registrandoHuesped.set(false);
+        this.errorOcupantes.set(mensajeError(e));
+      },
+    });
+  }
+  guardarEdicionOcupantes() {
+    const h = this.editandoOcupantes();
+    const lista = this.ocupantesEditados();
+    if (!h || !lista.length || this.ocupantesOcupado()) {
+      this.errorOcupantes.set('La habitación debe tener al menos un huésped antes del check-in.');
+      return;
+    }
+    this.guardandoOcupantes.set(true);
+    this.errorOcupantes.set('');
+    const ocupantes = lista.map(({ idCliente, ocupaPlazaCama, idClienteResponsable, parentescoResponsable }) => ({
+      idCliente, ocupaPlazaCama, idClienteResponsable,
+      parentescoResponsable: idClienteResponsable ? parentescoResponsable : null,
+    }));
+    this.servicio.guardarOcupantes(h.idDetalleReserva, ocupantes).pipe(takeUntilDestroyed(this.destroy)).subscribe({
+      next: actualizada => {
+        this.guardandoOcupantes.set(false);
+        this.editandoOcupantes.set(null);
+        this.detalle.update(r => r ? { ...r, detalles: r.detalles.map(d => d.idDetalleReserva === actualizada.idDetalleReserva ? actualizada : d) } : r);
+        this.avisos.mostrar(`Huéspedes de la habitación ${h.numeroCuarto} actualizados.`);
+      },
+      error: e => {
+        this.guardandoOcupantes.set(false);
+        this.errorOcupantes.set(mensajeError(e));
+      },
+    });
   }
   verDetalle(r: ReservaApi) {
     this.cancelarDetalle.set(null);

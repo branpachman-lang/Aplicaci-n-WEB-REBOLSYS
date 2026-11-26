@@ -15,7 +15,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pe.com.rebolsysBackend.entity.*;
 import pe.com.rebolsysBackend.enums.EstadoUsuario;
-import pe.com.rebolsysBackend.repository.caja.TurnoCajaRepository;
 import pe.com.rebolsysBackend.repository.accesos.UsuarioRepository;
 
 @Service
@@ -28,7 +27,6 @@ public class CredencialesService {
   private final EntityManager em;
   private final PasswordEncoder encoder;
   private final AccesosService accesos;
-  private final TurnoCajaRepository turnos;
   private final PoliticaSeguridadService politica;
 
   public record Principal(Long idUsuario, String firmaCredencial) implements java.io.Serializable {
@@ -67,7 +65,6 @@ public class CredencialesService {
     }
     if (vencida(c, fecha)) throw invalida();
     c.setIntentosFallidos(0);
-    if (!temporal(c)) asegurarTurnoAbierto(u);
     return principal(c);
   }
 
@@ -91,28 +88,14 @@ public class CredencialesService {
 
   @Transactional
   public Principal cambiar(Principal principal, String actual, String nueva) {
-    var usuario = usuarios.bloquear(principal.idUsuario()).orElseThrow(CredencialesService::invalida);
+    usuarios.bloquear(principal.idUsuario()).orElseThrow(CredencialesService::invalida);
     vigente(principal);
     var c = credencial(principal.idUsuario());
     if (!coincide(actual, c.getValorHash())) throw invalida();
     validarContrasena(nueva);
     exigir(!coincide(nueva, c.getValorHash()), "Elige una contraseña diferente de la actual");
-    boolean primeraActivacion = temporal(c);
     guardar(c, nueva, false);
-    if (primeraActivacion) asegurarTurnoAbierto(usuario);
     return principal(c);
-  }
-
-  // El usuario ya está bloqueado en la transacción para serializar accesos simultáneos.
-  private void asegurarTurnoAbierto(Usuario usuario) {
-    var id = usuario.getIdUsuario();
-    if (!accesos.perfil(id).operaCaja() ||
-        !turnos.findByUsuarioIdUsuarioAndEstadoSesionAndFechaCierreIsNullOrderByIdTurno(id, 1).isEmpty()) return;
-    var turno = new TurnoCaja();
-    turno.setUsuario(usuario);
-    turno.setEstadoSesion(1);
-    turno.setFechaApertura(ahora());
-    turnos.save(turno);
   }
 
   public Temporal emitir(Usuario usuario) {
