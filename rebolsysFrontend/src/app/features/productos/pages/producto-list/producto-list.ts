@@ -15,10 +15,11 @@ import { mensajeError } from '../../../../core/utils/http-error';
 import { NotificacionService } from '../../../../core/services/notificacion.service';
 import { Icon } from '../../../../shared/components/icono/icono';
 import { DialogFocus } from '../../../../shared/directives/dialog-focus';
+import { ImagenProtegida } from '../../../../shared/directives/imagen-protegida';
 
 @Component({
   selector: 'app-producto-list',
-  imports: [FormsModule, CurrencyPipe, RouterLink, Icon, DialogFocus, CategoriaDialog],
+  imports: [FormsModule, CurrencyPipe, RouterLink, Icon, DialogFocus, CategoriaDialog, ImagenProtegida],
   templateUrl: './producto-list.html',
   styleUrl: './producto-list.css',
 })

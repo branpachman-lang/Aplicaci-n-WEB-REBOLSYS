@@ -70,7 +70,9 @@
           <article class="product-card" [class.product-inactivo]="p.estadoProducto === 'INACTIVO'">
             <div class="product-card-media">
               <img
-                [src]="imagen(p)"
+                [imagenProtegida]="imagen(p)"
+                [imagenFallback]="'/imagenes/productos/sin-imagen.svg'"
+                (imagenError)="marcarImagenFallida(p.idProducto)"
                 (error)="marcarImagenFallida(p.idProducto)"
                 [alt]="p.nombreProducto"
                 loading="lazy"
@@ -269,7 +271,9 @@
       <div class="detail-overview">
         <div class="detail-overview-media">
           <img
-            [src]="imagen(prod)"
+            [imagenProtegida]="imagen(prod)"
+            [imagenFallback]="'/imagenes/productos/sin-imagen.svg'"
+            (imagenError)="marcarImagenFallida(prod.idProducto)"
             (error)="marcarImagenFallida(prod.idProducto)"
             [alt]="prod.nombreProducto"
           />

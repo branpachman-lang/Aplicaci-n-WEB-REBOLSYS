@@ -10,6 +10,7 @@ import { PermisosUi } from '../../../../core/services/permisos-ui';
 import { mensajeError } from '../../../../core/utils/http-error';
 import { Icon } from '../../../../shared/components/icono/icono';
 import { DialogFocus } from '../../../../shared/directives/dialog-focus';
+import { ImagenProtegida } from '../../../../shared/directives/imagen-protegida';
 import {
   TipoHabitacion,
   TipoHabitacionRequest,
@@ -22,7 +23,7 @@ import {
 import { HabitacionService } from '../../services/habitacion-service';
 @Component({
   selector: 'app-habitacion-config-list',
-  imports: [CommonModule, FormsModule, DecimalPipe, Icon, DialogFocus],
+  imports: [CommonModule, FormsModule, DecimalPipe, Icon, DialogFocus, ImagenProtegida],
   templateUrl: './habitacion-config-list.html',
   styleUrl: './habitacion-config-list.css',
 })
@@ -35,6 +36,15 @@ export class HabitacionConfigList implements OnInit, OnDestroy {
   protected readonly acceso = inject(PermisosUi);
 
   respuesta = signal<Pagina<HabitacionConfiguracion> | null>(null);
+  fallidas = signal<Set<number>>(new Set());
+
+  marcarImagenFallida(id: number): void {
+    this.fallidas.update((set) => {
+      const next = new Set(set);
+      next.add(id);
+      return next;
+    });
+  }
 
   tipos = signal<TipoHabitacion[]>([]);
 

@@ -1,14 +1,16 @@
 import { notificarCambios } from '../../../../core/services/avisos-formulario';
-import { Component, OnInit, inject, input, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { forkJoin, of } from 'rxjs';
+import { forkJoin, of, switchMap } from 'rxjs';
+import { CatalogoImagenService } from '../../../../core/services/catalogo-imagen.service';
 import { NotificacionService } from '../../../../core/services/notificacion.service';
 import { SesionService } from '../../../../core/services/sesion-service';
 import { generarClaveOperacion } from '../../../../core/utils/clave-operacion';
 import { mensajeError } from '../../../../core/utils/http-error';
 import { Icon } from '../../../../shared/components/icono/icono';
 import { DialogFocus } from '../../../../shared/directives/dialog-focus';
+import { ImagenProtegida } from '../../../../shared/directives/imagen-protegida';
 import {
   EstadoHabitacion,
   HabitacionConfiguracion,
@@ -20,14 +22,15 @@ import { EstadoConservacion, Item } from '../../models/mobiliario.model';
 import { MobiliarioService } from '../../services/mobiliario-service';
 @Component({
   selector: 'app-mobiliario-form',
-  imports: [FormsModule, Icon, DialogFocus],
+  imports: [FormsModule, Icon, DialogFocus, ImagenProtegida],
   templateUrl: './mobiliario-form.html',
   styleUrl: './mobiliario-form.css',
 })
-export class MobiliarioForm implements OnInit {
+export class MobiliarioForm implements OnInit, OnDestroy {
   private readonly mobiliarioService = inject(MobiliarioService);
   private readonly habitacionesService = inject(HabitacionService);
   private readonly tiposService = inject(TipoItemService);
+  private readonly imagenesService = inject(CatalogoImagenService);
   protected readonly sesion = inject(SesionService);
   private readonly avisos = inject(NotificacionService);
   private readonly router = inject(Router);
@@ -35,6 +38,10 @@ export class MobiliarioForm implements OnInit {
   modoEdicion = signal(false);
 
   itemEnEdicion = signal<Item | null>(null);
+  imagenActual = signal<string | null>(null);
+  vistaPreviaImagen = signal<string | null>(null);
+  archivoImagen = signal<File | null>(null);
+  imagenError = signal('');
 
   creadoIdItem = signal<number | null>(null);
 
@@ -92,6 +99,10 @@ export class MobiliarioForm implements OnInit {
     this.lastAsignacionPayload = '';
     this.modoEdicion.set(false);
     this.itemEnEdicion.set(null);
+    this.imagenActual.set(null);
+    this.limpiarVistaPrevia();
+    this.archivoImagen.set(null);
+    this.imagenError.set('');
   }
 
   abrirEditar(item: Item): void {
@@ -102,6 +113,42 @@ export class MobiliarioForm implements OnInit {
     this.registroExitoParcial.set('');
     this.registroError.set('');
     this.modoEdicion.set(true);
+    this.imagenActual.set(item.imagenRuta ?? null);
+    this.limpiarVistaPrevia();
+    this.archivoImagen.set(null);
+    this.imagenError.set('');
+  }
+
+  vistaImagen(): string | null {
+    return this.vistaPreviaImagen() ?? this.imagenActual();
+  }
+
+  seleccionarImagen(inputEl: HTMLInputElement): void {
+    const archivo = inputEl.files?.[0];
+    this.limpiarVistaPrevia();
+    if (!archivo) {
+      this.archivoImagen.set(null);
+      return;
+    }
+    if (!/^image\/(jpeg|png)$/.test(archivo.type) || archivo.size > 5 * 1024 * 1024) {
+      this.imagenError.set('Selecciona una imagen JPEG o PNG de hasta 5 MB.');
+      inputEl.value = '';
+      this.archivoImagen.set(null);
+      return;
+    }
+    this.imagenError.set('');
+    this.archivoImagen.set(archivo);
+    this.vistaPreviaImagen.set(URL.createObjectURL(archivo));
+  }
+
+  private limpiarVistaPrevia(): void {
+    const actual = this.vistaPreviaImagen();
+    if (actual?.startsWith('blob:')) URL.revokeObjectURL(actual);
+    this.vistaPreviaImagen.set(null);
+  }
+
+  ngOnDestroy(): void {
+    this.limpiarVistaPrevia();
   }
 
   guardarRegistro(): void {
@@ -124,6 +171,7 @@ export class MobiliarioForm implements OnInit {
 
     if (this.modoEdicion()) {
       const item = this.itemEnEdicion()!;
+      const archivo = this.archivoImagen();
       this.registroOcupado.set(true);
       this.registroError.set('');
       this.mobiliarioService
@@ -132,6 +180,13 @@ export class MobiliarioForm implements OnInit {
           idTipoItem: this.formIdTipoItem,
           estadoItem: item.estadoItem,
         })
+        .pipe(
+          switchMap(() =>
+            archivo
+              ? this.imagenesService.subir('mobiliario', item.idItem, archivo)
+              : of(null),
+          ),
+        )
         .subscribe({
           next: () => {
             this.registroOcupado.set(false);
@@ -182,12 +237,22 @@ export class MobiliarioForm implements OnInit {
     }
 
     // Etapa 1: Crear unidad en estado Activo
+    const archivoNuevo = this.archivoImagen();
     this.mobiliarioService
       .guardarItem(null, {
         nombreItem: this.formNombreItem.trim(),
         idTipoItem: this.formIdTipoItem,
         estadoItem: 'Activo',
       })
+      .pipe(
+        switchMap((nuevoItem) =>
+          archivoNuevo
+            ? this.imagenesService
+                .subir('mobiliario', nuevoItem.idItem, archivoNuevo)
+                .pipe(switchMap(() => of(nuevoItem)))
+            : of(nuevoItem),
+        ),
+      )
       .subscribe({
         next: (nuevoItem) => {
           if (this.formDestino === 'almacen' || !this.formIdHabitacion) {

@@ -92,6 +92,27 @@
         </select>
       </div>
 
+      <div class="field span-2">
+        <label for="reg-imagen">Imagen referencial (opcional)</label>
+        @if (vistaImagen(); as img) {
+          <div class="mobiliario-image-preview">
+            <img [imagenProtegida]="img" alt="Vista previa del mobiliario" />
+          </div>
+        }
+        <input
+          id="reg-imagen"
+          #archivoMob
+          type="file"
+          accept="image/jpeg,image/png"
+          [disabled]="registroOcupado() || creadoIdItem() !== null"
+          (change)="seleccionarImagen(archivoMob)"
+        />
+        <small class="muted">JPEG o PNG de hasta 5 MB. Si no subes una propia, usa la referencial del tipo.</small>
+        @if (imagenError()) {
+          <small class="error-box" role="alert">{{ imagenError() }}</small>
+        }
+      </div>
+
       @if (!modoEdicion()) {
         <div class="field span-2">
           <label for="reg-destino"

@@ -47,9 +47,10 @@ export interface HabitacionConfiguracion {
   maxMenoresSinCama: number;
   precioBase: number;
   precioPorNoche?: number | null;
+  imagenRuta?: string | null;
 }
 
 export type HabitacionConfiguracionRequest = Omit<
   HabitacionConfiguracion,
-  'idHabitacion' | 'nombreTipo' | 'precioBase'
+  'idHabitacion' | 'nombreTipo' | 'precioBase' | 'imagenRuta'
 >;

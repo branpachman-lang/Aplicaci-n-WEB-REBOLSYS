@@ -25,7 +25,7 @@ import static pe.com.rebolsysBackend.service.impl.comun.ReglasPropuesta.*;
 import java.math.*;
 import java.time.*;
 import java.util.*;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,7 +34,6 @@ import pe.com.rebolsysBackend.enums.*;
 import pe.com.rebolsysBackend.exception.*;
 
 @Service
-@RequiredArgsConstructor
 public class HabitacionServiceImpl implements HabitacionService {
   private final jakarta.persistence.EntityManager entityManager;
   private final HabitacionRepository habitaciones;
@@ -47,6 +46,51 @@ public class HabitacionServiceImpl implements HabitacionService {
   private final MovimientoInventarioRepository movimientos;
   private final ItemService items;
   private final InformeRevisionRepository informes;
+  private final CatalogoImagenService imagenes;
+
+  @Autowired
+  public HabitacionServiceImpl(
+      jakarta.persistence.EntityManager entityManager,
+      HabitacionRepository habitaciones,
+      TipoHabitacionRepository tipos,
+      DetalleReservaRepository detalles,
+      ReservaOcupanteRepository ocupantes,
+      ClienteService clientes,
+      ReglasPropuesta reglas,
+      ItemRepository mobiliario,
+      MovimientoInventarioRepository movimientos,
+      ItemService items,
+      InformeRevisionRepository informes,
+      CatalogoImagenService imagenes) {
+    this.entityManager = entityManager;
+    this.habitaciones = habitaciones;
+    this.tipos = tipos;
+    this.detalles = detalles;
+    this.ocupantes = ocupantes;
+    this.clientes = clientes;
+    this.reglas = reglas;
+    this.mobiliario = mobiliario;
+    this.movimientos = movimientos;
+    this.items = items;
+    this.informes = informes;
+    this.imagenes = imagenes;
+  }
+
+  public HabitacionServiceImpl(
+      jakarta.persistence.EntityManager entityManager,
+      HabitacionRepository habitaciones,
+      TipoHabitacionRepository tipos,
+      DetalleReservaRepository detalles,
+      ReservaOcupanteRepository ocupantes,
+      ClienteService clientes,
+      ReglasPropuesta reglas,
+      ItemRepository mobiliario,
+      MovimientoInventarioRepository movimientos,
+      ItemService items,
+      InformeRevisionRepository informes) {
+    this(entityManager, habitaciones, tipos, detalles, ocupantes, clientes, reglas,
+        mobiliario, movimientos, items, informes, null);
+  }
 
   @Override
   @Transactional
@@ -261,6 +305,9 @@ public class HabitacionServiceImpl implements HabitacionService {
   }
 
   private HabitacionResponseDTO respuesta(Habitacion h) {
+    String imagen = imagenes == null ? null
+        : imagenes.resolverHabitacion(
+            h.getIdHabitacion(), h.getNumeroCuarto(), h.getTipoHabitacion().getNombreTipo());
     return new HabitacionResponseDTO(
         h.getIdHabitacion(),
         h.getNumeroCuarto(),
@@ -271,7 +318,8 @@ public class HabitacionServiceImpl implements HabitacionService {
         h.getPlazasCama(),
         h.getMaxMenoresSinCama(),
         precioVigente(h),
-        h.getPrecioPorNoche());
+        h.getPrecioPorNoche(),
+        imagen);
   }
 
   private BigDecimal precioVigente(Habitacion h) {

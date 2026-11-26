@@ -265,9 +265,12 @@
       <article class="product-card" [class.sold-out]="p.stock === 0">
         <div class="product-image">
           <img
-            [src]="imagen(p)"
+            [imagenProtegida]="imagen(p)"
+            [imagenFallback]="'/imagenes/productos/sin-imagen.svg'"
+            (imagenError)="errorImagen(p.idProducto)"
             (error)="errorImagen(p.idProducto)"
             [alt]="p.nombreProducto"
+            loading="lazy"
           /><span class="stock-chip" [class.empty]="p.stock === 0"
             >{{ p.stock === 0 ? "AGOTADO" : "STOCK: " + p.stock }}</span
           >

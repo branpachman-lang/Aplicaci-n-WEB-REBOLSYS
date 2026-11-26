@@ -5,7 +5,7 @@ import pe.com.rebolsysBackend.security.SesionOperacionService;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Validator;
 import java.util.List;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -23,7 +23,6 @@ import pe.com.rebolsysBackend.repository.mantenimiento.ProductoRepository;
 import pe.com.rebolsysBackend.service.service.mantenimiento.ProductoService;
 
 @Service
-@RequiredArgsConstructor
 public class ProductoServiceImpl implements ProductoService {
   private final jakarta.persistence.EntityManager entityManager;
 
@@ -32,6 +31,35 @@ public class ProductoServiceImpl implements ProductoService {
   private final MovimientoInventarioRepository movimientos;
   private final Validator validator;
   private final ReglasPropuesta reglas;
+  private final CatalogoImagenService imagenes;
+
+  @Autowired
+  public ProductoServiceImpl(
+      jakarta.persistence.EntityManager entityManager,
+      ProductoRepository productoRepository,
+      CategoriaRepository categoriaRepository,
+      MovimientoInventarioRepository movimientos,
+      Validator validator,
+      ReglasPropuesta reglas,
+      CatalogoImagenService imagenes) {
+    this.entityManager = entityManager;
+    this.productoRepository = productoRepository;
+    this.categoriaRepository = categoriaRepository;
+    this.movimientos = movimientos;
+    this.validator = validator;
+    this.reglas = reglas;
+    this.imagenes = imagenes;
+  }
+
+  public ProductoServiceImpl(
+      jakarta.persistence.EntityManager entityManager,
+      ProductoRepository productoRepository,
+      CategoriaRepository categoriaRepository,
+      MovimientoInventarioRepository movimientos,
+      Validator validator,
+      ReglasPropuesta reglas) {
+    this(entityManager, productoRepository, categoriaRepository, movimientos, validator, reglas, null);
+  }
 
   @Override
   @Transactional
@@ -226,6 +254,9 @@ public class ProductoServiceImpl implements ProductoService {
   }
 
   private ProductoResponseDTO convertirResponse(Producto p) {
+    String imagen = imagenes == null ? p.getImagenRuta()
+        : imagenes.resolverProducto(p.getIdProducto(), p.getImagenRuta(),
+            p.getNombreProducto(), p.getCategoria().getNombreCategoria());
     return new ProductoResponseDTO(
         p.getIdProducto(),
         p.getNombreProducto(),
@@ -234,7 +265,7 @@ public class ProductoServiceImpl implements ProductoService {
         p.getStockMinimo(),
         p.getCategoria().getIdCategoria(),
         p.getEstadoProducto(),
-        p.getImagenRuta(),
-        p.getCategoria().getNombreCategoria(),p.getDescripcion());
+        imagen,
+        p.getCategoria().getNombreCategoria(), p.getDescripcion());
   }
 }

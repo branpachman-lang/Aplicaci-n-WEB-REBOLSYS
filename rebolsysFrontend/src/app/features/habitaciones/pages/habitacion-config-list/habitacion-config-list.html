@@ -91,9 +91,19 @@
           "
         >
           <div class="room-card-media">
-            <span class="room-photo-placeholder" aria-hidden="true"
-              ><app-icon name="bed"
-            /></span>
+            @if (room.imagenRuta && !fallidas().has(room.idHabitacion)) {
+              <img
+                class="room-photo"
+                [imagenProtegida]="room.imagenRuta"
+                (imagenError)="marcarImagenFallida(room.idHabitacion)"
+                [alt]="'Habitación ' + room.numeroCuarto"
+                loading="lazy"
+              />
+            } @else {
+              <span class="room-photo-placeholder" aria-hidden="true"
+                ><app-icon name="bed"
+              /></span>
+            }
           </div>
           <div>
             <header class="room-card-header">
@@ -293,6 +303,16 @@
           </button>
         </div>
       } @else {
+        @if (room.imagenRuta && !fallidas().has(room.idHabitacion)) {
+          <div class="room-detail-media">
+            <img
+              class="room-detail-photo"
+              [imagenProtegida]="room.imagenRuta"
+              (imagenError)="marcarImagenFallida(room.idHabitacion)"
+              [alt]="'Habitación ' + room.numeroCuarto"
+            />
+          </div>
+        }
         <div class="detail-line">
           <small>Tipo de habitación</small>
           <strong>{{ room.nombreTipo }}</strong>

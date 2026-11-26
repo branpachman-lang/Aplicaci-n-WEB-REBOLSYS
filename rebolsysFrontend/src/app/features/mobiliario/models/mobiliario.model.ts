@@ -12,6 +12,7 @@ export interface Item {
   estadoActualItem: EstadoConservacion | null;
   nombreTipo: string;
   numeroCuarto: string | null;
+  imagenRuta?: string | null;
 }
 
 export interface ItemRequest {

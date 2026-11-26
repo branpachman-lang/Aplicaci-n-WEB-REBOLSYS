@@ -2,6 +2,7 @@ import { notificarCambios } from '../../../../core/services/avisos-formulario';
 import { CommonModule, DecimalPipe } from '@angular/common';
 import {
   Component,
+  OnDestroy,
   OnInit,
   computed,
   inject,
@@ -10,9 +11,11 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { forkJoin, of } from 'rxjs';
+import { forkJoin, of, switchMap } from 'rxjs';
+import { CatalogoImagenService } from '../../../../core/services/catalogo-imagen.service';
 import { NotificacionService } from '../../../../core/services/notificacion.service';
 import { mensajeError } from '../../../../core/utils/http-error';
+import { ImagenProtegida } from '../../../../shared/directives/imagen-protegida';
 import { TipoHabitacion } from '../../../tipos-habitacion/models/tipo-habitacion.model';
 import { TipoHabitacionService } from '../../../tipos-habitacion/services/tipo-habitacion-service';
 import {
@@ -23,14 +26,15 @@ import {
 import { HabitacionService } from '../../services/habitacion-service';
 @Component({
   selector: 'app-habitacion-form',
-  imports: [CommonModule, FormsModule, DecimalPipe],
+  imports: [CommonModule, FormsModule, DecimalPipe, ImagenProtegida],
   templateUrl: './habitacion-form.html',
   styleUrl: './habitacion-form.css',
 })
-export class HabitacionForm implements OnInit {
+export class HabitacionForm implements OnInit, OnDestroy {
   private readonly habitacionesService = inject(HabitacionService);
   private readonly tiposService = inject(TipoHabitacionService);
   private readonly notificacionService = inject(NotificacionService);
+  private readonly imagenesService = inject(CatalogoImagenService);
   private readonly router = inject(Router);
   formOcupado = signal(false);
 
@@ -39,6 +43,11 @@ export class HabitacionForm implements OnInit {
   modoEdicion = signal(false);
 
   idHabitacionEditando = signal<number | null>(null);
+
+  imagenActual = signal<string | null>(null);
+  vistaPreviaImagen = signal<string | null>(null);
+  archivoImagen = signal<File | null>(null);
+  imagenError = signal('');
 
   formNumero = signal('');
 
@@ -85,6 +94,10 @@ export class HabitacionForm implements OnInit {
     this.formEstado.set('DISPONIBLE');
     this.estadoOriginal.set('DISPONIBLE');
     this.formPrecioPorNoche.set(null);
+    this.imagenActual.set(null);
+    this.limpiarVistaPrevia();
+    this.archivoImagen.set(null);
+    this.imagenError.set('');
     this.formError.set('');
   }
 
@@ -99,7 +112,43 @@ export class HabitacionForm implements OnInit {
     this.formEstado.set(room.estadoHabitacion);
     this.estadoOriginal.set(room.estadoHabitacion);
     this.formPrecioPorNoche.set(room.precioPorNoche ?? null);
+    this.imagenActual.set(room.imagenRuta ?? null);
+    this.limpiarVistaPrevia();
+    this.archivoImagen.set(null);
+    this.imagenError.set('');
     this.formError.set('');
+  }
+
+  vistaImagen(): string | null {
+    return this.vistaPreviaImagen() ?? this.imagenActual();
+  }
+
+  seleccionarImagen(inputEl: HTMLInputElement): void {
+    const archivo = inputEl.files?.[0];
+    this.limpiarVistaPrevia();
+    if (!archivo) {
+      this.archivoImagen.set(null);
+      return;
+    }
+    if (!/^image\/(jpeg|png)$/.test(archivo.type) || archivo.size > 5 * 1024 * 1024) {
+      this.imagenError.set('Selecciona una imagen JPEG o PNG de hasta 5 MB.');
+      inputEl.value = '';
+      this.archivoImagen.set(null);
+      return;
+    }
+    this.imagenError.set('');
+    this.archivoImagen.set(archivo);
+    this.vistaPreviaImagen.set(URL.createObjectURL(archivo));
+  }
+
+  private limpiarVistaPrevia(): void {
+    const actual = this.vistaPreviaImagen();
+    if (actual?.startsWith('blob:')) URL.revokeObjectURL(actual);
+    this.vistaPreviaImagen.set(null);
+  }
+
+  ngOnDestroy(): void {
+    this.limpiarVistaPrevia();
   }
 
   onTipoChange(nuevoId: number | null): void {
@@ -206,7 +255,21 @@ export class HabitacionForm implements OnInit {
     };
 
     const id = this.modoEdicion() ? this.idHabitacionEditando() : null;
-    this.habitacionesService.guardarHabitacion(id, req).subscribe({
+    const archivo = this.archivoImagen();
+    this.habitacionesService
+      .guardarHabitacion(id, req)
+      .pipe(
+        switchMap((guardada) =>
+          archivo
+            ? this.imagenesService.subir(
+                'habitaciones',
+                guardada.idHabitacion,
+                archivo,
+              )
+            : of(null),
+        ),
+      )
+      .subscribe({
       next: () => {
         this.formOcupado.set(false);
 

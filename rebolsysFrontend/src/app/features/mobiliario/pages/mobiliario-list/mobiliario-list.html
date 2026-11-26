@@ -168,7 +168,21 @@
                 <span class="item-number">#{{ item.idItem }}</span>
               </td>
               <td>
-                <strong>{{ item.nombreItem }}</strong>
+                <div class="mobiliario-nombre-celda">
+                  <span class="mobiliario-thumb">
+                    @if (item.imagenRuta && !fallidas().has(item.idItem)) {
+                      <img
+                        [imagenProtegida]="item.imagenRuta"
+                        (imagenError)="marcarImagenFallida(item.idItem)"
+                        [alt]="item.nombreItem"
+                        loading="lazy"
+                      />
+                    } @else {
+                      <app-icon name="box" />
+                    }
+                  </span>
+                  <strong>{{ item.nombreItem }}</strong>
+                </div>
               </td>
               <td>{{ item.nombreTipo }}</td>
               <td>
@@ -771,6 +785,16 @@
           <app-icon name="close" />
         </button>
       </div>
+
+      @if (itemDetalle()?.imagenRuta && !fallidas().has(itemDetalle()!.idItem)) {
+        <div class="mobiliario-detail-media">
+          <img
+            [imagenProtegida]="itemDetalle()!.imagenRuta!"
+            (imagenError)="marcarImagenFallida(itemDetalle()!.idItem)"
+            [alt]="itemDetalle()!.nombreItem"
+          />
+        </div>
+      }
 
       <div class="form-grid detalle-info-grid">
         <div class="detail-line">
