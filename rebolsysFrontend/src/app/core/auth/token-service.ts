@@ -45,7 +45,7 @@ export class TokenService {
   }
 
   corresponde(valor: string | null): boolean {
-    return !!valor && this.interpretar(valor)?.id === this.actual()?.id;
+    return valor === (this.actual()?.valor ?? null);
   }
 
   limpiar(): void {

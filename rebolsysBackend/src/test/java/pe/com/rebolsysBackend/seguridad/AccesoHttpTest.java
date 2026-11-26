@@ -138,6 +138,8 @@ class AccesoHttpTest {
         .andExpect(status().isOk()).andExpect(jsonPath("$.sesion.requiereCambio").value(true))
         .andExpect(jsonPath("$.sesion.idTurno").isEmpty()));
     mvc.perform(get(API + "/seguridad/usuarios").header("Authorization", "Bearer " + temporalGerente)).andExpect(status().isForbidden());
+    mvc.perform(get("/actuator/metrics").header("Authorization", "Bearer " + temporalGerente))
+        .andExpect(status().isForbidden());
     peticion(post(API + "/sesion/contrasena"), temporalGerente,
         Map.of("actual", CLAVE_GERENTE, "nueva", "Gerente permanente de prueba"))
         .andExpect(status().isOk()).andExpect(jsonPath("$.sesion.gerente").value(true))
@@ -147,6 +149,15 @@ class AccesoHttpTest {
     var gerente = token(peticion(post(API + "/sesion/iniciar"), null,
         Map.of("usuario", "gerencia", "contrasena", "Gerente permanente de prueba"))
         .andExpect(status().isOk()).andExpect(jsonPath("$.sesion.idTurno").isEmpty()));
+    mvc.perform(get("/actuator/metrics").header("Authorization", "Bearer " + gerente))
+        .andExpect(status().isOk())
+        .andExpect(header().string("Cache-Control", "no-store"))
+        .andExpect(header().doesNotExist(JwtService.CABECERA_TOKEN))
+        .andExpect(jsonPath("$.names").isArray());
+    mvc.perform(get(API + "/ruta-inexistente").header("Authorization", "Bearer " + gerente))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.status").value(404))
+        .andExpect(jsonPath("$.requestId").isString());
     int turnoGerente = abrirCaja(gerente, 50);
     var empleadoGerente = cuerpo(mvc.perform(get(API + "/seguridad/empleados").header("Authorization", "Bearer " + gerente))
         .andExpect(status().isOk()).andExpect(jsonPath("$[0].protegido").value(true))).get(0).path("idEmpleado").asLong();
@@ -239,6 +250,8 @@ class AccesoHttpTest {
     var operadora = token(peticion(post(API + "/sesion/iniciar"), null,
         Map.of("usuario", "operadora@example.test", "contrasena", "Clave elegida por operadora"))
         .andExpect(status().isOk()).andExpect(jsonPath("$.sesion.idTurno").isEmpty()));
+    mvc.perform(get("/actuator/metrics").header("Authorization", "Bearer " + operadora))
+        .andExpect(status().isForbidden());
     assertThat(abrirCaja(operadora, 0)).isNotEqualTo(turnoGerente);
     tx.executeWithoutResult(s -> {
       accesos.permisos(roles.get("ROL_ANTERIOR"), java.util.Set.of("PRODUCTOS:VER"));

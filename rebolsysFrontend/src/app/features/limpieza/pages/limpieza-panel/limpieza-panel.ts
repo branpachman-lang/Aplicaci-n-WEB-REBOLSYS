@@ -176,6 +176,7 @@ export class LimpiezaPanel {
 
   abrirEditarInforme(id: number) {
     this.ejecutar(this.api.informe(id), datos => {
+      this.observaciones = datos.observaciones === "Sin observaciones" ? "" : (datos.observaciones ?? "");
       this.filas.set(datos.items.map(i => ({
         idItem: i.idItem, item: i.item, estadoEncontrado: i.estadoEncontrado,
         observaciones: i.observaciones ?? "", evidencia: i.evidencia, estadoFijo: i.idTicket !== null,
@@ -185,7 +186,12 @@ export class LimpiezaPanel {
   }
 
   editarFila(id: number, cambios: Partial<Fila>) {
-    this.filas.update(filas => filas.map(f => f.idItem === id ? { ...f, ...cambios } : f));
+    this.filas.update(filas => filas.map(f => {
+      if (f.idItem !== id) return f;
+      const siguiente = { ...f, ...cambios };
+      if (cambios.estadoEncontrado === "BUENO") siguiente.evidencia = null;
+      return siguiente;
+    }));
   }
 
   guardarInforme() {
@@ -197,7 +203,7 @@ export class LimpiezaPanel {
     }));
     const peticion = panel.tipo === "nuevoInforme"
       ? this.api.enviar(panel.datos.idInformeRevision, items, this.observaciones)
-      : this.api.editarInforme(panel.datos.informe.idInformeRevision, items);
+      : this.api.editarInforme(panel.datos.informe.idInformeRevision, items, this.observaciones);
     this.ejecutar(peticion, datos => {
       this.aviso.set(panel.tipo === "nuevoInforme" ? "Informe enviado para aprobación." : "Informe actualizado.");
       if (this.permite("VER_INFORMES")) this.panel.set({ tipo: "informe", datos });

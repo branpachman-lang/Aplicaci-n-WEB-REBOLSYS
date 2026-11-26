@@ -148,6 +148,8 @@ public class HabitacionServiceImpl implements HabitacionService {
         "La fecha final debe ser posterior a la inicial");
     var periodo = detalles.buscarEnPeriodo(desde.atStartOfDay(), hasta.atStartOfDay());
     var habitacionesEnCurso = detalles.habitacionesEnCurso();
+    var ultimasSalidas = detalles.ultimasSalidasActivas().stream().collect(java.util.stream.Collectors.toMap(
+        DetalleReservaRepository.SalidaActiva::getIdHabitacion, DetalleReservaRepository.SalidaActiva::getSalida));
     return habitaciones.findAll(Sort.by("numeroCuarto")).stream()
         .map(
             h -> {
@@ -180,7 +182,7 @@ public class HabitacionServiceImpl implements HabitacionService {
                   h.getEstadoHabitacion() == EstadoHabitacion.DISPONIBLE
                       && bloques.isEmpty()
                       && !enCurso,
-                  reservas);
+                  reservas, ultimasSalidas.get(h.getIdHabitacion()));
             })
         .toList();
   }

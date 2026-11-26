@@ -101,38 +101,6 @@ td .pending-text {
   color: #666;
   font-size: 13px;
 }
-.occupant-editor-search {
-  margin: 22px 0 24px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid var(--line);
-}
-.occupant-editor-guest {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: start;
-  gap: 14px 22px;
-  margin-top: 14px;
-  padding: 18px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: #fff;
-}
-.occupant-editor-guest > strong { align-self: center; }
-.occupant-editor-guest > label:not(.field) {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.occupant-editor-guest > .field {
-  grid-column: 1 / -1;
-  max-width: 440px;
-}
-.occupant-editor-guest > .button { justify-self: start; }
-.occupant-editor-actions {
-  margin-top: 28px;
-  padding-top: 20px;
-  border-top: 1px solid var(--line);
-}
 @media (max-width: 1100px) {
   .search-field {
     max-width: none;
@@ -180,8 +148,6 @@ td .pending-text {
   .reserva-importe { grid-area: importe; text-align: right; }
   .reserva-acciones { grid-area: acciones; }
   .row-actions { min-width: 0; gap: 8px; }
-  .occupant-editor-guest { grid-template-columns: minmax(0, 1fr); }
-  .occupant-editor-guest > .field { grid-column: auto; max-width: none; }
   .pagination,
   .pagination > div {
     flex-wrap: wrap;

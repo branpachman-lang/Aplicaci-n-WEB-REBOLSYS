@@ -18,6 +18,7 @@ export interface DetalleReserva {
   fechaIngresoReal?: string | null;
   fechaSalidaReal?: string | null;
   costoEstadia: number;
+  montoDevuelto?: number;
   estadoDetalle: "CONFIRMADA" | "EN_CURSO" | "FINALIZADA" | "CANCELADA";
   ingresoVencido?: boolean;
   salidaPendiente?: boolean;
@@ -106,6 +107,13 @@ export interface ClienteDetalle {
   restriccionesMedicas: string | null;
 }
 
+export interface OcupanteRegistro {
+  idCliente: number;
+  idClienteResponsable: number | null;
+  parentescoResponsable: OcupanteReserva['parentescoResponsable'];
+  ocupaPlazaCama: boolean;
+}
+
 export interface RegistroReservaApi {
   cobro?: { idFormaPago: number; monto: number; numeroOperacion: string | null };
   claveRegistro: string;
@@ -116,12 +124,7 @@ export interface RegistroReservaApi {
     fechaIngreso: string;
     fechaSalida: string;
     costoEstadia: number;
-    ocupantes: {
-      idCliente: number;
-      idClienteResponsable: number | null;
-      parentescoResponsable: "PADRE" | "MADRE" | "TUTOR" | null;
-      ocupaPlazaCama: boolean;
-    }[];
+    ocupantes: OcupanteRegistro[];
   }[];
 }
 

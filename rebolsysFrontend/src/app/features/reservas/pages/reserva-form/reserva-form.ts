@@ -36,7 +36,7 @@ import {
   AbstractControl,
   Validators,
 } from "@angular/forms";
-import { CurrencyPipe } from "@angular/common";
+import { CurrencyPipe, DatePipe } from "@angular/common";
 import { ActivatedRoute, Router, RouterLink } from "@angular/router";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import {
@@ -64,6 +64,7 @@ import {
     ReactiveFormsModule,
     FormsModule,
     CurrencyPipe,
+    DatePipe,
     RouterLink,
     Icon,
     PagoModal,
@@ -870,20 +871,11 @@ export class ReservaForm implements OnInit {
     const room = this.roomFor(i);
     if (room) {
       if (room.precio <= 0) return 'La tarifa de esta habitación está pendiente. Configura el precio antes de registrar una reserva.';
-      if (room.estado === "MANTENIMIENTO")
-        return "La habitación está en mantenimiento.";
       if (this.yaElegida(room.idHabitacion, i))
         return "Selecciona cada habitación una sola vez.";
-      if (
-        room.reservas.some(
-          (r) =>
-            new Date(line.fechaIngreso).getTime() <
-              new Date(r.salida).getTime() &&
-              new Date(line.fechaSalida).getTime() >
-                new Date(r.ingreso).getTime(),
-        )
-      )
-        return "La habitación ya tiene una reserva en este horario. Elige otra habitación o cambia las fechas.";
+      if (room.ultimaSalidaActiva && line.fechaIngreso &&
+          new Date(line.fechaIngreso).getTime() < new Date(room.ultimaSalidaActiva).getTime())
+        return "El ingreso debe ser igual o posterior a la salida de la última reserva activa.";
       const error = errorOcupacion(room, this.guests(i), line.fechaIngreso);
       if (error) return error;
     }

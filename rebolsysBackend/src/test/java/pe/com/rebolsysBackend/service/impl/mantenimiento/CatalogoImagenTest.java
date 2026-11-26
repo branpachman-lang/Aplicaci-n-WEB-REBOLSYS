@@ -87,6 +87,16 @@ class CatalogoImagenTest {
   @MockitoBean ProveedorFacturacionClient facturacion;
 
   @Test
+  void generaSlugLinealSinGuionesExtremosYConEntradasBorde() {
+    assertThat(CatalogoImagenService.slug(null)).isEmpty();
+    assertThat(CatalogoImagenService.slug("")).isEmpty();
+    assertThat(CatalogoImagenService.slug("---")).isEmpty();
+    assertThat(CatalogoImagenService.slug("---Habitación 101---")).isEqualTo("habitacion-101");
+    assertThat(CatalogoImagenService.slug("Agua Mineral 500ml")).isEqualTo("agua-mineral-500ml");
+    assertThat(CatalogoImagenService.slug("a" + "-".repeat(10_000) + "b")).isEqualTo("a-b");
+  }
+
+  @Test
   void resuelvePorIdCuartoTipoYCategoriaYRechazaPathTraversal(@TempDir Path dirUnitario) throws Exception {
     var habRepo = mock(HabitacionRepository.class);
     var itemRepo = mock(ItemRepository.class);

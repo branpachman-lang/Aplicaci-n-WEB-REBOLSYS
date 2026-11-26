@@ -425,6 +425,7 @@ CREATE TABLE "DETALLE_RESERVA" (
     fechaIngresoReal TIMESTAMP,
     fechaSalidaReal TIMESTAMP,
     costoEstadia NUMBER(12,2) NOT NULL,
+    montoDevuelto NUMBER(12,2) CONSTRAINT dr_monto_devuelto_ck CHECK (montoDevuelto > 0),
     claveSalida VARCHAR2(64),
     firmaSalida VARCHAR2(64),
     idUsuarioSalida NUMBER,
@@ -481,6 +482,9 @@ CREATE TABLE "INFORME_REVISION" (
     ) ENABLE
 
 );
+
+CREATE UNIQUE INDEX "INFORME_ACTIVO_HAB_UNQ" ON "INFORME_REVISION"
+    (CASE WHEN "ESTADOINFORME" IN ('BORRADOR', 'POR_APROBAR') THEN "IDHABITACION" END);
 
 -- 36. RESERVA_HUESPED (negocio propuesto)
 CREATE TABLE "RESERVA_HUESPED" (
@@ -598,8 +602,8 @@ CREATE TABLE "DETALLE_INFORME" (
     CONSTRAINT "DI_INFORME_ITEM_UNQ" UNIQUE ("IDINFORME", "IDITEM") ENABLE,
     CONSTRAINT "DI_INFORME_HABITACION_FK" FOREIGN KEY ("IDINFORME","IDHABITACION")
     REFERENCES "INFORME_REVISION" ( "IDINFORMEREVISION", "IDHABITACION")ON DELETE CASCADE ENABLE,
-    CONSTRAINT "DI_ITEM_HABITACION_FK" FOREIGN KEY ("IDITEM", "IDHABITACION")
-    REFERENCES "ITEM" ("IDITEM","IDHABITACION") ENABLE,
+    CONSTRAINT "DI_ITEM_FK" FOREIGN KEY ("IDITEM")
+    REFERENCES "ITEM" ("IDITEM") ENABLE,
     CONSTRAINT "DI_ESTADO_ENCONTRADO_CHK" CHECK (
         "ESTADOENCONTRADO" IS NULL
         OR "ESTADOENCONTRADO" IN ('OPTIMO','DANADO','FALTANTE')
@@ -683,8 +687,8 @@ CREATE TABLE "MOVIMIENTO_INVENTARIO" (
     claveOperacion VARCHAR2(64) NOT NULL,
     CONSTRAINT pn_mi_pk PRIMARY KEY (idMovimiento),
     CONSTRAINT pn_mi_producto_fk FOREIGN KEY (idProducto) REFERENCES producto(idProducto),
-    CONSTRAINT pn_mi_item_habitacion_fk FOREIGN KEY (idItem, idHabitacion)
-    REFERENCES item (idItem, idHabitacion),
+    CONSTRAINT pn_mi_item_fk FOREIGN KEY (idItem) REFERENCES item(idItem),
+    CONSTRAINT pn_mi_habitacion_fk FOREIGN KEY (idHabitacion) REFERENCES habitacion(idHabitacion),
     CONSTRAINT pn_mi_tipo_fk FOREIGN KEY (idTipoMovimientoAlmacen) REFERENCES tipo_movimiento_almacen(idTipoMovimientoAlmacen),
     CONSTRAINT pn_mi_usuario_fk FOREIGN KEY (idUsuario) REFERENCES usuario(idUsuario),
     CONSTRAINT pn_mi_linea_producto_fk FOREIGN KEY (idDetalleVenta,idProducto) REFERENCES detalle_venta(idDetalleVenta,idProducto),

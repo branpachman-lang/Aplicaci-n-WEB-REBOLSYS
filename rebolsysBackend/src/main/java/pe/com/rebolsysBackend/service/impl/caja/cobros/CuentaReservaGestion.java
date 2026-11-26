@@ -9,6 +9,8 @@ import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import pe.com.rebolsysBackend.dto.reservas.ResumenCuentaReservaDTO;
+import pe.com.rebolsysBackend.repository.caja.FlujoCajaRepository;
+import pe.com.rebolsysBackend.repository.caja.TipoMovimientoCajaRepository;
 import pe.com.rebolsysBackend.repository.caja.TurnoCajaRepository;
 import pe.com.rebolsysBackend.repository.caja.cobros.PagoRepository;
 import pe.com.rebolsysBackend.repository.comun.comprobantes.ComprobanteDetalleRepository;
@@ -17,6 +19,7 @@ import pe.com.rebolsysBackend.repository.comun.comprobantes.SerieComprobanteRepo
 import pe.com.rebolsysBackend.repository.comun.comprobantes.TipoComprobanteRepository;
 import pe.com.rebolsysBackend.repository.reservas.DetalleReservaRepository;
 import pe.com.rebolsysBackend.repository.reservas.ReservaRepository;
+import pe.com.rebolsysBackend.service.impl.caja.CajaService;
 import pe.com.rebolsysBackend.entity.*;
 import pe.com.rebolsysBackend.enums.*;
 import pe.com.rebolsysBackend.exception.*;
@@ -34,6 +37,9 @@ public class CuentaReservaGestion {
   private final TipoComprobanteRepository tipos;
   private final SerieComprobanteRepository series;
   private final TurnoCajaRepository turnos;
+  private final FlujoCajaRepository flujos;
+  private final TipoMovimientoCajaRepository movimientos;
+  private final CajaService caja;
 
   public Reserva bloquear(Long id) {
     var r = reservas.bloquear(id).orElseThrow(() -> new RecursoNoEncontradoException("La reserva no existe"));
@@ -63,13 +69,16 @@ public class CuentaReservaGestion {
     return "CUENTA-R-" + id;
   }
 
-  public Map<Long, ResumenCuentaReservaDTO> resumirReservas(Map<Long, BigDecimal> alojamientos) {
-    var ids = alojamientos.keySet();
+  public Map<Long, ResumenCuentaReservaDTO> resumirReservas(Map<Long, List<DetalleReserva>> detallesPorReserva) {
+    var ids = detallesPorReserva.keySet();
     var principales = cuentas.clavesExistentes(ids.stream().map(CuentaReservaGestion::clavePrincipal).toList());
     var documentos = cuentas.totalesCuentasReserva(ids).stream()
         .collect(Collectors.groupingBy(ComprobanteRepository.TotalesCuenta::getIdReserva));
+    var cargosCancelados = lineas.cargosCancelados(ids).stream().collect(Collectors.toMap(
+        l -> l.getComprobante().getReserva().getIdReserva(), this::total, BigDecimal::add));
     var resumen = new HashMap<Long, ResumenCuentaReservaDTO>();
-    alojamientos.forEach((id, alojamiento) -> {
+    detallesPorReserva.forEach((id, detalles) -> {
+      var alojamiento = alojamiento(detalles);
       boolean tienePrincipal = principales.contains(clavePrincipal(id));
       BigDecimal total = tienePrincipal ? BigDecimal.ZERO : alojamiento;
       BigDecimal pagado = BigDecimal.ZERO;
@@ -81,8 +90,12 @@ public class CuentaReservaGestion {
           saldoAlojamiento = doc.getTotal().subtract(doc.getPagado());
         }
       }
+      var ajuste = cargosCancelados.getOrDefault(id, BigDecimal.ZERO);
+      total = total.subtract(ajuste);
+      var devuelto = devuelto(detalles);
+      pagado = pagado.subtract(devuelto);
       resumen.put(id, new ResumenCuentaReservaDTO(total, pagado, total.subtract(pagado),
-          saldoAlojamiento == null ? BigDecimal.ZERO : saldoAlojamiento));
+          saldoAlojamiento == null ? BigDecimal.ZERO : saldoAlojamiento.subtract(ajuste).add(devuelto)));
     });
     return resumen;
   }
@@ -91,11 +104,24 @@ public class CuentaReservaGestion {
     return pagos.findByComprobanteIdComprobante(c.getIdComprobante()).stream()
         .filter(p -> p.getVerificado() == 1)
         .map(Pago::getMonto)
+        .reduce(BigDecimal.ZERO, BigDecimal::add)
+        .subtract(c.getReserva() == null ? BigDecimal.ZERO : devuelto(c.getReserva().getDetalles()));
+  }
+
+  public static BigDecimal devuelto(List<DetalleReserva> detalles) {
+    return detalles.stream().map(DetalleReserva::getMontoDevuelto).filter(Objects::nonNull)
         .reduce(BigDecimal.ZERO, BigDecimal::add);
   }
 
+  public BigDecimal cargosCancelados(Comprobante c) {
+    if (c.getReserva() == null || c.getEstadoComprobante() == EstadoComprobante.BORRADOR) return BigDecimal.ZERO;
+    return lineas.findByComprobanteIdComprobanteOrderByNumeroLinea(c.getIdComprobante()).stream()
+        .filter(l -> l.getDetalleReserva() != null && l.getDetalleReserva().getEstadoDetalle() == EstadoReserva.CANCELADA)
+        .map(this::total).reduce(BigDecimal.ZERO, BigDecimal::add);
+  }
+
   public BigDecimal saldo(Comprobante c) {
-    return c.getTotalPagar().subtract(pagado(c));
+    return c.getTotalPagar().subtract(cargosCancelados(c)).subtract(pagado(c));
   }
 
   public TurnoCaja turno(Long id, Long usuario) {
@@ -116,7 +142,7 @@ public class CuentaReservaGestion {
         turnos.findByUsuarioIdUsuarioAndEstadoSesionAndFechaCierreIsNullOrderByIdTurno(usuario, 1);
     exigir(
         abiertos.size() == 1,
-        "El operador debe tener exactamente un turno abierto para registrar consumos");
+        "El operador debe tener exactamente un turno abierto de caja");
     return turno(abiertos.getFirst().getIdTurno(), usuario);
   }
 
@@ -288,17 +314,32 @@ public class CuentaReservaGestion {
         .allMatch(c -> saldo(c).signum() == 0);
   }
 
-  public void cancelarDetalle(DetalleReserva d) {
-    var c = principal(d.getReserva());
-    if (c.isEmpty()) return;
-    exigir(
-        c.get().getEstadoComprobante() == EstadoComprobante.BORRADOR
-            && pagado(c.get()).signum() == 0,
-        "La reserva tiene pagos o comprobante emitido; requiere gestionar devolución o"
-            + " rectificación");
-    for (var l : lineas.findByDetalleReservaIdDetalleReserva(d.getIdDetalleReserva()))
-      lineas.delete(l);
-    lineas.flush();
-    recalcular(c.get());
+  public void cancelarDetalle(DetalleReserva d, Long operador) {
+    var principal = principal(d.getReserva());
+    if (principal.isEmpty()) return;
+    var c = principal.get();
+    var cargos = lineas.findByDetalleReservaIdDetalleReserva(d.getIdDetalleReserva());
+    var monto = pagado(c).max(BigDecimal.ZERO).min(d.getCostoEstadia());
+    if (monto.signum() > 0) {
+      var turno = turnoOperador(operador);
+      caja.validarDevolucionEnEfectivo(turno, monto);
+      var tipo = movimientos.findByNombreMovimiento(TipoMovimientoCaja.DEVOLUCION_RESERVA)
+          .orElseThrow(() -> new ReglaNegocioException("Falta configurar el movimiento de devolución de reservas"));
+      exigir(tipo.getSigno() == -1, "La devolución de reserva debe estar configurada como salida de caja");
+      var flujo = new FlujoCaja();
+      flujo.setTurnoCaja(turno);
+      flujo.setTipoMovimientoCaja(tipo);
+      flujo.setMonto(monto);
+      flujo.setClaveRegistro("DEV-RES-" + d.getIdDetalleReserva());
+      flujo.setConcepto("Devolución de reserva R" + d.getReserva().getIdReserva()
+          + " · habitación " + d.getHabitacion().getNumeroCuarto());
+      flujos.save(flujo);
+      d.setMontoDevuelto(monto);
+    }
+    if (c.getEstadoComprobante() == EstadoComprobante.BORRADOR) {
+      lineas.deleteAll(cargos);
+      lineas.flush();
+      recalcular(c);
+    }
   }
 }

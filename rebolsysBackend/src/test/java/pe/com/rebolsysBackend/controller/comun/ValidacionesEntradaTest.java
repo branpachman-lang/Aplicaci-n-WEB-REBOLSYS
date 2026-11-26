@@ -59,6 +59,14 @@ class ValidacionesEntradaTest {
     sinLlamadas();
   }
 
+  @org.junit.jupiter.api.Test
+  void reservaRechazaTipoDeContenidoIncompatible() throws Exception {
+    mvc.perform(post("/api/v1/reservas").contentType(MediaType.TEXT_PLAIN).content("{}"))
+        .andExpect(status().isUnsupportedMediaType())
+        .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("application/json")));
+    sinLlamadas();
+  }
+
   private void sinLlamadas() {
     verifyNoInteractions(reservas, ventas, productos, habitaciones, gastos, clientes, caja);
   }

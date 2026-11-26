@@ -18,6 +18,7 @@ import pe.com.rebolsysBackend.repository.comun.comprobantes.ComprobanteDetalleRe
 import pe.com.rebolsysBackend.repository.comun.comprobantes.ComprobanteRepository;
 import pe.com.rebolsysBackend.repository.comun.comprobantes.EmisionElectronicaRepository;
 import pe.com.rebolsysBackend.service.impl.comun.ReglasPropuesta;
+import pe.com.rebolsysBackend.service.impl.caja.cobros.CuentaReservaGestion;
 import pe.com.rebolsysBackend.service.impl.configuracion.HospedajeService;
 import pe.com.rebolsysBackend.service.service.comun.comprobantes.EmisionElectronicaService;
 import pe.com.rebolsysBackend.service.service.comun.comprobantes.ProveedorFacturacionClient;
@@ -83,8 +84,7 @@ public class EmisionElectronicaServiceImpl implements EmisionElectronicaService 
       var marca = hospedaje.marca();
       exigir(marca.ruc() != null && marca.ruc().matches("[0-9]{11}"), "Configura el RUC del hospedaje antes de simular una factura");
       exigir(c.getNumeroComprobante() != null && c.getNumeroComprobante().matches("[1-9][0-9]{0,7}"), "El correlativo admite hasta ocho dígitos");
-      var pagado = pagos.findByComprobanteIdComprobante(id).stream().filter(p -> p.getVerificado() == 1)
-          .map(Pago::getMonto).reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+      var pagado = pagado(c);
       exigir(pagado.compareTo(c.getTotalPagar()) == 0, "El comprobante debe estar completamente pagado");
       var documento = builder.construir(c, lineas.findByComprobanteIdComprobanteOrderByNumeroLinea(id), java.math.BigDecimal.ZERO, r);
       var e = new EmisionElectronica();
@@ -123,8 +123,7 @@ public class EmisionElectronicaServiceImpl implements EmisionElectronicaService 
       exigir(Set.of("BOLETA","FACTURA").contains(codigo),"Solo se admiten boletas y facturas");
       exigir(c.getSerie().matches(("FACTURA".equals(codigo)?"F":"B")+"[A-Z0-9]{3}"),"La serie debe tener cuatro caracteres y comenzar por F o B");
       exigir(c.getNumeroComprobante()!=null && c.getNumeroComprobante().matches("[1-9][0-9]{0,7}"),"El correlativo electrónico admite hasta ocho dígitos");
-      var pagado=pagos.findByComprobanteIdComprobante(id).stream().filter(p->p.getVerificado()==1)
-          .map(Pago::getMonto).reduce(java.math.BigDecimal.ZERO,java.math.BigDecimal::add);
+      var pagado=pagado(c);
       var documento=builder.construir(c,lineas.findByComprobanteIdComprobanteOrderByNumeroLinea(id),c.getTotalPagar().subtract(pagado),r);
       var e=new EmisionElectronica();
       e.setComprobante(c); e.setUsuario(usuario); e.setClaveOperacion(r.claveOperacion()); e.setFirmaSolicitud(firma);
@@ -135,6 +134,13 @@ public class EmisionElectronicaServiceImpl implements EmisionElectronicaService 
       e.setSubtotal(documento.subtotal()); e.setIgv(documento.igv()); e.setTotal(documento.total());
       return respuesta(emisiones.saveAndFlush(e));
     });
+  }
+
+  private java.math.BigDecimal pagado(Comprobante c) {
+    var pagado = pagos.findByComprobanteIdComprobante(c.getIdComprobante()).stream()
+        .filter(p -> p.getVerificado() == 1).map(Pago::getMonto)
+        .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+    return c.getReserva() == null ? pagado : pagado.subtract(CuentaReservaGestion.devuelto(c.getReserva().getDetalles()));
   }
 
   @Override

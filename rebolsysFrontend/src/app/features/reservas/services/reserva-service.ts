@@ -25,6 +25,7 @@ import {
   CuentaReserva,
   DetalleReserva,
   RegistroReservaApi,
+  OcupanteRegistro,
   ReservaApi,
   ResumenCuentaReserva,
   estadoReserva,
@@ -128,18 +129,13 @@ export class ReservaService {
   registrarSalida(idDetalleReserva: number) {
     return this.cambiarEstadoEstadia(idDetalleReserva, 'salida');
   }
-  cancelarEstadia(idDetalleReserva: number) {
-    return this.cambiarEstadoEstadia(idDetalleReserva, 'cancelacion');
-  }
-  guardarOcupantes(idDetalleReserva: number, ocupantes: {
-    idCliente: number;
-    idClienteResponsable: number | null;
-    parentescoResponsable: 'PADRE' | 'MADRE' | 'TUTOR' | null;
-    ocupaPlazaCama: boolean;
-  }[]) {
+  guardarOcupantes(idDetalleReserva: number, ocupantes: OcupanteRegistro[]) {
     return this.sesion.cargar().pipe(concatMap(s => this.http.put<DetalleReserva>(
       `${this.base}/detalles/${idDetalleReserva}/ocupantes`, { idUsuario: s.idUsuario, ocupantes },
     )));
+  }
+  cancelarEstadia(idDetalleReserva: number) {
+    return this.cambiarEstadoEstadia(idDetalleReserva, 'cancelacion');
   }
   private cambiarEstadoEstadia(idDetalleReserva: number, accion: 'ingreso' | 'salida' | 'cancelacion') {
     return this.sesion.cargar().pipe(concatMap(s => this.http.post<DetalleReserva>(

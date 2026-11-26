@@ -72,8 +72,10 @@ public class LimpiezaServiceImpl implements LimpiezaService {
         actual.idUsuario(), POR_APROBAR, desde, hasta);
     long aprobados = informes.countByUsuarioIdUsuarioAndEstadoInformeAndFechaHoraBetween(
         actual.idUsuario(), APROBADO, desde, hasta);
-    long generados = tickets.countByEmpleadoIdEmpleadoAndFechaGeneracionBetween(
-        usuarioActual().getEmpleado().getIdEmpleado(), desde, hasta);
+    var empleado = usuarioActual().getEmpleado();
+    long generados = empleado == null ? 0L
+        : tickets.countByEmpleadoIdEmpleadoAndFechaGeneracionBetween(
+            empleado.getIdEmpleado(), desde, hasta);
     return new Inicio(turno == null ? null : turno.getIdTurno(), desde,
         pendientes + aprobados, pendientes, aprobados, generados, turno == null ? "DIA" : "TURNO");
   }
@@ -241,6 +243,9 @@ public class LimpiezaServiceImpl implements LimpiezaService {
           "Elimina el ticket asociado antes de modificar el estado encontrado del ítem");
       guardarItem(linea, entrada);
     }
+    if (datos.observaciones() != null) {
+      informe.setObservaciones(Objects.requireNonNullElse(limpiar(datos.observaciones()), "Sin observaciones"));
+    }
     return detalleInforme(informe, lineas, asociados);
   }
 
@@ -375,12 +380,13 @@ public class LimpiezaServiceImpl implements LimpiezaService {
   }
 
   private void guardarItem(DetalleInforme detalle, ItemInforme datos) {
-    var evidencia = datos.evidencia();
-    exigir(datos.estadoEncontrado() == BUENO || evidencia != null, "La incidencia requiere evidencia fotográfica");
+    boolean bueno = datos.estadoEncontrado() == BUENO;
+    var evidencia = bueno ? null : datos.evidencia();
+    exigir(bueno || evidencia != null, "La incidencia requiere evidencia fotográfica");
     if (evidencia != null) evidencias.verificar(evidencia);
     detalle.setEstadoEncontrado(datos.estadoEncontrado());
     var observacion = limpiar(datos.observaciones());
-    detalle.setObservaciones(observacion == null && datos.estadoEncontrado() != BUENO
+    detalle.setObservaciones(observacion == null && !bueno
         ? "Incidencia registrada con evidencia" : observacion);
     detalle.setEvidenciaRuta(evidencia == null ? null : evidencia.evidenciaRuta().strip());
     detalle.setEvidenciaSha256(evidencia == null ? null : evidencia.evidenciaSha256().toLowerCase(Locale.ROOT));

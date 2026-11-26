@@ -42,6 +42,9 @@ public class DetalleReserva {
   @Column(name = "costoEstadia", columnDefinition = "NUMBER(12,2)", nullable = false)
   private BigDecimal costoEstadia;
 
+  @Column(name = "montoDevuelto", columnDefinition = "NUMBER(12,2)")
+  private BigDecimal montoDevuelto;
+
   @Column(name = "claveSalida", columnDefinition = "VARCHAR2(64)", length = 64)
   private String claveSalida;
 

@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -156,12 +157,15 @@ class SeguridadProduccionYBatchTest {
         Long.class).getSingleResult());
     assertThat(trasRollback).isZero();
 
-    tx.executeWithoutResult(status ->
-        auditoria.publicarPostCommit(sesion, "VENTA", 999L, "POST", "/api/v1/ventas", "127.0.0.1"));
-    Long trasCommit = tx.execute(s -> em.createQuery(
-        "select count(a) from AuditoriaGeneral a where a.nombreTabla='VENTA' and cast(a.claveRegistro as string)='{\"id\":999}'",
-        Long.class).getSingleResult());
-    assertThat(trasCommit).isEqualTo(1L);
+    tx.executeWithoutResult(status -> {
+      try (var contexto = MDC.putCloseable(RequestIdFilter.CLAVE_MDC, "ab12cd34")) {
+        auditoria.publicarPostCommit(sesion, "VENTA", 999L, "POST", "/api/v1/ventas", "127.0.0.1");
+      }
+    });
+    var registros = tx.execute(s -> em.createQuery(
+        "select a.datosNuevos from AuditoriaGeneral a where a.nombreTabla='VENTA' and cast(a.claveRegistro as string)='{\"id\":999}'",
+        String.class).getResultList());
+    assertThat(registros).containsExactly("POST /api/v1/ventas [requestId=ab12cd34]");
   }
 
   @Test

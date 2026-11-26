@@ -21,7 +21,7 @@ export const proteccionSesionInterceptor: HttpInterceptorFn = (req, next) => {
       }
     }),
     catchError(error => {
-      if (!login && error.status === 401 && (!token || tokens.corresponde(token))) {
+      if (!login && error.status === 401 && tokens.corresponde(token)) {
         sesion.limpiar();
         void router.navigateByUrl('/login');
       }

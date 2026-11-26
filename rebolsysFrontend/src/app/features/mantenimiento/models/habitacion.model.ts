@@ -17,6 +17,7 @@ export interface Habitacion {
   estado: string;
   disponible: boolean;
   ocupadaActualmente?: boolean;
+  ultimaSalidaActiva?: string | null;
   reservas: Bloque[];
 }
 

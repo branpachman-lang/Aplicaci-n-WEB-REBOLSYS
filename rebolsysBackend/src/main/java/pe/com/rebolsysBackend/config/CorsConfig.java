@@ -23,7 +23,7 @@ public class CorsConfig {
         );
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));
-        configuration.setExposedHeaders(List.of("Location", "X-Auth-Token", "X-Auth-Expires-In", "X-Request-Id"));
+        configuration.setExposedHeaders(List.of("Location", "X-Auth-Token", "X-Auth-Expires-In", "X-Request-Id", "Retry-After"));
         configuration.setAllowCredentials(false);
         configuration.setMaxAge(3600L);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

@@ -1,0 +1,50 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+legend {
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+
+.guest-editor-person {
+  display: grid;
+  gap: 14px;
+  margin: 14px 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.guest-editor-search {
+  margin: 22px 0 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.guest-editor-actions {
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 26px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+
+@media (max-width: 600px) {
+  .guest-editor-actions {
+    justify-content: stretch;
+  }
+
+  .guest-editor-actions .button {
+    flex: 1 1 100%;
+  }
+}

@@ -27,16 +27,17 @@ public interface ReservaOcupanteRepository extends JpaRepository<ReservaOcupante
           + " ((o.detalleReserva.estadoDetalle=pe.com.rebolsysBackend.enums.EstadoReserva.CONFIRMADA"
           + " and o.detalleReserva.fechaIngreso<:salida and o.detalleReserva.fechaSalida>:ingreso)"
           + " or (o.detalleReserva.estadoDetalle=pe.com.rebolsysBackend.enums.EstadoReserva.EN_CURSO"
-          + " and o.detalleReserva.fechaIngreso<:salida)) and (:excluir is null or"
+          + " and o.detalleReserva.fechaIngreso<:salida and (:ingresoReal = true or o.detalleReserva.fechaSalida>:ingreso))) and (:excluir is null or"
           + " o.detalleReserva.idDetalleReserva<>:excluir)")
   long superposicionesCliente(
       @Param("cliente") Long cliente,
       @Param("ingreso") LocalDateTime ingreso,
       @Param("salida") LocalDateTime salida,
-      @Param("excluir") Long excluir);
+      @Param("excluir") Long excluir,
+      @Param("ingresoReal") boolean ingresoReal);
 
   default long superposicionesCliente(Long cliente, LocalDateTime ingreso, LocalDateTime salida) {
-    return superposicionesCliente(cliente, ingreso, salida, null);
+    return superposicionesCliente(cliente, ingreso, salida, null, false);
   }
 
   @Modifying

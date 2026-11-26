@@ -290,6 +290,9 @@
           <small>Salida registrada · {{ h.fechaSalidaReal | date:'dd/MM/yyyy HH:mm' }}</small>
         }
         <small>{{h.costoEstadia | currency:'PEN':'S/ '}}</small>
+        @if (h.montoDevuelto; as monto) {
+          <small>Devolución en caja · {{ monto | currency:'PEN':'S/ ' }}</small>
+        }
         @if (h.ingresoVencido) {
           <p class="inline-note">Pendiente de revisión por falta de ingreso.</p>
         }
@@ -308,18 +311,15 @@
             <p class="muted">Huéspedes pendientes de completar antes del check-in.</p>
           }
         }
-        @if (h.estadoDetalle === 'CONFIRMADA' && acceso.permite('RESERVAS:EDITAR_OCUPANTES')) {
-          <button class="button small" type="button" (click)="abrirEditorOcupantes(h)"
-            appTooltip="Los cambios de huéspedes se aplican solo a esta habitación.">
-            <app-icon name="users" /> {{ h.ocupantes.length ? 'Editar huéspedes' : 'Completar huéspedes' }}
-          </button>
-        }
         @let gestion = accionEstadia();
         @if (gestion?.id === h.idDetalleReserva && gestion) {
           @switch (gestion.accion) {
             @case ('ingreso') { <p>Confirma que los huéspedes de la habitación {{ h.numeroCuarto }} ya llegaron.</p> }
             @case ('salida') { <p>Confirma que los huéspedes dejaron la habitación {{ h.numeroCuarto }}. La habitación quedará por limpiar.</p> }
-            @case ('cancelacion') { <p>¿Cancelar la estancia de la habitación {{ h.numeroCuarto }}?</p> }
+            @case ('cancelacion') {
+              <p>¿Cancelar la estancia de la habitación {{ h.numeroCuarto }}?</p>
+              <p class="inline-note">Si hay un importe pagado para esta estancia, se registrará su devolución como egreso en tu turno de caja.</p>
+            }
           }
           @if (gestion.accion === 'salida' && r.cuenta.saldoPendiente > 0) {
             <p class="inline-note">Saldo pendiente de la reserva · {{ r.cuenta.saldoPendiente | currency:'PEN':'S/ ' }}. Liquídalo antes de registrar la salida.</p>
@@ -345,11 +345,21 @@
           @let ingresoPermitido = puedeGestionarEstadia(h, 'ingreso');
           @let salidaPermitida = puedeGestionarEstadia(h, 'salida');
           @let cancelacionPermitida = puedeGestionarEstadia(h, 'cancelacion');
-          @if (ingresoPermitido || salidaPermitida || cancelacionPermitida) {
+          @let editarPermitido = puedeEditarHuespedes(h);
+          @if (ingresoPermitido || salidaPermitida || cancelacionPermitida || editarPermitido) {
             <div class="row-actions acciones-estadia">
+              @if (editarPermitido) {
+                <button class="button subtle small" type="button" [disabled]="procesandoEstadia()"
+                  (click)="abrirEditorOcupantes(h)" appTooltip="Los cambios de huéspedes se aplican solo a esta habitación.">
+                  <app-icon name="edit" /> {{ h.ocupantes.length ? 'Editar huéspedes' : 'Completar huéspedes' }}
+                </button>
+              }
               @if (ingresoPermitido) {
-                <button class="button small primary" type="button" [disabled]="procesandoEstadia()" (click)="pedirAccionEstadia(h, 'ingreso')"
-                  appTooltip="El check-in se permite desde 30 minutos antes del horario reservado si la habitación está disponible y los huéspedes están completos.">Registrar ingreso</button>
+                <button class="button small primary" type="button" [disabled]="procesandoEstadia()"
+                  (click)="pedirAccionEstadia(h, 'ingreso')"
+                  appTooltip="El check-in se permite desde 30 minutos antes del horario reservado si la habitación está disponible y los huéspedes están completos.">
+                  <app-icon name="check" /> Registrar ingreso
+                </button>
               }
               @if (salidaPermitida) {
                 @if (saldoPrincipal(r.cuenta) > 0) {
@@ -360,7 +370,8 @@
                 }
               }
               @if (cancelacionPermitida) {
-                <button class="button small" type="button" [disabled]="procesandoEstadia()" (click)="pedirAccionEstadia(h, 'cancelacion')">Cancelar estancia</button>
+                <button class="button danger-outline small" type="button" [disabled]="procesandoEstadia()"
+                  (click)="pedirAccionEstadia(h, 'cancelacion')"><app-icon name="close" /> Cancelar estancia</button>
               }
             </div>
           }
@@ -493,7 +504,7 @@
               } @empty {
                 <p>Completa los huéspedes antes de registrar el ingreso.</p>
               }
-              @if (acceso.permite('RESERVAS:EDITAR_OCUPANTES')) {
+              @if (puedeEditarHuespedes(h)) {
                 <button type="button" class="button small" [disabled]="procesandoEstadia()" (click)="abrirEditorOcupantes(h)">
                   <app-icon name="users" /> {{ h.ocupantes.length ? 'Editar huéspedes' : 'Completar huéspedes' }}
                 </button>
@@ -538,68 +549,24 @@
 }
 
 @if (editandoOcupantes(); as h) {
-<div class="modal-backdrop no-print" (click)="cerrarEditorOcupantes()">
-  <section class="modal wide-modal" appDialog (dialogEscape)="cerrarEditorOcupantes()"
-    role="dialog" aria-modal="true" aria-labelledby="ocupantes-title" (click)="$event.stopPropagation()">
-    <header class="modal-header">
-      <p class="eyebrow">HABITACIÓN {{ h.numeroCuarto }}</p>
-      <button class="icon-button" type="button" aria-label="Cerrar edición de huéspedes" [disabled]="ocupantesOcupado()" (click)="cerrarEditorOcupantes()"><app-icon name="close" /></button>
-    </header>
-    <h2 id="ocupantes-title">{{ h.ocupantes.length ? 'Editar huéspedes' : 'Completar huéspedes' }}</h2>
-    <p class="subtitle">Busca una persona registrada o crea su perfil desde aquí. Los cambios solo afectan esta habitación.</p>
-    <div class="form-grid occupant-editor-search">
-      <label class="field">Tipo de documento
-        <select [(ngModel)]="tipoDocumentoHuesped" (ngModelChange)="documentoHuesped = ''">
-          @for (doc of catalogos()?.documentos ?? []; track doc.id) { <option [ngValue]="doc.id">{{ doc.nombre }}</option> }
-        </select>
-      </label>
-      <label class="field">Número de documento
-        <div class="input-with-button"><input [(ngModel)]="documentoHuesped" [attr.maxlength]="limiteDocumentoHuesped()"
-          [attr.inputmode]="limiteDocumentoHuesped() === 50 ? 'text' : 'numeric'" (input)="ajustarDocumentoHuesped($event)"
-          (keydown.enter)="$event.preventDefault(); buscarHuespedParaAgregar()" />
-          <button class="button small" type="button" [disabled]="ocupantesOcupado()" (click)="buscarHuespedParaAgregar()"><app-icon name="search" />{{ buscandoHuesped() ? 'Buscando…' : 'Buscar y agregar' }}</button>
-        </div>
-      </label>
-    </div>
-    @if (acceso.permite('CLIENTES:CREAR')) {
-      <details class="spaced-title">
-        <summary>Registrar una persona nueva y agregarla</summary>
-        <div class="form-grid">
-          <label class="field">Nombres<input [(ngModel)]="nuevoHuesped.nombres" maxlength="100" /></label>
-          <label class="field">Apellidos<input [(ngModel)]="nuevoHuesped.apellidos" maxlength="100" /></label>
-          <label class="field">Fecha de nacimiento<input type="date" [(ngModel)]="nuevoHuesped.fechaNacimiento" /></label>
-          <label class="field">Teléfono opcional<input type="tel" [(ngModel)]="nuevoHuesped.telefono" maxlength="15" /></label>
-        </div>
-        <button class="button small" type="button" [disabled]="ocupantesOcupado()" (click)="registrarHuespedNuevo()">
-          <app-icon name="plus" /> {{ registrandoHuesped() ? 'Registrando…' : 'Registrar y agregar huésped' }}
-        </button>
-      </details>
-    }
-    @for (g of ocupantesEditados(); track g.idCliente) {
-      <div class="detail-line occupant-editor-guest">
-        <strong>{{ g.nombre }}</strong>
-        <label><input type="checkbox" [(ngModel)]="g.ocupaPlazaCama" /> Usa plaza de cama</label>
-        <label class="field">Responsable adulto
-          <select [(ngModel)]="g.idClienteResponsable">
-            <option [ngValue]="null">Sin responsable</option>
-            @for (adulto of ocupantesEditados(); track adulto.idCliente) {
-              @if (adulto.idCliente !== g.idCliente) { <option [ngValue]="adulto.idCliente">{{ adulto.nombre }}</option> }
-            }
-          </select>
-        </label>
-        @if (g.idClienteResponsable) {
-          <label class="field">Parentesco
-            <select [(ngModel)]="g.parentescoResponsable"><option [ngValue]="'PADRE'">Padre</option><option [ngValue]="'MADRE'">Madre</option><option [ngValue]="'TUTOR'">Tutor</option></select>
-          </label>
-        }
-        <button class="button danger-outline small" type="button" [disabled]="ocupantesEditados().length <= 1" (click)="ocupantesEditados.update(lista => lista.filter(item => item.idCliente !== g.idCliente))"><app-icon name="close" />Quitar</button>
-      </div>
-    } @empty { <p class="inline-note">Agrega al menos un huésped para habilitar el check-in.</p> }
-    @if (errorOcupantes()) { <p class="field-error" role="alert">{{ errorOcupantes() }}</p> }
-    <div class="modal-actions occupant-editor-actions">
-      <button class="button" type="button" [disabled]="ocupantesOcupado()" (click)="cerrarEditorOcupantes()">{{ accionRapida() ? 'Volver al check-in' : 'Volver al detalle' }}</button>
-      <button class="button primary" type="button" [disabled]="ocupantesOcupado() || !ocupantesEditados().length" (click)="guardarEdicionOcupantes()">{{ guardandoOcupantes() ? 'Guardando…' : 'Guardar huéspedes' }}</button>
-    </div>
-  </section>
-</div>
+  <div class="modal-backdrop no-print" (click)="cerrarEditorOcupantes()">
+    <section class="modal wide-modal" appDialog (dialogEscape)="cerrarEditorOcupantes()"
+      role="dialog" aria-modal="true" aria-labelledby="ocupantes-title" (click)="$event.stopPropagation()">
+      <header class="modal-header">
+        <p class="eyebrow">HABITACIÓN {{ h.numeroCuarto }}</p>
+        <button class="icon-button" type="button" aria-label="Cerrar edición de huéspedes"
+          [disabled]="editorOcupantes()?.ocupado()" (click)="cerrarEditorOcupantes()"><app-icon name="close" /></button>
+      </header>
+      <h2 id="ocupantes-title">{{ h.ocupantes.length ? 'Editar huéspedes' : 'Completar huéspedes' }}</h2>
+      @if (catalogos(); as datos) {
+        <app-huespedes-estadia [estancia]="h" [documentos]="datos.documentos"
+          [textoVolver]="accionRapida() ? 'Volver al check-in' : 'Volver al detalle'"
+          (guardados)="actualizarHuespedes($event)" (cerrar)="cerrarEditorOcupantes()" />
+      } @else {
+        <p role="status">Cargando documentos…</p>
+        <button class="button" type="button" (click)="cerrarEditorOcupantes()">Volver</button>
+      }
+    </section>
+  </div>
+
 }

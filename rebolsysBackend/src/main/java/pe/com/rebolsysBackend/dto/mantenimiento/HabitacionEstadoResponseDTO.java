@@ -17,4 +17,5 @@ public record HabitacionEstadoResponseDTO(
     EstadoHabitacion estado,
     boolean ocupadaActualmente,
     boolean disponible,
-    List<HabitacionReservaResponseDTO> reservas) {}
+    List<HabitacionReservaResponseDTO> reservas,
+    java.time.LocalDateTime ultimaSalidaActiva) {}

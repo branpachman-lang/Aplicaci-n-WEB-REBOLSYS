@@ -116,7 +116,7 @@
             }
             @if (p.datos.informe.puedeEliminar && permite('ELIMINAR_INFORME')
                 && (!p.datos.informe.tieneTickets || puedeMantenimiento('ELIMINAR_TICKET'))) {
-              <button class="button danger" [disabled]="ocupado()" (click)="confirmarEliminarInforme(p.datos.informe)">Eliminar</button>
+              <button class="button danger-outline" [disabled]="ocupado()" (click)="confirmarEliminarInforme(p.datos.informe)">Eliminar</button>
             }
             @if (p.datos.informe.estado === 'POR_APROBAR' && puedeMantenimiento('APROBAR_INFORME')) {
               <button class="button primary" [disabled]="ocupado() || !p.datos.informe.puedeAprobar"
@@ -171,7 +171,7 @@
               } @empty { <tr><td colspan="4" class="vacio">La habitación no tiene ítems asignados.</td></tr> }</tbody>
             </table>
           </div>
-          @if (p.tipo === 'nuevoInforme') {
+          @if (p.tipo === 'nuevoInforme' || p.tipo === 'editarInforme') {
             <label>Observaciones generales <textarea name="observaciones" [(ngModel)]="observaciones" rows="2" maxlength="1000"></textarea></label>
           }
           @if (!puedeGuardarInforme()) { <p class="nota-operativa">Faltan estados o fotos requeridas.</p> }
@@ -254,7 +254,7 @@
           </div>
           <div class="acciones-final">
             <button class="button" type="button" [disabled]="ocupado()" (click)="cerrarPanel()">Cancelar</button>
-            <button class="button acento" type="submit" [disabled]="ocupado() || ticketForm.invalid || (p.tipo === 'nuevoTicket' && !evidenciaTicket())">
+            <button class="button primary" type="submit" [disabled]="ocupado() || ticketForm.invalid || (p.tipo === 'nuevoTicket' && !evidenciaTicket())">
               {{ p.tipo === 'nuevoTicket' ? 'Generar ticket' : 'Guardar cambios' }}
             </button>
           </div>
@@ -362,7 +362,7 @@
                       <button class="button small" [disabled]="ocupado() || !i.puedeEditar" (click)="abrirEditarInforme(i.idInformeRevision)">Editar</button>
                     }
                     @if (permite('ELIMINAR_INFORME')) {
-                      <button class="button small danger" [disabled]="ocupado() || !i.puedeEliminar" (click)="confirmarEliminarInforme(i)">Eliminar</button>
+                      <button class="button small danger-outline" [disabled]="ocupado() || !i.puedeEliminar" (click)="confirmarEliminarInforme(i)">Eliminar</button>
                     }
                   </div></td>
                 </tr>
@@ -385,7 +385,7 @@
                       <button class="button small" [disabled]="ocupado() || !t.puedeEditar" (click)="abrirEditarTicket(t.idTicket)">Editar</button>
                     }
                     @if (puedeMantenimiento('ELIMINAR_TICKET')) {
-                      <button class="button small danger" [disabled]="ocupado() || !t.puedeEliminar" (click)="confirmarEliminarTicket(t)">Eliminar</button>
+                      <button class="button small danger-outline" [disabled]="ocupado() || !t.puedeEliminar" (click)="confirmarEliminarTicket(t)">Eliminar</button>
                     }
                   </div></td>
                 </tr>

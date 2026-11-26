@@ -195,9 +195,16 @@ public class CatalogoImagenService {
     String normalizado = Normalizer.normalize(texto, Normalizer.Form.NFD)
         .replaceAll("\\p{M}+", "")
         .toLowerCase(Locale.ROOT)
-        .replaceAll("[^a-z0-9]+", "-")
-        .replaceAll("^-+|-+$", "");
-    return normalizado;
+        .replaceAll("[^a-z0-9]+", "-");
+    int inicio = 0;
+    int fin = normalizado.length();
+    while (inicio < fin && normalizado.charAt(inicio) == '-') {
+      inicio++;
+    }
+    while (fin > inicio && normalizado.charAt(fin - 1) == '-') {
+      fin--;
+    }
+    return inicio >= fin ? "" : normalizado.substring(inicio, fin);
   }
 
   private static List<String> candidatosSlug(String texto) {

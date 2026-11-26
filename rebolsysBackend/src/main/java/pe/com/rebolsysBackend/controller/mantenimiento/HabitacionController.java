@@ -40,7 +40,7 @@ public class HabitacionController {
               h.reservas().stream()
                   .map(r -> new HabitacionReservaResponseDTO(
                       r.referencia(), "Ocupación reservada", r.ingreso(), r.salida(), r.estado()))
-                  .toList()))
+                  .toList(), h.ultimaSalidaActiva()))
           .toList();
     }
     return habitaciones;

@@ -8,8 +8,7 @@ import java.io.IOException;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.LinkedHashMap;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpMethod;
@@ -28,15 +27,14 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
   private final int maxIntentosIp;
   private final Duration ventana;
   private final Clock reloj;
-  private final Map<String, ContadorVentana> contadores = new ConcurrentHashMap<>();
+  private final LinkedHashMap<String, ContadorVentana> contadores = new LinkedHashMap<>();
 
   private static final class ContadorVentana {
-    Instant inicio;
-    int intentos;
+    final Instant vence;
+    int intentos = 1;
 
-    ContadorVentana(Instant inicio) {
-      this.inicio = inicio;
-      this.intentos = 0;
+    ContadorVentana(Instant vence) {
+      this.vence = vence;
     }
   }
 
@@ -66,21 +64,16 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
   protected boolean shouldNotFilter(HttpServletRequest request) {
     return !habilitado
         || !HttpMethod.POST.matches(request.getMethod())
-        || !RUTA_LOGIN.equals(request.getRequestURI());
+        || !RUTA_LOGIN.equals(request.getRequestURI().substring(request.getContextPath().length()));
   }
 
   @Override
   protected void doFilterInternal(
       HttpServletRequest request, HttpServletResponse response, FilterChain chain)
       throws ServletException, IOException {
-    Instant ahora = reloj.instant();
-    if (contadores.size() >= LIMITE_ENTRADAS) {
-      contadores.entrySet().removeIf(e -> !e.getValue().inicio.plus(ventana).isAfter(ahora));
-    }
-    String claveIp = request.getRemoteAddr() == null || request.getRemoteAddr().isBlank()
-        ? "desconocida"
-        : request.getRemoteAddr();
-    long esperaSegundos = registrarYCalcularEspera(claveIp, ahora);
+    String ip = request.getRemoteAddr();
+    String claveIp = ip == null || ip.isBlank() ? "desconocida" : ip;
+    long esperaSegundos = registrarYCalcularEspera(claveIp);
     if (esperaSegundos > 0) {
       response.setHeader("Retry-After", Long.toString(esperaSegundos));
       errores.escribir(
@@ -93,19 +86,30 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
     chain.doFilter(request, response);
   }
 
-  private long registrarYCalcularEspera(String claveIp, Instant ahora) {
-    ContadorVentana contador = contadores.computeIfAbsent(claveIp, k -> new ContadorVentana(ahora));
-    synchronized (contador) {
-      if (!contador.inicio.plus(ventana).isAfter(ahora)) {
-        contador.inicio = ahora;
-        contador.intentos = 1;
-        return 0;
-      }
+  private synchronized long registrarYCalcularEspera(String claveIp) {
+    Instant ahora = reloj.instant();
+    var contador = contadores.get(claveIp);
+    if (contador != null && contador.vence.isAfter(ahora)) {
       if (contador.intentos >= maxIntentosIp) {
-        return Math.max(1, Duration.between(ahora, contador.inicio.plus(ventana)).toSeconds());
+        return segundosRestantes(ahora, contador.vence);
       }
       contador.intentos++;
       return 0;
     }
+    contadores.remove(claveIp);
+    if (contadores.size() >= LIMITE_ENTRADAS) {
+      var primera = contadores.firstEntry();
+      if (primera.getValue().vence.isAfter(ahora)) {
+        return segundosRestantes(ahora, primera.getValue().vence);
+      }
+      contadores.pollFirstEntry();
+    }
+    contadores.put(claveIp, new ContadorVentana(ahora.plus(ventana)));
+    return 0;
+  }
+
+  private long segundosRestantes(Instant ahora, Instant vence) {
+    Duration restante = Duration.between(ahora, vence);
+    return restante.getSeconds() + (restante.getNano() == 0 ? 0 : 1);
   }
 }

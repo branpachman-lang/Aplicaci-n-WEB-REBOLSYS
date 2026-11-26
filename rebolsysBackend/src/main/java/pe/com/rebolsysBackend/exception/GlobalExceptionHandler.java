@@ -18,6 +18,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import pe.com.rebolsysBackend.security.SesionOperacionService;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -26,6 +27,8 @@ import org.springframework.web.method.annotation.HandlerMethodValidationExceptio
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import pe.com.rebolsysBackend.exception.dto.ErrorResponseDTO;
 
 @RestControllerAdvice
@@ -68,15 +71,19 @@ public class GlobalExceptionHandler {
         RecursoNoEncontradoException ex,
         HttpServletRequest request
     ) {
-        ErrorResponseDTO error = new ErrorResponseDTO(
-            LocalDateTime.now(ZONA_LIMA),
-            HttpStatus.NOT_FOUND.value(),
-            "Not Found",
-            ex.getMessage(),
-            request.getRequestURI(),
-            null
-        );
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+        return notFound(ex.getMessage(), request);
+    }
+
+    @ExceptionHandler({NoHandlerFoundException.class, NoResourceFoundException.class})
+    public ResponseEntity<ErrorResponseDTO> handleMissingRoute(HttpServletRequest request) {
+        return notFound("El recurso solicitado no existe", request);
+    }
+
+    private ResponseEntity<ErrorResponseDTO> notFound(String mensaje, HttpServletRequest request) {
+        var estado = HttpStatus.NOT_FOUND;
+        return ResponseEntity.status(estado).body(new ErrorResponseDTO(
+            LocalDateTime.now(ZONA_LIMA), estado.value(), estado.getReasonPhrase(),
+            mensaje, request.getRequestURI(), null));
     }
 
     @ExceptionHandler(ReglaNegocioException.class)
@@ -254,6 +261,17 @@ public class GlobalExceptionHandler {
             null
         );
         return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).headers(ex.getHeaders()).body(error);
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ErrorResponseDTO> handleUnsupportedMediaType(
+        HttpMediaTypeNotSupportedException ex, HttpServletRequest request
+    ) {
+        var status = HttpStatus.UNSUPPORTED_MEDIA_TYPE;
+        var mensaje = "El tipo de contenido no es compatible. Tipos admitidos: " + ex.getSupportedMediaTypes();
+        return ResponseEntity.status(status).headers(ex.getHeaders()).body(new ErrorResponseDTO(
+            LocalDateTime.now(ZONA_LIMA), status.value(), status.getReasonPhrase(), mensaje,
+            request.getRequestURI(), null));
     }
 
     @ExceptionHandler(Exception.class)

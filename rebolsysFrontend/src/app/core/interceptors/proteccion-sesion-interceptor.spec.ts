@@ -61,4 +61,30 @@ describe('Protección HTTP con Bearer', () => {
     http.expectOne('/api/v1/reservas').flush({}, { status: 401, statusText: 'Unauthorized' });
     expect(limpiar).toHaveBeenCalledOnce(); expect(navegar).toHaveBeenCalledWith('/login');
   });
+
+  it('conserva el token renovado cuando llega un 401 de la credencial anterior', () => {
+    const cliente = TestBed.inject(HttpClient);
+    const http = TestBed.inject(HttpTestingController);
+    cliente.get('/api/v1/reservas').subscribe({ error: () => {} });
+    cliente.get('/api/v1/sesion/actual').subscribe();
+    const renovado = jwt(3600);
+    http.expectOne('/api/v1/sesion/actual').flush({}, { headers: { 'X-Auth-Token': renovado } });
+    http.expectOne('/api/v1/reservas').flush({}, { status: 401, statusText: 'Unauthorized' });
+    expect(TestBed.inject(TokenService).token()).toBe(renovado);
+    expect(limpiar).not.toHaveBeenCalled();
+    expect(navegar).not.toHaveBeenCalled();
+  });
+
+  it('conserva el nuevo acceso cuando una petición anónima pendiente devuelve 401', () => {
+    const tokens = TestBed.inject(TokenService);
+    tokens.limpiar();
+    TestBed.inject(HttpClient).get('/api/v1/reservas').subscribe({ error: () => {} });
+    const solicitud = TestBed.inject(HttpTestingController).expectOne('/api/v1/reservas');
+    expect(solicitud.request.headers.has('Authorization')).toBe(false);
+    tokens.guardar(jwt());
+    solicitud.flush({}, { status: 401, statusText: 'Unauthorized' });
+    expect(tokens.token()).toBe(jwt());
+    expect(limpiar).not.toHaveBeenCalled();
+    expect(navegar).not.toHaveBeenCalled();
+  });
 });

@@ -63,7 +63,7 @@ public class GastoServiceImpl implements GastoService {
         tipos
             .findById(r.idTipoMovimiento())
             .orElseThrow(() -> new RecursoNoEncontradoException("El tipo de gasto no existe"));
-    exigir(tipo.getSigno() == -1, "El tipo de movimiento debe corresponder a una salida de caja");
+    exigir(tipoGasto(tipo), "El tipo de movimiento debe corresponder a una salida de caja");
     exigir(!EvidenciaCajaService.esRutaCaja(limpiar(r.evidenciaRuta())), "Adjunta el archivo desde el módulo de Caja");
     exigir(
         (limpiar(r.evidenciaRuta()) == null) == (r.evidenciaSha256() == null),
@@ -117,7 +117,7 @@ public class GastoServiceImpl implements GastoService {
     if (f.idTipoMovimiento() != null) {
       var tipo = tipos.findById(f.idTipoMovimiento())
           .orElseThrow(() -> new RecursoNoEncontradoException("El tipo de gasto no existe"));
-      exigir(tipo.getSigno() == -1, "El tipo seleccionado no corresponde a un gasto");
+      exigir(tipoGasto(tipo), "El tipo seleccionado no corresponde a un gasto");
     }
     var filtro = GastoEspecificaciones.filtrar(f);
     var pagina = flujos.findAll(filtro, PageRequest.of(f.pagina(), f.tamanio(),
@@ -130,7 +130,7 @@ public class GastoServiceImpl implements GastoService {
   @Override
   @Transactional(readOnly = true)
   public List<CatalogoItemResponseDTO> tipos() {
-    return tipos.findAll(Sort.by("nombreMovimiento")).stream().filter(t -> t.getSigno() == -1)
+    return tipos.findAll(Sort.by("nombreMovimiento")).stream().filter(this::tipoGasto)
         .map(t -> new CatalogoItemResponseDTO(t.getIdTipoMovimiento(), t.getNombreMovimiento())).toList();
   }
 
@@ -164,5 +164,8 @@ public class GastoServiceImpl implements GastoService {
         f.getTipoMovimientoCaja().getNombreMovimiento(),
         f.getTurnoCaja().getEstadoSesion() == 1 && f.getTurnoCaja().getFechaCierre() == null,
         f.getClaveRegistro());
+  }
+  private boolean tipoGasto(TipoMovimientoCaja tipo) {
+    return tipo.getSigno() == -1 && !TipoMovimientoCaja.DEVOLUCION_RESERVA.equals(tipo.getNombreMovimiento());
   }
 }

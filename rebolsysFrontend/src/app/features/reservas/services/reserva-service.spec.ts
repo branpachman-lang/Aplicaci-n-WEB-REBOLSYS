@@ -32,6 +32,16 @@ describe('Contrato de reservas con el backend actual', () => {
     ingreso.flush({idDetalleReserva:495,estadoDetalle:'EN_CURSO'});
   });
 
+  it('reemplaza los huéspedes de una habitación con el actor de la sesión', () => {
+    const ocupantes = [{ idCliente: 55, idClienteResponsable: null, parentescoResponsable: null, ocupaPlazaCama: true }];
+    servicio.guardarOcupantes(495, ocupantes).subscribe();
+    http.expectOne(base + '/sesion/actual').flush({ idUsuario: 130, usuario: 'recepcion', modo: 'ACTIVA' });
+    const guardar = http.expectOne(base + '/reservas/detalles/495/ocupantes');
+    expect(guardar.request.method).toBe('PUT');
+    expect(guardar.request.body).toEqual({ idUsuario: 130, ocupantes });
+    guardar.flush({ idDetalleReserva: 495, ocupantes });
+  });
+
   it('adapta documentos, pagos, usuarios y turnos sin inventar identificadores de ocupantes', () => {
     const next = vi.fn();
     TestBed.inject(CatalogoService).listar().subscribe(next);

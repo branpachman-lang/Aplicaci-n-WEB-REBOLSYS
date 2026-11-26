@@ -7,11 +7,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.*;
 import org.springframework.http.converter.HttpMessageConverter;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.http.server.*;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.servlet.mvc.method.annotation.*;
 import org.springframework.web.context.request.*;
 import tools.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
 import tools.jackson.databind.node.ObjectNode;
 import pe.com.rebolsysBackend.dto.limpieza.LimpiezaDTO.Borrador;
 import pe.com.rebolsysBackend.dto.limpieza.LimpiezaDTO.TicketDetalle;
@@ -27,7 +29,14 @@ public class OperacionUsuarioBodyAdvice extends RequestBodyAdviceAdapter impleme
   private static final Set<String> ACTOR=Set.of("AjusteStockDTO","ComprobanteCuentaDTO","EmisionElectronicaRequestDTO","GastoRequestDTO","ItemAsignacionDTO","ItemConservacionDTO","OperacionUsuarioDTO","PagoCuentaDTO","ProductoRequestDTO","ReservaComprobanteRegistroDTO","ReservaOcupantesGuardarDTO","ReservaPagoRegistroDTO","ReservaRegistroRequestDTO","ReservaSalidaDTO","VentaEditarDTO","VentaRequestDTO","VentaConfirmacionDTO");
   @Override public boolean supports(MethodParameter p,Type t,Class<? extends HttpMessageConverter<?>> c){return ACTOR.contains(p.getParameterType().getSimpleName());}
   @Override public HttpInputMessage beforeBodyRead(HttpInputMessage entrada,MethodParameter p,Type t,Class<? extends HttpMessageConverter<?>> c)throws IOException{
-    var nodo=mapper.readTree(entrada.getBody());if(!(nodo instanceof ObjectNode datos))return entrada;
+    ObjectNode datos;
+    try {
+      if (!(mapper.readTree(entrada.getBody()) instanceof ObjectNode objeto))
+        throw new HttpMessageNotReadableException("Se requiere un objeto JSON", entrada);
+      datos = objeto;
+    } catch (JacksonException ex) {
+      throw new HttpMessageNotReadableException("La solicitud no tiene un formato válido", ex, entrada);
+    }
     var actual=sesion.actual();
     var enviado=datos.get("idUsuario");exigir(enviado==null||enviado.isNull()||enviado.asLong()==actual.idUsuario(),"La operación debe corresponder al usuario de la sesión actual");
     datos.put("idUsuario",actual.idUsuario());
