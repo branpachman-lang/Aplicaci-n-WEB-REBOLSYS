@@ -7,7 +7,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://quilt-cloudy-primary-buf.trycloudflare.com/api/:path*"
+      "destination": "https://nearest-funny-vista-erik.trycloudflare.com/api/:path*"
     },
     {
       "source": "/(.*)",
