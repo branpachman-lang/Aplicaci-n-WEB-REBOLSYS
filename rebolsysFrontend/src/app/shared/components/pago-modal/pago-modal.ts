@@ -1,19 +1,36 @@
+import { HttpClient } from "@angular/common/http";
 import { DialogFocus } from "../../directives/dialog-focus";
 import { Icon } from "../icono/icono";
 
-import { Component, input, output, signal, computed } from "@angular/core";
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+} from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { CurrencyPipe } from "@angular/common";
+import { environment } from "../../../../environments/environment";
 import { Catalogos } from "../../../core/models/catalogo.model";
 import { ConfirmacionPago } from "../../../features/reservas/models/reserva-api.model";
+import {
+  ConfigYape,
+  PagoYape,
+} from "../../../features/reservas/components/pago-yape/pago-yape";
 
 @Component({
   selector: "app-pago-modal",
-  imports: [FormsModule, CurrencyPipe, Icon, DialogFocus],
+  imports: [FormsModule, CurrencyPipe, Icon, DialogFocus, PagoYape],
   templateUrl: "./pago-modal.html",
   styleUrl: "./pago-modal.css",
 })
 export class PagoModal {
+  private readonly http = inject(HttpClient, { optional: true });
+  private readonly apiBase = environment.apiUrl;
+
   total = input.required<number>();
   esNueva = input(true);
   permiteParcial = input(true);
@@ -21,6 +38,8 @@ export class PagoModal {
   error = input("");
   catalogos = input<Catalogos | null>(null);
   idUsuario = input<number | null>(null);
+  idReserva = input<number | null>(null);
+  estadoEstancia = input<string>("");
   solicitudFijada = input(false);
   puedePosponer = input(true);
   habilitaCobro = input(true);
@@ -29,6 +48,7 @@ export class PagoModal {
   turnoElegido = signal<number | null>(null);
   formaElegida = signal<number | null>(null);
   numeroOperacion = signal("");
+  yapeApiHabilitado = signal(false);
   usuario = computed(
     () =>
       this.idUsuario() ??
@@ -57,8 +77,52 @@ export class PagoModal {
       !this.catalogos() ||
       this.formaPago()?.nombre.trim().toLocaleUpperCase("es") === "EFECTIVO",
   );
+  esYape = computed(
+    () =>
+      !!this.catalogos() &&
+      this.formaPago()?.nombre.trim().toLocaleUpperCase("es") === "YAPE",
+  );
+  estanciaActivaYape = computed(
+    () =>
+      this.estadoEstancia() === "CONFIRMADA" ||
+      this.estadoEstancia() === "EN_CURSO",
+  );
+  usaApiYape = computed(
+    () =>
+      this.esYape() &&
+      !!this.idReserva() &&
+      !this.esNueva() &&
+      !this.esSalida() &&
+      !!this.turno() &&
+      this.estanciaActivaYape() &&
+      this.yapeApiHabilitado(),
+  );
   cerrar = output<void>();
   confirmar = output<ConfirmacionPago>();
+  yapeAplicado = output<void>();
+
+  constructor() {
+    effect((onCleanup) => {
+      const id = this.idReserva();
+      if (
+        !this.http ||
+        !id ||
+        this.esNueva() ||
+        this.esSalida() ||
+        !this.esYape()
+      ) {
+        this.yapeApiHabilitado.set(false);
+        return;
+      }
+      const sub = this.http
+        .get<ConfigYape>(`${this.apiBase}/pagos/yape/config`)
+        .subscribe({
+          next: (cfg) => this.yapeApiHabilitado.set(!!cfg?.habilitado),
+          error: () => this.yapeApiHabilitado.set(false),
+        });
+      onCleanup(() => sub.unsubscribe());
+    });
+  }
   recibido = signal<number | null>(null);
   parcial = signal(false);
   montoParcial = signal<number | null>(null);

@@ -531,6 +531,25 @@ export class ReservaList implements OnDestroy {
     this.pagando.set(null);
     this.salidaParaCobrar.set(null);
   }
+  alAplicarYapeModal(r: ReservaResumen) {
+    this.pagando.set(null);
+    this.pagoFijado.set(false);
+    this.servicio
+      .cuenta(r.idReserva)
+      .pipe(takeUntilDestroyed(this.destroy))
+      .subscribe({
+        next: (cuenta) => {
+          this.avisos.mostrar(
+            `Pago Yape registrado. Saldo: S/ ${cuenta.saldoPendiente.toFixed(2)}.`,
+          );
+          this.cargar();
+        },
+        error: () => {
+          this.avisos.mostrar('Pago Yape registrado.');
+          this.cargar();
+        },
+      });
+  }
 
   abrirSalida(r: ReservaResumen, detalle: DetalleReserva) {
     if (this.ocupado()) return false;

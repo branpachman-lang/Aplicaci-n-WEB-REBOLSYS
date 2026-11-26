@@ -75,7 +75,15 @@
       <div><strong>Efectivo</strong><small>Pago en recepción</small></div>
       <app-icon name="wallet" />
     </div>
-    } @if (permiteParcial()) {
+    } @if (usaApiYape()) {
+    <app-pago-yape
+      [idReserva]="idReserva()!"
+      [saldo]="total()"
+      [estadoEstancia]="estadoEstancia()"
+      (aplicado)="yapeAplicado.emit()"
+    />
+    } @else {
+    @if (permiteParcial()) {
     <label class="partial-choice"
       ><input
         type="checkbox"
@@ -117,6 +125,15 @@
       ><strong>{{ vuelto() | currency: 'PEN' : 'S/ ' : '1.2-2' }}</strong>
     </div>
     } @else {
+    @if (esYape() && esNueva()) {
+      <p class="inline-note">
+        Para cobrar mediante la API de Mercado Pago (celular del pagador y código OTP), usa <strong>Registrar con saldo pendiente</strong> y cobra desde <strong>Pagar</strong> o <strong>Ver detalle</strong>.
+      </p>
+    } @else if (esYape() && esSalida()) {
+      <p class="inline-note">
+        Para cobrar el saldo con la API de Mercado Pago (celular y OTP), cierra este paso, cobra desde <strong>Pagar</strong> o <strong>Cobro con Yape</strong> en el detalle y luego registra el check-out con saldo S/ 0.00.
+      </p>
+    }
     <label class="field"
       >Número de operación (opcional)<input
         maxlength="50"
@@ -141,7 +158,7 @@
       ? 'Reintentar la operación' : esSalida() ? 'Cobrar y registrar salida' : efectivo() ? 'Confirmar pago en efectivo' :
       'Confirmar pago' }}
     </button>
-    } @else if (error()) {
+    } } @else if (error()) {
     <p class="error-box" role="alert">{{ error() }}</p>
     }
     @if (esNueva() && puedePosponer()) {
