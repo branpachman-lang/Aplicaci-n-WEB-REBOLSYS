@@ -2,6 +2,7 @@ package pe.com.rebolsysBackend.service.impl.reservas;
 
 import static pe.com.rebolsysBackend.service.impl.comun.ReglasPropuesta.*;
 
+import jakarta.persistence.EntityManager;
 import java.math.BigDecimal;
 import java.util.*;
 import lombok.RequiredArgsConstructor;
@@ -17,12 +18,17 @@ import pe.com.rebolsysBackend.dto.reservas.CuentaEstadiaDTO;
 import pe.com.rebolsysBackend.dto.reservas.ReservaComprobanteRegistroDTO;
 import pe.com.rebolsysBackend.dto.reservas.ReservaPagoRegistroDTO;
 import pe.com.rebolsysBackend.dto.ventas.VentaRequestDTO;
+import pe.com.rebolsysBackend.repository.caja.ArqueoCajaRepository;
+import pe.com.rebolsysBackend.repository.caja.FlujoCajaRepository;
 import pe.com.rebolsysBackend.repository.caja.cobros.PagoRepository;
 import pe.com.rebolsysBackend.repository.comun.comprobantes.ComprobanteRepository;
+import pe.com.rebolsysBackend.repository.reservas.DetalleReservaRepository;
 import pe.com.rebolsysBackend.repository.reservas.ReservaRepository;
 import pe.com.rebolsysBackend.repository.ventas.VentaRepository;
+import pe.com.rebolsysBackend.security.SesionOperacionService;
 import pe.com.rebolsysBackend.service.impl.caja.cobros.CuentaReservaGestion;
 import pe.com.rebolsysBackend.service.impl.comun.ReglasPropuesta;
+import pe.com.rebolsysBackend.service.impl.reservas.yape.PagoYapeService;
 import pe.com.rebolsysBackend.service.service.caja.cobros.CuentaCobroService;
 import pe.com.rebolsysBackend.service.service.reservas.CuentaReservaService;
 import pe.com.rebolsysBackend.service.service.ventas.VentaService;
@@ -34,13 +40,19 @@ import pe.com.rebolsysBackend.util.IgvIncluido;
 @Service
 @RequiredArgsConstructor
 public class CuentaReservaServiceImpl implements CuentaReservaService {
+  private final EntityManager em;
   private final CuentaReservaGestion gestion;
   private final CuentaCobroService cobros;
   private final ReservaRepository reservas;
+  private final DetalleReservaRepository detalles;
   private final VentaRepository ventas;
   private final ComprobanteRepository cuentas;
   private final PagoRepository pagos;
+  private final FlujoCajaRepository flujos;
+  private final ArqueoCajaRepository arqueos;
   private final VentaService ventaService;
+  private final SesionOperacionService sesion;
+  private final PagoYapeService pagoYape;
   private final ReglasPropuesta reglas;
 
   private Reserva buscar(Long id) {
@@ -144,6 +156,58 @@ public class CuentaReservaServiceImpl implements CuentaReservaService {
     cobros.pagar(c, new PagoCuentaDTO(request.claveOperacion(), request.idUsuario(), request.idTurno(),
         request.idFormaPago(), request.monto(), request.numeroOperacion()));
     return cuenta(id);
+  }
+
+  @Override
+  @Transactional
+  public CuentaReservaDTO eliminarPago(Long idReserva, Long idPago) {
+    var actor = sesion.actual();
+    reglas.usuario(actor.idUsuario());
+    gestion.bloquear(idReserva);
+    var p =
+        pagos
+            .findById(idPago)
+            .orElseThrow(() -> new RecursoNoEncontradoException("El pago no existe"));
+    var cuentaPago = p.getComprobante();
+    boolean pertenece =
+        (cuentaPago.getReserva() != null
+                && cuentaPago.getReserva().getIdReserva().equals(idReserva))
+            || (cuentaPago.getVenta() != null
+                && cuentaPago.getVenta().getDetalleReserva() != null
+                && cuentaPago.getVenta().getDetalleReserva().getReserva().getIdReserva().equals(idReserva));
+    exigir(pertenece, "El pago no pertenece a esta reserva");
+    var c =
+        cuentas
+            .bloquear(cuentaPago.getIdComprobante())
+            .orElseThrow(() -> new RecursoNoEncontradoException("La cuenta no existe"));
+    em.refresh(c);
+    exigir(
+        c.getEstadoComprobante() == EstadoComprobante.BORRADOR,
+        "Solo se pueden eliminar pagos de una cuenta en borrador sin comprobante emitido");
+    var listaDetalles = detalles.findByReservaIdReservaOrderByIdDetalleReserva(idReserva);
+    exigir(
+        !detalles.existsByIdPagoSalida(idPago)
+            && listaDetalles.stream().noneMatch(d -> d.getEstadoDetalle() == EstadoReserva.FINALIZADA),
+        "No se puede eliminar un pago cuando la reserva tiene check-out finalizado");
+    exigir(
+        listaDetalles.stream()
+            .anyMatch(
+                d ->
+                    d.getEstadoDetalle() == EstadoReserva.CONFIRMADA
+                        || d.getEstadoDetalle() == EstadoReserva.EN_CURSO),
+        "La reserva debe tener una estancia confirmada o en curso");
+    var turno = gestion.turno(p.getTurnoCaja().getIdTurno(), actor.idUsuario());
+    exigir(
+        arqueos.findByTurnoCajaIdTurnoOrderByFormaPagoIdFormaPago(turno.getIdTurno()).isEmpty(),
+        "El turno ya tiene arqueos guardados y no permite eliminar pagos");
+    if ("YAPE".equalsIgnoreCase(p.getFormaPago().getNombrePago())) {
+      pagoYape.desvincularPagoEliminado(idPago);
+    }
+    flujos.deleteByPagoIdPago(idPago);
+    flujos.flush();
+    pagos.delete(p);
+    pagos.flush();
+    return cuenta(idReserva);
   }
 
   private Comprobante cuentaObjetivo(Reserva r, Long idVenta, TurnoCaja turno) {

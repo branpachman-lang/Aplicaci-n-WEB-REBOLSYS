@@ -2,6 +2,7 @@ package pe.com.rebolsysBackend.controller.reservas;
 
 import org.springframework.security.access.prepost.PreAuthorize;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
@@ -38,6 +39,19 @@ public class CuentaReservaController {
   public CuentaReservaDTO pagar(
       @PathVariable Long idReserva, @Valid @RequestBody ReservaPagoRegistroDTO request) {
     return servicio.pagar(idReserva, request);
+  }
+
+  @PreAuthorize("hasRole('RECEPCIONISTA') and hasAuthority('RESERVAS:COBRAR')")
+  @DeleteMapping("/pagos/{idPago}")
+  @Operation(
+      summary = "Eliminar un detalle de pago según reglas de negocio",
+      description =
+          "Requiere rol RECEPCIONISTA, permiso RESERVAS:COBRAR, cuenta en borrador, estancia no"
+              + " finalizada, turno propio abierto sin arqueos y pago no liquidado en línea vía"
+              + " Mercado Pago.")
+  public CuentaReservaDTO eliminarPago(
+      @PathVariable @Positive Long idReserva, @PathVariable @Positive Long idPago) {
+    return servicio.eliminarPago(idReserva, idPago);
   }
 
   @PreAuthorize("hasRole('GERENTE') or hasAuthority('RESERVAS:EMITIR_COMPROBANTE')")

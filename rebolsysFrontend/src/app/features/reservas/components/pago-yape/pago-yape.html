@@ -1,0 +1,122 @@
+@if (config(); as cfg) {
+  @if (cfg.habilitado && (intento() || puedeIniciarNuevo())) {
+    <section class="yape-panel" aria-label="Cobrar con Yape">
+      <header class="yape-header">
+        <div>
+          <h3>Cobro con Yape</h3>
+          <small class="yape-mode">{{ etiquetaModo(cfg) }}</small>
+        </div>
+        <span class="yape-badge">Mercado Pago</span>
+      </header>
+
+      @if (intento(); as i) {
+        <div class="yape-status" [attr.data-estado]="i.estado" role="status">
+          <div class="yape-status-row">
+            <strong>{{ i.importe | currency: 'PEN' : 'S/ ' : '1.2-2' }}</strong>
+            <span>
+              @switch (i.estado) {
+                @case ('APLICADO') { Pago aplicado }
+                @case ('RECHAZADO') { Pago rechazado }
+                @case ('REVISION') { Requiere revisión de caja }
+                @default { Pendiente de confirmación }
+              }
+            </span>
+          </div>
+          <small class="yape-meta">
+            Celular {{ i.telefonoEnmascarado }}
+            @if (i.ordenProveedor) { · Orden {{ i.ordenProveedor }} }
+            @if (i.idPago) { · Pago #{{ i.idPago }} }
+          </small>
+          @if (i.mensajeProveedor) {
+            <small class="yape-message">{{ i.mensajeProveedor }}</small>
+          }
+          @if (i.estado === 'ENVIANDO' || i.estado === 'PENDIENTE') {
+            <button
+              type="button"
+              class="button"
+              [disabled]="ocupado()"
+              (click)="conciliar(i)"
+            >
+              {{ ocupado() ? 'Consultando…' : 'Consultar estado' }}
+            </button>
+          }
+        </div>
+      }
+
+      @if (puedeIniciarNuevo()) {
+        <form class="yape-form" (ngSubmit)="iniciar()">
+          <label class="yape-field">
+            <span>Importe a cobrar (S/)</span>
+            <input
+              type="number"
+              name="yapeImporte"
+              min="0.01"
+              [max]="saldo()"
+              step="0.01"
+              [ngModel]="importe()"
+              (ngModelChange)="importe.set($event); cambiarDatos()"
+              [disabled]="ocupado()"
+              required
+            />
+          </label>
+          <div class="yape-grid">
+            <label class="yape-field">
+              <span>Celular Yape</span>
+              <input
+                type="tel"
+                name="yapeTelefono"
+                maxlength="9"
+                inputmode="numeric"
+                placeholder="987654321"
+                [ngModel]="telefono()"
+                (ngModelChange)="telefono.set($event); cambiarDatos()"
+                [disabled]="ocupado()"
+                required
+              />
+            </label>
+            <label class="yape-field">
+              <span>Código de aprobación (OTP)</span>
+              <input
+                type="text"
+                name="yapeOtp"
+                maxlength="6"
+                inputmode="numeric"
+                autocomplete="one-time-code"
+                placeholder="6 dígitos"
+                [ngModel]="otp()"
+                (ngModelChange)="otp.set($event)"
+                [disabled]="ocupado()"
+                required
+              />
+            </label>
+          </div>
+          @if (cfg.modo === 'SIMULADO') {
+            <p class="yape-hint">
+              Simulador local: cualquier celular de 9 dígitos y OTP de 6 dígitos aprueba.
+              Usa OTP <code>000000</code> para simular rechazo o <code>999999</code> para confirmación pendiente.
+            </p>
+          } @else {
+            <p class="yape-hint">
+              Solicita al huésped su número Yape y el código de aprobación de 6 dígitos generado en su app.
+            </p>
+          }
+          <button
+            type="submit"
+            class="button yape-submit full"
+            [disabled]="ocupado() || !formularioValido()"
+          >
+            {{
+              ocupado()
+                ? 'Procesando Yape…'
+                : 'Cobrar ' + ((importe() || 0) | currency: 'PEN' : 'S/ ' : '1.2-2') + ' con Yape'
+            }}
+          </button>
+        </form>
+      }
+
+      @if (error()) {
+        <p class="error-box" role="alert">{{ error() }}</p>
+      }
+    </section>
+  }
+}

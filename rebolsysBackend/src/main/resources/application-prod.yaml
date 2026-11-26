@@ -35,3 +35,9 @@ logging:
   level:
     root: WARN
     pe.com.rebolsysBackend: INFO
+
+app:
+  yape:
+    habilitado: ${YAPE_HABILITADO:false}
+    modo: ${YAPE_MODO:MERCADO_PAGO}
+    ambiente: ${YAPE_MP_AMBIENTE:PRODUCCION}

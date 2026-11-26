@@ -37,7 +37,8 @@ public class SecurityConfig {
       RestAuthenticationEntryPoint autenticacion, RestAccessDeniedHandler acceso,
       LoginRateLimitFilter rateLimitLogin,
       @Value("${springdoc.api-docs.enabled:true}") boolean openApiHabilitado,
-      @Value("${springdoc.swagger-ui.enabled:true}") boolean swaggerHabilitado) throws Exception {
+      @Value("${springdoc.swagger-ui.enabled:true}") boolean swaggerHabilitado,
+      @Value("${app.yape.habilitado:true}") boolean yapeHabilitado) throws Exception {
     http.formLogin(AbstractHttpConfigurer::disable)
         .httpBasic(AbstractHttpConfigurer::disable)
         .logout(AbstractHttpConfigurer::disable)
@@ -58,6 +59,9 @@ public class SecurityConfig {
             }
           }
           auth.requestMatchers(HttpMethod.POST, "/api/v1/sesion/iniciar").permitAll();
+          if (yapeHabilitado) {
+            auth.requestMatchers(HttpMethod.POST, "/api/v1/webhooks/yape").permitAll();
+          }
           auth.requestMatchers("/api/v1/**").authenticated();
           auth.anyRequest().denyAll();
         })

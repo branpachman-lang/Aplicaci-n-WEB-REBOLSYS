@@ -13,6 +13,7 @@ describe('Seguimiento y check-out de reservas', () => {
   const pagina = { contenido: [reserva], pagina: 0, tamanio: 10, ultima: true };
   let servicio: { listar: ReturnType<typeof vi.fn>; obtener: ReturnType<typeof vi.fn>;
     cuenta: ReturnType<typeof vi.fn>; salir: ReturnType<typeof vi.fn>;
+    eliminarPago: ReturnType<typeof vi.fn>;
     pagosPendientes: () => []; registroPendiente: () => null };
 
   beforeEach(() => {
@@ -20,6 +21,7 @@ describe('Seguimiento y check-out de reservas', () => {
     servicio = {
       listar: vi.fn(() => of(pagina)), obtener: vi.fn(() => of(reserva)),
       cuenta: vi.fn(() => of(cuenta)), salir: vi.fn(() => of(reserva.detalles[0])),
+      eliminarPago: vi.fn(() => of({ ...cuenta, totalPagado: 0, saldoPendiente: 80 })),
       pagosPendientes: () => [], registroPendiente: () => null,
     };
     TestBed.configureTestingModule({
@@ -112,5 +114,28 @@ describe('Seguimiento y check-out de reservas', () => {
     componente.cargar();
     antigua.next({ ...pagina, contenido: [] }); antigua.complete();
     expect(componente.respuesta()?.contenido).toHaveLength(1);
+  });
+
+  it('elimina un detalle de pago según reglas de negocio y actualiza saldo y revisión Yape', () => {
+    const componente = TestBed.createComponent(ReservaList).componentInstance;
+    vi.spyOn(componente.acceso, 'puedeCobrarReserva').mockReturnValue(true);
+    componente.catalogos.set({
+      documentos: [],
+      ocupantes: [],
+      pagos: [],
+      turnosAbiertos: [{ idTurno: 2, idUsuario: 3, usuario: 'recepcion', fechaApertura: '' }],
+    });
+    const doc = { idCuenta: 1, idVenta: null, estado: 'BORRADOR', saldo: 0, pagos: [] } as any;
+    const pago = { idPago: 15, idFormaPago: 1, medioPago: 'YAPE', idTurno: 2, monto: 80, numeroOperacion: null, fechaPago: '', verificado: true };
+    expect(componente.puedeEliminarPago(reserva, doc, pago)).toBe(true);
+    expect(componente.puedeEliminarPago(reserva, { ...doc, estado: 'EMITIDO' }, pago)).toBe(false);
+    expect(componente.puedeEliminarPago(reserva, doc, { ...pago, idTurno: 99 })).toBe(false);
+
+    componente.eliminarPagoId.set(15);
+    componente.eliminarPago(reserva, pago);
+    expect(servicio.eliminarPago).toHaveBeenCalledWith(1, 15);
+    expect(componente.eliminarPagoId()).toBeNull();
+    expect(componente.revisionYape()).toBe(1);
+    expect(componente.detalle()?.cuenta.saldoPendiente).toBe(80);
   });
 });

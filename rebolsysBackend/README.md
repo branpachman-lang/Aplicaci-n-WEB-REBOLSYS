@@ -124,6 +124,9 @@ El contenedor escucha internamente en `6379` y publica Redis en `127.0.0.1:6380`
 
 ## Actualizaciones manuales de datos
 
+Para configurar y probar cobros con Yape vía Mercado Pago o simulador local, consulta
+[la guía de integración de Yape](API-YAPE.md).
+
 Aplica [V22](src/main/resources/db/iteration/V22__idempotencia_salida_en_detalle_reserva.sql)
 antes de iniciar esta versión sobre una base existente. Guarda la clave de
 reintento y los identificadores del operador, pago y comprobante en

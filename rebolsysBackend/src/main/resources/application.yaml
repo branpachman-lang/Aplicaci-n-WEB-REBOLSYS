@@ -92,6 +92,15 @@ app:
       ventana: ${LOGIN_RATE_LIMIT_VENTANA:1m}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200,http://127.0.0.1:4200}
+  yape:
+    habilitado: ${YAPE_HABILITADO:true}
+    modo: ${YAPE_MODO:SIMULADO}
+    ambiente: ${YAPE_MP_AMBIENTE:PRUEBA}
+    public-key: ${MP_YAPE_PUBLIC_KEY:}
+    access-token: ${MP_YAPE_ACCESS_TOKEN:}
+    seller-id: ${MP_YAPE_SELLER_ID:}
+    webhook-secret: ${MP_YAPE_WEBHOOK_SECRET:}
+    payer-email: ${MP_YAPE_PAYER_EMAIL:pagos-yape@rebolsys.local}
 
 apis-peru:
   url: ${APISPERU_BASE_URL:https://dniruc.apisperu.com/api/v1}

@@ -324,6 +324,35 @@
         {{formaPago(p.idFormaPago)}} · Turno #{{p.idTurno}}</small
       >
       @if(p.numeroOperacion) { <small>Operación: {{p.numeroOperacion}}</small> }
+      @if (puedeEliminarPago(r, cuenta, p)) {
+        @if (eliminarPagoId() === p.idPago) {
+          <button
+            type="button"
+            class="button small danger"
+            [disabled]="ocupado()"
+            (click)="eliminarPago(r, p)"
+          >
+            Confirmar eliminación
+          </button>
+          <button
+            type="button"
+            class="button small"
+            [disabled]="ocupado()"
+            (click)="eliminarPagoId.set(null)"
+          >
+            Volver
+          </button>
+        } @else {
+          <button
+            type="button"
+            class="button small"
+            [disabled]="ocupado()"
+            (click)="eliminarPagoId.set(p.idPago)"
+          >
+            Eliminar pago
+          </button>
+        }
+      }
     </div>
     } } @if (!tienePagos(r.cuenta)) {
     <p class="muted">Todavía no hay pagos registrados.</p>
@@ -335,6 +364,15 @@
     <button class="button primary full" (click)="abrirPago(r)">
       Registrar abono
     </button>
+    }
+    @if (acceso.puedeCobrarReserva() && estadoReserva(r) !== 'CANCELADA') {
+      <app-pago-yape
+        [idReserva]="r.idReserva"
+        [saldo]="saldoPrincipal(r.cuenta)"
+        [estadoEstancia]="estadoReserva(r)"
+        [revision]="revisionYape()"
+        (aplicado)="verDetalle(r); cargar()"
+      />
     }
     <button class="button full" (click)="detalle.set(null)">Cerrar</button>
     @if((estadoReserva(r)==='FINALIZADA' || r.cuenta.cuentas.some(tieneDocumentoEmitido)) && acceso.permite('RESERVAS:EMITIR_COMPROBANTE', 'FACTURACION:VER')){<button class="button primary full" (click)="abrirComprobante(r)">Generar o consultar boleta / factura</button>}

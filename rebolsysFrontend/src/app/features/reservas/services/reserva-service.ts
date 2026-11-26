@@ -125,6 +125,9 @@ export class ReservaService {
   cuenta(id: number) {
     return this.http.get<CuentaReserva>(`${this.base}/${id}/cuenta`);
   }
+  eliminarPago(idReserva: number, idPago: number) {
+    return this.http.delete<CuentaReserva>(`${this.base}/${idReserva}/pagos/${idPago}`);
+  }
   ingresar(idDetalleReserva: number) {
     return this.sesion.cargar().pipe(concatMap(s => this.http.post<DetalleReserva>(
       `${this.base}/detalles/${idDetalleReserva}/ingreso`, { idUsuario: s.idUsuario },

@@ -16,6 +16,7 @@ import { mensajeError } from "../../../../core/utils/http-error";
 import { Icon } from "../../../../shared/components/icono/icono";
 import { PagoModal } from "../../../../shared/components/pago-modal/pago-modal";
 import { ComprobanteDialog } from '../../components/comprobante-dialog/comprobante-dialog';
+import { PagoYape } from '../../components/pago-yape/pago-yape';
 import {
   ReservaService,
   ReservaResumen,
@@ -27,6 +28,7 @@ import {
   CuentaDocumento,
   CuentaReserva,
   DetalleReserva,
+  PagoReserva,
   estadoReserva,
 } from "../../models/reserva-api.model";
 
@@ -41,6 +43,7 @@ import {
     PagoModal,
     DialogFocus,
     ComprobanteDialog,
+    PagoYape,
   ],
   templateUrl: "./reserva-list.html",
   styleUrl: "./reserva-list.css",
@@ -66,6 +69,8 @@ export class ReservaList implements OnDestroy {
   pagando = signal<ReservaResumen | null>(null);
   salidaParaCobrar = signal<SalidaPendiente | null>(null);
   cancelarDetalle = signal<number | null>(null);
+  eliminarPagoId = signal<number | null>(null);
+  revisionYape = signal(0);
   detalle = signal<ReservaResumen | null>(null);
   comprobante = signal<ReservaResumen|null>(null);
   abrirComprobante(r:ReservaResumen){this.detalle.set(null);this.comprobante.set(r);}
@@ -207,6 +212,49 @@ export class ReservaList implements OnDestroy {
   tienePagos(cuenta: CuentaReserva) {
     return cuenta.cuentas.some((c) => c.pagos.length > 0);
   }
+  puedeEliminarPago(
+    r: ReservaResumen,
+    cuenta: CuentaDocumento,
+    pago: PagoReserva,
+  ) {
+    const estado = estadoReserva(r);
+    const sinFinalizadas = !r.detalles.some(
+      (d) => d.estadoDetalle === "FINALIZADA",
+    );
+    const turnosAbiertos = this.catalogos()?.turnosAbiertos;
+    const turnoAbierto =
+      !turnosAbiertos ||
+      turnosAbiertos.some((t) => t.idTurno === pago.idTurno);
+    return (
+      this.acceso.puedeCobrarReserva() &&
+      cuenta.estado === "BORRADOR" &&
+      sinFinalizadas &&
+      (estado === "CONFIRMADA" || estado === "EN_CURSO") &&
+      turnoAbierto
+    );
+  }
+  eliminarPago(r: ReservaResumen, pago: PagoReserva) {
+    if (this.ocupado()) return;
+    this.ocupado.set(true);
+    this.servicio
+      .eliminarPago(r.idReserva, pago.idPago)
+      .pipe(takeUntilDestroyed(this.destroy))
+      .subscribe({
+        next: (cuenta) => {
+          this.ocupado.set(false);
+          this.eliminarPagoId.set(null);
+          this.revisionYape.update((n) => n + 1);
+          this.detalle.set({ ...r, cuenta });
+          this.avisos.mostrar("Pago eliminado del detalle. Saldo actualizado.");
+          this.cargar(false, false);
+        },
+        error: (e) => {
+          this.ocupado.set(false);
+          this.eliminarPagoId.set(null);
+          this.avisos.mostrar(mensajeError(e), true);
+        },
+      });
+  }
   responsable(habitacion: DetalleReserva, id: number) {
     return (
       habitacion.ocupantes.find((g) => g.idReservaOcupante === id)?.nombre ??
@@ -215,6 +263,7 @@ export class ReservaList implements OnDestroy {
   }
   verDetalle(r: ReservaResumen) {
     this.cancelarDetalle.set(null);
+    this.eliminarPagoId.set(null);
     const id = ++this.detalleId;
     forkJoin({ reserva: this.servicio.obtener(r.idReserva), cuenta: this.servicio.cuenta(r.idReserva) })
       .pipe(takeUntilDestroyed(this.destroy))

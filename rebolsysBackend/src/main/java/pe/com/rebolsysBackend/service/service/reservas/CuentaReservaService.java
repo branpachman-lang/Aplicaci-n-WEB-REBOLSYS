@@ -13,6 +13,8 @@ public interface CuentaReservaService {
 
   CuentaReservaDTO pagar(Long idReserva, ReservaPagoRegistroDTO request);
 
+  CuentaReservaDTO eliminarPago(Long idReserva, Long idPago);
+
   CuentaDocumentoDTO emitir(Long idReserva, ReservaComprobanteRegistroDTO request);
 
   ConsumoReservaRespuestaDTO consumir(Long idReserva, VentaRequestDTO request);

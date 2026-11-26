@@ -11,6 +11,8 @@ public interface DetalleReservaRepository extends JpaRepository<DetalleReserva, 
 
   boolean existsByClaveSalida(String claveSalida);
 
+  boolean existsByIdPagoSalida(Long idPagoSalida);
+
   @Query("""
       select d.idDetalleReserva from DetalleReserva d
       where d.estadoDetalle = pe.com.rebolsysBackend.enums.EstadoReserva.EN_CURSO

@@ -19,6 +19,8 @@ public interface FlujoCajaRepository extends JpaRepository<FlujoCaja, Long>,
 
   Optional<FlujoCaja> findByClaveRegistro(String clave);
 
+  void deleteByPagoIdPago(Long idPago);
+
   @EntityGraph(attributePaths = "tipoMovimientoCaja")
   Page<FlujoCaja> findByTurnoCajaIdTurno(Long id, Pageable pagina);
 
