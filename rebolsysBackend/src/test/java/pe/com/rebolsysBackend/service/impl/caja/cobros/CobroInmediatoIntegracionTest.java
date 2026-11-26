@@ -267,6 +267,25 @@ class CobroInmediatoIntegracionTest {
         .andExpect(status().isCreated());
   }
 
+  @Test void reintentoDeSalidaSinVentaNiNuevoCobroDevuelveElMismoComprobante() {
+    var reserva = reservas.registrar(reserva(UUID.randomUUID().toString(), "80.00"));
+    Long estancia = reserva.detalles().getFirst().idDetalleReserva();
+    var operadorSalida = nuevoOperador();
+    prepararIngresoAhora(estancia);
+    reservas.cambiarEstado(estancia, "ingreso", new OperacionUsuarioDTO(usuario));
+    var emision = new ReservaSalidaDTO.Comprobante("BOLETA", cliente);
+    var sinCobro = new ReservaSalidaDTO(operadorSalida.usuario(), null, UUID.randomUUID().toString(), null, emision);
+    var salidaSoloComprobante = reservas.registrarSalida(estancia, sinCobro);
+    assertThat(reservas.registrarSalida(estancia, sinCobro)).isEqualTo(salidaSoloComprobante);
+    assertThat(salidaSoloComprobante.idPago()).isNull();
+    assertThat(salidaSoloComprobante.idComprobante()).isNotNull();
+    assertThatThrownBy(() -> reservas.registrarSalida(estancia,
+        new ReservaSalidaDTO(operadorSalida.usuario(), null, UUID.randomUUID().toString(), null, emision)))
+        .hasMessageContaining("clave de salida");
+    assertThat(reservas.registrarSalida(estancia, new ReservaSalidaDTO(usuario, null, null, null, null))
+        .estadoDetalle()).isEqualTo(EstadoReserva.FINALIZADA);
+  }
+
   @Test void liquidaConsumoConTresOperadoresYRecuperaSalidaDelTurnoCerrado() throws Exception {
     var reserva = reservas.registrar(reserva(UUID.randomUUID().toString(), "20.00"));
     Long estancia = reserva.detalles().getFirst().idDetalleReserva();

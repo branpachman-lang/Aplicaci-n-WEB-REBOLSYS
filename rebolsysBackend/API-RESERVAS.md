@@ -28,7 +28,8 @@ el ingreso previsto debe estar en el futuro y la salida debe ser posterior.
 
 El cierre automático está deshabilitado por defecto. Quita
 `CHECKOUT_AUTOMATICO_HABILITADO=true` si la instalación lo activaba expresamente.
-Para actualizar una base existente, aplica [V22](src/main/resources/db/iteration/V22__operaciones_salida_reserva.sql).
+El check-out guarda la clave de reintento y su resultado en `DETALLE_RESERVA`.
+Para actualizar una base existente, aplica [V22](src/main/resources/db/iteration/V22__idempotencia_salida_en_detalle_reserva.sql).
 
 ## Contrato
 

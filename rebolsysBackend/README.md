@@ -107,6 +107,8 @@ Configura las variables del entorno o el archivo local ignorado `.local/applicat
 
 El esquema de Oracle se administra manualmente: Flyway está deshabilitado y Hibernate usa `ddl-auto=validate`. La aplicación no crea ni actualiza tablas. Verifica el DDL antes de ejecutar y no apliques scripts históricos sobre una base poblada sin revisar sus instrucciones.
 
+Para ejecutar el DDL completo desde SQL*Plus, activa `SET SQLBLANKLINES ON` antes de cargar el archivo. Hay sentencias que contienen líneas en blanco.
+
 ## Redis para catálogos
 
 Redis mantiene en caché algunos catálogos consultados con frecuencia. Las listas de categorías, tipos de habitación y tipos de mobiliario tienen TTL de 10 minutos; documentos, formas de pago y tipos de gasto, de 30 minutos. Las operaciones que cambian categorías o tipos invalidan su caché después de confirmar la transacción.
@@ -122,10 +124,12 @@ El contenedor escucha internamente en `6379` y publica Redis en `127.0.0.1:6380`
 
 ## Actualizaciones manuales de datos
 
-Aplica [V22](src/main/resources/db/iteration/V22__operaciones_salida_reserva.sql)
-antes de iniciar esta versión sobre una base existente. Crea el registro de
-operaciones de check-out para recuperar reintentos y conservar los identificadores
-de pago y comprobante.
+Aplica [V22](src/main/resources/db/iteration/V22__idempotencia_salida_en_detalle_reserva.sql)
+antes de iniciar esta versión sobre una base existente. Guarda la clave de
+reintento y los identificadores del operador, pago y comprobante en
+`DETALLE_RESERVA`. Si se aplicó el script anterior que creaba
+`RESERVA_SALIDA_OPERACION`, detén el backend anterior antes de migrar. El nuevo
+script copia sus registros y conserva la tabla anterior como respaldo.
 
 [V21](src/main/resources/db/iteration/V21__estado_mobiliario_asignado.sql) corrige
 los artículos que tienen habitación pero quedaron como `ACTIVO` en la carga de

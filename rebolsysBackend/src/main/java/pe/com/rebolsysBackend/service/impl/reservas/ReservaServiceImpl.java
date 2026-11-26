@@ -32,7 +32,6 @@ import pe.com.rebolsysBackend.repository.reservas.DetalleReservaRepository;
 import pe.com.rebolsysBackend.repository.reservas.ListaNegraRepository;
 import pe.com.rebolsysBackend.repository.reservas.ReservaOcupanteRepository;
 import pe.com.rebolsysBackend.repository.reservas.ReservaRepository;
-import pe.com.rebolsysBackend.repository.reservas.ReservaSalidaOperacionRepository;
 import pe.com.rebolsysBackend.service.impl.caja.cobros.CuentaReservaGestion;
 import pe.com.rebolsysBackend.service.impl.comun.ReglasPropuesta;
 import pe.com.rebolsysBackend.service.service.caja.cobros.CuentaCobroService;
@@ -61,7 +60,6 @@ public class ReservaServiceImpl implements ReservaService {
     private final CuentaReservaGestion cuenta;
     private final CuentaCobroService cobros;
     private final PagoRepository pagos;
-    private final ReservaSalidaOperacionRepository operacionesSalida;
     private final SalidaReservaGestion salida;
 
     @Override
@@ -343,17 +341,17 @@ public class ReservaServiceImpl implements ReservaService {
         exigir(!financiera || r.claveOperacion() != null, "Indica la clave de operación del check-out");
         var detalle = bloquearDetalle(id);
         var firma = r.claveOperacion() == null ? null : reglas.firma(r);
-        if (firma != null) {
-            var previa = operacionesSalida.findById(r.claveOperacion());
-            if (previa.isPresent()) {
-                var op = previa.get();
-                exigir(op.getIdDetalleReserva().equals(id) && op.getIdUsuario().equals(r.idUsuario())
-                    && op.getFirmaSolicitud().equals(firma), "La clave de salida ya corresponde a otra solicitud");
-                return respuestaDetalle(detalle).conLiquidacion(op.getIdPago(), op.getIdComprobante());
-            }
-        }
         if (detalle.getEstadoDetalle() == EstadoReserva.FINALIZADA && !financiera && firma == null)
             return respuestaDetalle(detalle);
+        if (detalle.getClaveSalida() != null) {
+            exigir(Objects.equals(detalle.getClaveSalida(), r.claveOperacion())
+                && Objects.equals(detalle.getFirmaSalida(), firma)
+                && Objects.equals(detalle.getIdUsuarioSalida(), r.idUsuario()),
+                "La clave de salida o sus datos no coinciden con el check-out registrado");
+            return respuestaDetalle(detalle).conLiquidacion(detalle.getIdPagoSalida(), detalle.getIdComprobanteSalida());
+        }
+        exigir(r.claveOperacion() == null || !detalles.existsByClaveSalida(r.claveOperacion()),
+            "La clave de salida ya fue usada en otra estancia");
         exigir(detalle.getEstadoDetalle() == EstadoReserva.EN_CURSO, "Solo puede salir una estancia en curso");
         var reserva = detalle.getReserva();
         var turno = financiera ? cuenta.turnoOperador(r.idUsuario()) : null;
@@ -377,8 +375,13 @@ public class ReservaServiceImpl implements ReservaService {
             idComprobante = cobros.emitir(c, new ComprobanteCuentaDTO(r.idUsuario(), turno.getIdTurno(),
                 r.comprobante().tipo(), r.comprobante().idClienteReceptor())).getIdComprobante();
         }
-        if (firma != null) entityManager.persist(
-            new ReservaSalidaOperacion(r.claveOperacion(), id, r.idUsuario(), firma, idPago, idComprobante));
+        if (firma != null) {
+            detalle.setClaveSalida(r.claveOperacion());
+            detalle.setFirmaSalida(firma);
+            detalle.setIdUsuarioSalida(r.idUsuario());
+            detalle.setIdPagoSalida(idPago);
+            detalle.setIdComprobanteSalida(idComprobante);
+        }
         detalles.flush();
         return respuestaDetalle(detalle).conLiquidacion(idPago, idComprobante);
     }
