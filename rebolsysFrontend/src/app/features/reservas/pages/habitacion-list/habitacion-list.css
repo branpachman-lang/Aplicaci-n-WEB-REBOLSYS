@@ -240,18 +240,6 @@
   background: #0650cc;
   color: white;
 }
-.room-blocked {
-  position: absolute;
-  inset: 25px 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  background: #f2f2f2;
-  color: #666;
-  border: 1px dashed #ccc;
-  border-radius: 8px;
-}
 .panel-bottom {
   background: white;
 }

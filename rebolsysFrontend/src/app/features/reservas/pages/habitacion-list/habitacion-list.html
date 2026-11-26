@@ -96,10 +96,6 @@
         <div class="timeline">
           @for (day of dias(); track day.getTime()) {
           <div class="timeline-cell" [class.today-column]="esHoy(day)"></div>
-          } @if (room.estado !== "DISPONIBLE") {
-          <div class="room-blocked">
-            <app-icon name="info" />{{ estadoTexto(room.estado) }}
-          </div>
           } @for ( block of room.reservas; track block.referencia +
           block.ingreso ) {
           <button
