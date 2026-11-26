@@ -47,7 +47,8 @@ import tools.jackson.databind.ObjectMapper;
     "spring.jpa.database-platform=org.hibernate.dialect.H2Dialect", "spring.jpa.hibernate.ddl-auto=create-drop",
     "springdoc.api-docs.version=OPENAPI_3_0",
     "app.caja.directorio-evidencias=target/evidencias-caja-test",
-    "app.hospedaje.directorio-logotipos=target/logotipos-test"
+    "app.hospedaje.directorio-logotipos=target/logotipos-test",
+    "app.catalogo.directorio-imagenes=target/imagenes-catalogo-test"
 })
 @ActiveProfiles("seguridad-test")
 @AutoConfigureMockMvc

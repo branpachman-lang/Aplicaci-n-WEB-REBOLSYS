@@ -13,8 +13,8 @@ import { Router } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
 import { NotificacionService } from '../../../../core/services/notificacion.service';
 import { mensajeError } from '../../../../core/utils/http-error';
-import { TipoHabitacion } from '../../models/tipo-habitacion.model';
-import { TipoHabitacionService } from '../../services/tipo-habitacion-service';
+import { TipoHabitacion } from '../../../tipos-habitacion/models/tipo-habitacion.model';
+import { TipoHabitacionService } from '../../../tipos-habitacion/services/tipo-habitacion-service';
 import {
   EstadoHabitacion,
   HabitacionConfiguracion,

@@ -12,6 +12,7 @@ import { generarClaveOperacion } from '../../../../core/utils/clave-operacion';
 import { mensajeError } from '../../../../core/utils/http-error';
 import { Icon } from '../../../../shared/components/icono/icono';
 import { DialogFocus } from '../../../../shared/directives/dialog-focus';
+import { ImagenProtegida } from '../../../../shared/directives/imagen-protegida';
 import {
   EstadoHabitacion,
   HabitacionConfiguracion,
@@ -28,7 +29,7 @@ import {
 import { MobiliarioService } from '../../services/mobiliario-service';
 @Component({
   selector: 'app-mobiliario-list',
-  imports: [FormsModule, DatePipe, Icon, DialogFocus],
+  imports: [FormsModule, DatePipe, Icon, DialogFocus, ImagenProtegida],
   templateUrl: './mobiliario-list.html',
   styleUrl: './mobiliario-list.css',
 })
@@ -41,6 +42,15 @@ export class MobiliarioList implements OnInit {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   habitaciones = signal<HabitacionConfiguracion[]>([]);
+  fallidas = signal<Set<number>>(new Set());
+
+  marcarImagenFallida(id: number): void {
+    this.fallidas.update((set) => {
+      const next = new Set(set);
+      next.add(id);
+      return next;
+    });
+  }
 
   tiposItem = signal<TipoItem[]>([]);
 

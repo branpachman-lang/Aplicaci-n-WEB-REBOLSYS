@@ -85,6 +85,50 @@
   font-size: 13px;
 }
 
+.mobiliario-nombre-celda {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mobiliario-thumb {
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #f0edf9;
+  border: 1px solid var(--line);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  color: var(--muted);
+}
+
+.mobiliario-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.mobiliario-detail-media {
+  width: 100%;
+  max-width: 320px;
+  height: 180px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: #f0edf9;
+  margin-bottom: 16px;
+}
+
+.mobiliario-detail-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
 .acciones-fila {
   display: flex;
   align-items: center;

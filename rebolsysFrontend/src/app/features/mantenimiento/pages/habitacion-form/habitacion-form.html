@@ -214,6 +214,27 @@
           Hasta un menor de 7 años, dentro de la capacidad total.
         </small>
       </label>
+
+      <div class="field span-2">
+        <label for="hab-imagen">Imagen referencial de la habitación (opcional)</label>
+        @if (vistaImagen(); as img) {
+          <div class="room-image-preview">
+            <img [imagenProtegida]="img" alt="Vista previa de habitación" />
+          </div>
+        }
+        <input
+          id="hab-imagen"
+          #archivoHab
+          type="file"
+          accept="image/jpeg,image/png"
+          [disabled]="formOcupado() || estadoOriginal() === 'EN_LIMPIEZA'"
+          (change)="seleccionarImagen(archivoHab)"
+        />
+        <small class="muted">JPEG o PNG de hasta 5 MB. Si no subes una propia, usa la referencial del tipo.</small>
+        @if (imagenError()) {
+          <small class="occupied-warning" role="alert">{{ imagenError() }}</small>
+        }
+      </div>
       <!-- Conflictos o errores del servidor -->
       @if (formError()) {
         <div class="span-2 error-box" role="alert">{{ formError() }}</div>

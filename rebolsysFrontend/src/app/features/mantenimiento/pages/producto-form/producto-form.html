@@ -83,11 +83,19 @@
           formControlName="imagenRuta"
           maxlength="300"
           (input)="imagenFallida.set(false)"
-          placeholder="/imagenes/productos/agua.webp"
+          placeholder="/api/v1/catalogo/imagenes/productos/agua.png"
         /><small
-          >Ruta del sitio a PNG, JPG, WEBP, AVIF o GIF. Por ejemplo:
-          /imagenes/productos/agua.webp.</small
+          >Ruta del sitio o del servidor a PNG, JPG, WEBP, AVIF o GIF.</small
         ></label
+      >
+      <label class="field span-2"
+        >Subir imagen al servidor (opcional)<input
+          #archivoProducto
+          type="file"
+          accept="image/jpeg,image/png"
+          [disabled]="guardando() || confirmacionPendiente()"
+          (change)="seleccionarArchivo(archivoProducto)"
+        /><small>JPEG o PNG de hasta 5 MB. Si subes una imagen, se guardará en el servidor para este producto.</small></label
       >
     </div>
     @if (error()) {
@@ -108,7 +116,9 @@
   <aside class="product-preview">
     <p class="eyebrow">VISTA PREVIA</p>
     <img
-      [src]="vistaImagen()"
+      [imagenProtegida]="vistaImagen()"
+      [imagenFallback]="'/imagenes/productos/sin-imagen.svg'"
+      (imagenError)="imagenFallida.set(true)"
       (error)="imagenFallida.set(true)"
       alt="Vista previa del producto"
     />

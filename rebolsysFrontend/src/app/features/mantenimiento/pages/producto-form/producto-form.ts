@@ -1,5 +1,5 @@
 import { notificarCambios } from '../../../../core/services/avisos-formulario';
-import { Component, OnInit, inject, input, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject, input, signal } from '@angular/core';
 import {
   ReactiveFormsModule,
   UntypedFormBuilder,
@@ -13,10 +13,12 @@ import { Categoria } from "../../models/categoria.model";
 import { mensajeError } from "../../../../core/utils/http-error";
 import { NotificacionService } from "../../../../core/services/notificacion.service";
 import { Icon } from "../../../../shared/components/icono/icono";
-import { forkJoin, of } from "rxjs";
+import { forkJoin, of, switchMap } from "rxjs";
 import { CategoriaDialog } from "../../components/categoria-dialog/categoria-dialog";
 import { CatalogoService } from "../../../../core/services/catalogo-service";
 import { Catalogo } from "../../../../core/models/catalogo.model";
+import { CatalogoImagenService } from "../../../../core/services/catalogo-imagen.service";
+import { ImagenProtegida } from "../../../../shared/directives/imagen-protegida";
 @Component({
   selector: "app-producto-form",
   imports: [
@@ -25,11 +27,12 @@ import { Catalogo } from "../../../../core/models/catalogo.model";
     Icon,
     CurrencyPipe,
     CategoriaDialog,
+    ImagenProtegida,
   ],
   templateUrl: "./producto-form.html",
   styleUrl: "./producto-form.css",
 })
-export class ProductoForm implements OnInit {
+export class ProductoForm implements OnInit, OnDestroy {
   id = input<string>();
   private productos = inject(ProductoService);
   private categoriasService = inject(CategoriaService);
@@ -37,6 +40,7 @@ export class ProductoForm implements OnInit {
   private router = inject(Router);
   private avisos = inject(NotificacionService);
   private catalogosService = inject(CatalogoService);
+  private imagenesService = inject(CatalogoImagenService);
   categorias = signal<Categoria[]>([]);
   cargando = signal(true);
   guardando = signal(false);
@@ -46,6 +50,8 @@ export class ProductoForm implements OnInit {
   usuarios = signal<Catalogo[]>([]);
   confirmacionPendiente = signal(false);
   imagenFallida = signal(false);
+  archivoImagen = signal<File | null>(null);
+  vistaPreviaArchivo = signal<string | null>(null);
   form = this.fb.group({
     nombreProducto: ["", [Validators.required, Validators.maxLength(100)]],
     descripcion: ["", Validators.maxLength(500)],
@@ -139,10 +145,37 @@ export class ProductoForm implements OnInit {
     this.form.get("idCategoria")!.setValue(c.idCategoria);
   }
   vistaImagen() {
+    if (this.vistaPreviaArchivo()) return this.vistaPreviaArchivo()!;
     const ruta = this.form.get("imagenRuta")!.value;
     return ruta && this.form.get("imagenRuta")!.valid && !this.imagenFallida()
       ? ruta
       : "/imagenes/productos/sin-imagen.svg";
+  }
+  seleccionarArchivo(input: HTMLInputElement) {
+    const archivo = input.files?.[0];
+    this.limpiarVistaPrevia();
+    if (!archivo) {
+      this.archivoImagen.set(null);
+      return;
+    }
+    if (!/^image\/(jpeg|png)$/.test(archivo.type) || archivo.size > 5 * 1024 * 1024) {
+      this.error.set("Selecciona una imagen JPEG o PNG de hasta 5 MB.");
+      input.value = "";
+      this.archivoImagen.set(null);
+      return;
+    }
+    this.error.set("");
+    this.imagenFallida.set(false);
+    this.archivoImagen.set(archivo);
+    this.vistaPreviaArchivo.set(URL.createObjectURL(archivo));
+  }
+  private limpiarVistaPrevia() {
+    const actual = this.vistaPreviaArchivo();
+    if (actual?.startsWith("blob:")) URL.revokeObjectURL(actual);
+    this.vistaPreviaArchivo.set(null);
+  }
+  ngOnDestroy() {
+    this.limpiarVistaPrevia();
   }
   guardar() {
     if (this.guardando() || this.confirmacionPendiente()) return;
@@ -170,12 +203,21 @@ export class ProductoForm implements OnInit {
       descripcion: raw.descripcion?.trim() || null,
       idUsuario: this.id() ? undefined : raw.idUsuario,
     };
+    const archivo = this.archivoImagen();
     this.guardando.set(true);
     this.form.disable({ emitEvent: false });
     (this.id()
       ? this.productos.actualizar(this.id()!, datos)
       : this.productos.crear(datos)
-    ).subscribe({
+    )
+      .pipe(
+        switchMap((guardado) =>
+          archivo
+            ? this.imagenesService.subir("productos", guardado.idProducto, archivo)
+            : of(null),
+        ),
+      )
+      .subscribe({
       next: () => {
         this.guardando.set(false);
         this.avisos.mostrar(

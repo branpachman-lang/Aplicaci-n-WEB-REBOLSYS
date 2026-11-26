@@ -1,4 +1,5 @@
 import { CatalogoService } from '../../../../core/services/catalogo-service';
+import { provideHttpClient } from "@angular/common/http";
 import { TestBed } from "@angular/core/testing";
 import { provideRouter } from "@angular/router";
 import { of, throwError } from "rxjs";
@@ -55,6 +56,7 @@ describe("Venta de la tiendita", () => {
     await TestBed.configureTestingModule({
       imports: [VentaForm],
       providers: [
+        provideHttpClient(),
         provideRouter([]),
         { provide: ClienteService, useValue: { buscarPorDocumento: buscarCliente, registrar: registrarCliente } },
         { provide: CatalogoService, useValue: { listar: () => of({documentos: [{id:1,nombre:'DNI',codigoSunat:'1'},{id:6,nombre:'RUC',codigoSunat:'6'}], pagos: [{id:1,nombre:'Efectivo'}], ocupantes: [], usuarios: [{id:1,nombre:'Recepción'}], turnosAbiertos: [{idTurno:1,idUsuario:1,usuario:'Recepción',fechaApertura:''}]}) } },

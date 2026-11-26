@@ -66,6 +66,8 @@ logging:
     console: "%d{HH:mm:ss.SSS} [%X{requestId:-sin-id}] %-5level %logger{36} - %msg%n"
 
 app:
+  catalogo:
+    directorio-imagenes: ${APP_CATALOGO_IMAGENES_DIR:.local/imagenes-catalogo}
   cache:
     habilitada: ${CACHE_ENABLED:true}
     prefijo: ${CACHE_PREFIX:rebolsys:dev:v1:}

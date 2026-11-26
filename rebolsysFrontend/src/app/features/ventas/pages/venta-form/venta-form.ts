@@ -36,6 +36,7 @@ import { mensajeError } from "../../../../core/utils/http-error";
 import { Icon } from "../../../../shared/components/icono/icono";
 import { PagoModal } from "../../../../shared/components/pago-modal/pago-modal";
 import { DialogFocus } from "../../../../shared/directives/dialog-focus";
+import { ImagenProtegida } from "../../../../shared/directives/imagen-protegida";
 import { VentaTicket } from "../../components/venta-ticket/venta-ticket";
 import { ClienteService } from "../../../clientes/services/cliente-service";
 import { ClienteDatos } from "../../../clientes/models/cliente.model";
@@ -51,6 +52,7 @@ import { Observable, concatMap, map, throwError } from "rxjs";
     Icon,
     PagoModal,
     DialogFocus,
+    ImagenProtegida,
     VentaTicket,
     VentaCarrito,
     ComprobanteDialog,
