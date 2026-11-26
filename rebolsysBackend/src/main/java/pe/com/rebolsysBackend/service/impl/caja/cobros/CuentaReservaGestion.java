@@ -209,6 +209,30 @@ public class CuentaReservaGestion {
     return cuentaVenta(v, turnoOperador(operador));
   }
 
+  public void cargarConsumo(Venta venta, TurnoCaja turno) {
+    var reserva = venta.getDetalleReserva().getReserva();
+    var cuenta = principal(reserva, turno);
+    exigir(cuenta.getEstadoComprobante() == EstadoComprobante.BORRADOR,
+        "La cuenta de alojamiento ya fue emitida. Registra el consumo en una cuenta separada");
+    int numero = lineas.findByComprobanteIdComprobanteOrderByNumeroLinea(cuenta.getIdComprobante()).stream()
+        .mapToInt(ComprobanteDetalle::getNumeroLinea).max().orElse(0);
+    for (var detalle : venta.getDetalles()) {
+      var linea = base(cuenta, ++numero, detalle.getDescripcion(),
+          BigDecimal.valueOf(detalle.getCantidad()), detalle.getValorUnitario(), detalle.getIgv());
+      linea.setDetalleVenta(detalle);
+      lineas.save(linea);
+    }
+    recalcular(cuenta);
+  }
+
+  public void validarEmisionFinal(Reserva reserva) {
+    exigir(detallesReserva.findByReservaIdReservaOrderByIdDetalleReserva(reserva.getIdReserva()).stream()
+        .allMatch(d -> d.getEstadoDetalle() == EstadoReserva.FINALIZADA
+            || d.getEstadoDetalle() == EstadoReserva.CANCELADA),
+        "El comprobante de la reserva se emite al completar la última salida");
+    validarSalida(reserva);
+  }
+
   private ComprobanteDetalle base(
       Comprobante c,
       int n,
@@ -248,7 +272,12 @@ public class CuentaReservaGestion {
   }
 
   public void validarSalida(Reserva r) {
-    exigir(salidaLiquidada(r), "Liquida el saldo de alojamiento y consumos antes del check-out");
+    var pendientes = cuentas.cuentasReserva(r.getIdReserva()).stream()
+        .filter(c -> c.getVenta() != null && saldo(c).signum() != 0)
+        .map(c -> "V" + c.getVenta().getIdVenta()).toList();
+    exigir(pendientes.isEmpty(), "Liquida las cuentas de venta antes del check-out: " + String.join(", ", pendientes));
+    exigir(principal(r).map(this::saldo).orElseGet(() -> alojamiento(r)).signum() == 0,
+        "Liquida el saldo de alojamiento y consumos antes del check-out");
   }
 
   public boolean salidaLiquidada(Reserva r) {

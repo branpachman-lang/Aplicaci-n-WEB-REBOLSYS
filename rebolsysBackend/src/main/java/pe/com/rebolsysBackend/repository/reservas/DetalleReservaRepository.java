@@ -8,6 +8,11 @@ import org.springframework.data.repository.query.Param;
 import pe.com.rebolsysBackend.entity.*;
 
 public interface DetalleReservaRepository extends JpaRepository<DetalleReserva, Long> {
+
+  boolean existsByClaveSalida(String claveSalida);
+
+  boolean existsByIdPagoSalida(Long idPagoSalida);
+
   @Query("""
       select d.idDetalleReserva from DetalleReserva d
       where d.estadoDetalle = pe.com.rebolsysBackend.enums.EstadoReserva.EN_CURSO

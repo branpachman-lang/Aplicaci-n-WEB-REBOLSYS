@@ -12,6 +12,7 @@ import { nombre } from "../../../../core/utils/texto";
 import { mensajeError } from "../../../../core/utils/http-error";
 import { Icon } from "../../../../shared/components/icono/icono";
 import { PagoModal } from "../../../../shared/components/pago-modal/pago-modal";
+import { PermisosUi } from '../../../../core/auth/permisos-ui';
 import { CatalogoService } from "../../../../core/services/catalogo-service";
 import { ClienteService } from "../../../clientes/services/cliente-service";
 import { HabitacionService } from "../../../mantenimiento/services/habitacion-service";
@@ -322,6 +323,8 @@ export class ReservaForm implements OnInit {
   get habitaciones() {
     return this.form.get("habitaciones") as FormArray;
   }
+  readonly acceso = inject(PermisosUi);
+
   constructor() {
     this.guestForm
       .get("fechaNacimiento")!
@@ -1232,10 +1235,15 @@ export class ReservaForm implements OnInit {
     };
     this.pagoAbierto.set(true);
   }
+  registroSinCobro() {
+    return this.pagoEnviado?.forma === 'PENDIENTE';
+  }
+
   confirmar(pago: ConfirmacionPago) {
     if (this.guardando() || !this.solicitud) return;
-    if (pago.forma === 'PENDIENTE' || !pago.cobro || pago.monto !== this.total()) {
-      this.alertar('Selecciona una forma de pago y abona el importe completo de la reserva.');
+    if (!this.pagoEnviado && pago.forma !== 'PENDIENTE' &&
+        (!pago.cobro || !pago.monto || pago.monto > this.total())) {
+      this.alertar('Selecciona una forma de pago y un importe dentro del saldo.');
       return;
     }
     this.pagoEnviado ??= structuredClone(pago);
@@ -1248,11 +1256,12 @@ export class ReservaForm implements OnInit {
     preparar
       .pipe(
         concatMap((request) => {
-          this.solicitudApi = { ...request, cobro: {
-            idFormaPago: this.pagoEnviado!.cobro!.idFormaPago,
-            monto: this.pagoEnviado!.monto!,
-            numeroOperacion: this.pagoEnviado!.cobro!.numeroOperacion,
-          }};
+          const pago = this.pagoEnviado!;
+          this.solicitudApi = pago.cobro ? { ...request, cobro: {
+            idFormaPago: pago.cobro.idFormaPago,
+            monto: pago.monto!,
+            numeroOperacion: pago.cobro.numeroOperacion,
+          }} : request;
           return this.reservaService.crear(this.solicitudApi);
         }),
         concatMap(reserva => {
@@ -1269,7 +1278,7 @@ export class ReservaForm implements OnInit {
               cuenta.numeroReserva +
               " registrada. Saldo: S/ " +
               cuenta.saldoPendiente.toFixed(2) +
-              (this.pagoEnviado
+              (this.pagoEnviado?.cobro
                 ? ". Vuelto: S/ " +
                   Math.max(
                     0,
@@ -1278,7 +1287,7 @@ export class ReservaForm implements OnInit {
                   ).toFixed(2)
                 : ""),
           );
-          void this.router.navigate(["/reservas"], {queryParams:{comprobante:cuenta.idReserva}});
+          void this.router.navigate(['/reservas']);
         },
         error: (e) => {
           this.guardando.set(false);
@@ -1300,7 +1309,7 @@ export class ReservaForm implements OnInit {
             (this.reservaRegistrada()
               ? "Reserva R" +
                 this.reservaRegistrada()!.idReserva +
-                " pagada. No se pudo cargar la cuenta. Reintenta o consulta la reserva. "
+                " registrada. No se pudo cargar la cuenta. Reintenta o consulta la reserva. "
               : "") +
               (e instanceof Error && !("status" in e)
                 ? e.message

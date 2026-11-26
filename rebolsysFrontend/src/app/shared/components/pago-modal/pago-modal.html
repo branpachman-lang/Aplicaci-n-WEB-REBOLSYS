@@ -21,10 +21,11 @@
     </header>
     <p class="eyebrow">ÚLTIMO PASO</p>
     <h2 id="pago-titulo">
-      {{ esNueva() ? 'Confirma tu reserva' : 'Registrar pago' }}
+      {{ esSalida() ? 'Cobrar y registrar check-out' : esNueva() ? 'Confirmar reserva' : 'Registrar pago' }}
     </h2>
     <p class="muted">
-      {{ esNueva() ? 'Elige cómo deseas registrar el pago de la estancia.' :
+      {{ esSalida() ? 'Confirma el pago del saldo completo para registrar la salida.' :
+      esNueva() ? 'Puedes cobrar un anticipo, cobrar el total o registrar la reserva con saldo pendiente.' :
       permiteParcial() ? 'La reserva mostrará el abono y el saldo restante al
       confirmar.' : 'Confirma el importe recibido para registrar la venta y su
       constancia interna.' }}
@@ -33,6 +34,7 @@
       <span>Saldo por pagar</span
       ><strong>{{ total() | currency: 'PEN' : 'S/ ' : '1.2-2' }}</strong>
     </div>
+    @if (habilitaCobro()) {
     @if (catalogos(); as datos) {
     <p class="inline-note">Usuario actual: {{datos.usuarios?.[0]?.nombre}}</p>
     <label class="field"
@@ -136,21 +138,24 @@
       (click)="enviar()"
     >
       <app-icon name="check" />{{ ocupado() ? 'Registrando…' : solicitudFijada()
-      ? 'Reintentar el mismo pago' : efectivo() ? 'Confirmar pago en efectivo' :
+      ? 'Reintentar la operación' : esSalida() ? 'Cobrar y registrar salida' : efectivo() ? 'Confirmar pago en efectivo' :
       'Confirmar pago' }}
     </button>
+    } @else if (error()) {
+    <p class="error-box" role="alert">{{ error() }}</p>
+    }
     @if (esNueva() && puedePosponer()) {
     <button
       class="button subtle full"
       [disabled]="ocupado()"
       (click)="confirmar.emit({ forma: 'PENDIENTE', recibido: null })"
     >
-      Pagar después<app-icon name="chevron" />
+      {{ solicitudFijada() ? 'Reintentar registro' : 'Registrar con saldo pendiente' }}<app-icon name="chevron" />
     </button>
     }
     <p class="payment-footnote">
       <app-icon name="info" />{{ catalogos() ? 'El abono se registra en la
-      cuenta y en el turno de caja. El saldo debe cancelarse antes del
+      cuenta y en el turno de caja. El saldo debe cancelarse a más tardar en el
       check-out.' : esNueva() ? 'Si pagas después, tu reserva se guardará con el
       cobro pendiente.' : 'El comprobante generado es interno y no tiene valor
       tributario.' }}

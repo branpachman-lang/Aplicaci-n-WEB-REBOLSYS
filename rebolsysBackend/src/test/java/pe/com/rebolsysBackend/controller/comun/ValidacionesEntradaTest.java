@@ -80,8 +80,15 @@ class ValidacionesEntradaTest {
           {"/detalles/0/ocupantes", "[null]"},
           {"/detalles/0/ocupantes", "[{\"idCliente\":0,\"ocupaPlazaCama\":true}]"},
           {"/detalles/0/ocupantes", "[{\"idCliente\":1,\"ocupaPlazaCama\":null}]"},
-          {"/cobro", "null"}, {"/cobro/idFormaPago", "0"}, {"/cobro/monto", "-1"},
+          {"/cobro/idFormaPago", "0"}, {"/cobro/monto", "-1"},
           {"/cobro/monto", "0.001"}, {"/cobro/numeroOperacion", cadena(101)},
+        });
+    agregar(casos, "reservas/detalles/1/salida", """
+        {"claveOperacion":"checkout-1","idUsuario":1,"cobro":{"idFormaPago":1,"monto":80},
+         "comprobante":{"tipo":"FACTURA","idClienteReceptor":1}}
+        """, new String[][] {
+          {"/claveOperacion", "\"\""}, {"/claveOperacion", cadena(65)}, {"/idTurno", "0"},
+          {"/cobro/monto", "-1"}, {"/comprobante/tipo", "\"TICKET\""}, {"/comprobante/idClienteReceptor", "0"},
         });
     agregar(casos, "ventas/confirmadas", """
         {"claveRegistro":"revision","idUsuario":1,"modalidadCobro":"SEPARADA",

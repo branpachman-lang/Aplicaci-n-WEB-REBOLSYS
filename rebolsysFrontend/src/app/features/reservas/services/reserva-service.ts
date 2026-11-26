@@ -38,6 +38,12 @@ export interface PagoPendiente {
   monto: number;
   cobro: CobroReserva;
 }
+export interface SalidaPendiente {
+  idReserva: number;
+  idDetalleReserva: number;
+  claveOperacion: string;
+  cobro?: NonNullable<RegistroReservaApi['cobro']>;
+}
 
 @Injectable({ providedIn: "root" })
 export class ReservaService {
@@ -47,6 +53,7 @@ export class ReservaService {
   private readonly base = environment.apiUrl + "/reservas";
   readonly registroPendiente = pendienteOperacion<RegistroReservaApi | null>(this.sesion, "reservas.registro", null);
   readonly pagosPendientes = pendienteOperacion<PagoPendiente[]>(this.sesion, "reservas.pagos", []);
+  readonly salidasPendientes = pendienteOperacion<SalidaPendiente[]>(this.sesion, 'reservas.salidas', []);
   private quitarPago(clave: string) {
     this.pagosPendientes.update((pagos) =>
       pagos.filter((p) => p.claveOperacion !== clave),
@@ -112,6 +119,9 @@ export class ReservaService {
   cuenta(id: number) {
     return this.http.get<CuentaReserva>(`${this.base}/${id}/cuenta`);
   }
+  eliminarPago(idReserva: number, idPago: number) {
+    return this.http.delete<CuentaReserva>(`${this.base}/${idReserva}/pagos/${idPago}`);
+  }
   ingresar(idDetalleReserva: number) {
     return this.cambiarEstadoEstadia(idDetalleReserva, 'ingreso');
   }
@@ -125,6 +135,26 @@ export class ReservaService {
     return this.sesion.cargar().pipe(concatMap(s => this.http.post<DetalleReserva>(
       `${this.base}/detalles/${idDetalleReserva}/${accion}`, { idUsuario: s.idUsuario },
     )));
+  }
+  cancelar(idDetalleReserva: number) {
+    return this.http.post<DetalleReserva>(`${this.base}/detalles/${idDetalleReserva}/cancelacion`, {});
+  }
+  salir(salida: SalidaPendiente) {
+    const quitar = () => this.salidasPendientes.update(pendientes =>
+      pendientes.filter(p => p.claveOperacion !== salida.claveOperacion));
+    if (!this.salidasPendientes().some(p => p.claveOperacion === salida.claveOperacion)) {
+      this.salidasPendientes.update(pendientes => [...pendientes, salida]);
+    }
+    return this.http.post<DetalleReserva>(`${this.base}/detalles/${salida.idDetalleReserva}/salida`, {
+      claveOperacion: salida.claveOperacion,
+      cobro: salida.cobro,
+    }).pipe(
+      tap(quitar),
+      catchError(error => {
+        if (error.status >= 400 && error.status < 500) quitar();
+        return throwError(() => error);
+      }),
+    );
   }
   crear(datos: RegistroReservaApi) {
     if (

@@ -15,6 +15,7 @@ import pe.com.rebolsysBackend.dto.reservas.ReservaDetalleRespuestaDTO;
 import pe.com.rebolsysBackend.dto.reservas.ReservaOcupantesGuardarDTO;
 import pe.com.rebolsysBackend.dto.reservas.ReservaRegistroRequestDTO;
 import pe.com.rebolsysBackend.dto.reservas.ReservaRespuestaDTO;
+import pe.com.rebolsysBackend.dto.reservas.ReservaSalidaDTO;
 import pe.com.rebolsysBackend.service.service.reservas.ReservaService;
 
 @RestController
@@ -24,10 +25,11 @@ import pe.com.rebolsysBackend.service.service.reservas.ReservaService;
 public class ReservaController {
   private final ReservaService reservaservice;
 
-  @PreAuthorize("hasRole('GERENTE') or hasAuthority('RESERVAS:CREAR')")
+  @PreAuthorize("(hasRole('GERENTE') or hasAuthority('RESERVAS:CREAR')) and "
+      + "(#r.cobro() == null or (hasRole('RECEPCIONISTA') and hasAuthority('RESERVAS:COBRAR')))")
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
-  @Operation(summary = "Registrar reserva con ocupantes opcionales y pago completo en una transacción")
+  @Operation(summary = "Registrar reserva con ocupantes y anticipo opcionales")
   public ReservaRespuestaDTO registrar(@Valid @RequestBody ReservaRegistroRequestDTO r) {
     return reservaservice.registrar(r);
   }
@@ -54,10 +56,14 @@ public class ReservaController {
     return reservaservice.cambiarEstado(id, "ingreso", r);
   }
 
-  @PreAuthorize("hasRole('GERENTE') or hasAuthority('RESERVAS:REGISTRAR_SALIDA')")
+  @PreAuthorize("(hasRole('GERENTE') or hasAuthority('RESERVAS:REGISTRAR_SALIDA')) and "
+      + "(#r.cobro() == null or (hasRole('RECEPCIONISTA') and hasAuthority('RESERVAS:COBRAR'))) and "
+      + "(#r.comprobante() == null or hasRole('GERENTE') or hasAuthority('RESERVAS:EMITIR_COMPROBANTE'))")
   @PostMapping("/detalles/{id}/salida")
-  public ReservaDetalleRespuestaDTO salida(@PathVariable Long id, @Valid @RequestBody OperacionUsuarioDTO r) {
-    return reservaservice.cambiarEstado(id, "salida", r);
+  @Operation(summary = "Registrar check-out y opcionalmente liquidar y emitir comprobante",
+      description = "Con cobro o emisión, envía claveOperacion y consérvala para los reintentos.")
+  public ReservaDetalleRespuestaDTO salida(@PathVariable Long id, @Valid @RequestBody ReservaSalidaDTO r) {
+    return reservaservice.registrarSalida(id, r);
   }
 
   @PreAuthorize("hasRole('GERENTE') or hasAuthority('RESERVAS:CANCELAR')")

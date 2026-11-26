@@ -1,0 +1,52 @@
+{
+  "info": {
+    "name": "REBOLSYS - Cobros con Yape (Mercado Pago / Simulador)",
+    "description": "Requiere JWT de recepcionista con permiso RESERVAS:COBRAR, turno abierto, V23__pago_yape.sql aplicado y una reserva confirmada o en curso con saldo positivo.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://127.0.0.1:8080" },
+    { "key": "idReserva", "value": "" },
+    { "key": "jwt", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Consultar configuración Yape",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{jwt}}" }],
+        "url": "{{baseUrl}}/api/v1/pagos/yape/config"
+      }
+    },
+    {
+      "name": "Cobro Yape rechazado (OTP 000000 en simulador)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{jwt}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": "{{baseUrl}}/api/v1/reservas/{{idReserva}}/yape",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"claveOperacion\":\"{{$guid}}\",\"importe\":10.00,\"telefono\":\"987654321\",\"otp\":\"000000\"}"
+        }
+      }
+    },
+    {
+      "name": "Cobro Yape pendiente y conciliación",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{jwt}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": "{{baseUrl}}/api/v1/reservas/{{idReserva}}/yape",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"claveOperacion\":\"{{$guid}}\",\"importe\":20.00,\"telefono\":\"987654321\",\"otp\":\"999999\"}"
+        }
+      }
+    }
+  ]
+}

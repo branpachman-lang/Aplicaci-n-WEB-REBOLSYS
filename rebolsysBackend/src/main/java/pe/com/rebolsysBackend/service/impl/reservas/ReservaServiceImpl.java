@@ -13,6 +13,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import pe.com.rebolsysBackend.dto.caja.cobros.PagoCuentaDTO;
+import pe.com.rebolsysBackend.dto.comun.comprobantes.ComprobanteCuentaDTO;
 import pe.com.rebolsysBackend.dto.comun.OperacionUsuarioDTO;
 import pe.com.rebolsysBackend.dto.comun.PaginaResponseDTO;
 import pe.com.rebolsysBackend.dto.reservas.ReservaDetalleRegistroDTO;
@@ -22,7 +24,9 @@ import pe.com.rebolsysBackend.dto.reservas.ReservaOcupanteRespuestaDTO;
 import pe.com.rebolsysBackend.dto.reservas.ReservaOcupantesGuardarDTO;
 import pe.com.rebolsysBackend.dto.reservas.ReservaRegistroRequestDTO;
 import pe.com.rebolsysBackend.dto.reservas.ReservaRespuestaDTO;
+import pe.com.rebolsysBackend.dto.reservas.ReservaSalidaDTO;
 import pe.com.rebolsysBackend.dto.reservas.ResumenCuentaReservaDTO;
+import pe.com.rebolsysBackend.repository.caja.cobros.PagoRepository;
 import pe.com.rebolsysBackend.repository.mantenimiento.HabitacionRepository;
 import pe.com.rebolsysBackend.repository.mantenimiento.PerfilRepository;
 import pe.com.rebolsysBackend.repository.mantenimiento.PersonaJuridicaRepository;
@@ -31,9 +35,9 @@ import pe.com.rebolsysBackend.repository.reservas.DetalleReservaRepository;
 import pe.com.rebolsysBackend.repository.reservas.ListaNegraRepository;
 import pe.com.rebolsysBackend.repository.reservas.ReservaOcupanteRepository;
 import pe.com.rebolsysBackend.repository.reservas.ReservaRepository;
-import pe.com.rebolsysBackend.service.impl.caja.cobros.CobroInmediatoService;
 import pe.com.rebolsysBackend.service.impl.caja.cobros.CuentaReservaGestion;
 import pe.com.rebolsysBackend.service.impl.comun.ReglasPropuesta;
+import pe.com.rebolsysBackend.service.service.caja.cobros.CuentaCobroService;
 import pe.com.rebolsysBackend.service.service.mantenimiento.ClienteService;
 import pe.com.rebolsysBackend.service.service.reservas.ReservaService;
 import pe.com.rebolsysBackend.entity.*;
@@ -57,7 +61,8 @@ public class ReservaServiceImpl implements ReservaService {
     private final ClienteService personas;
     private final ReglasPropuesta reglas;
     private final CuentaReservaGestion cuenta;
-    private final CobroInmediatoService cobroInmediato;
+    private final CuentaCobroService cobros;
+    private final PagoRepository pagos;
     private final SalidaReservaGestion salida;
 
     @Value("${app.reservas.tolerancia-ingreso:2h}")
@@ -131,8 +136,13 @@ public class ReservaServiceImpl implements ReservaService {
         reservas.saveAndFlush(reserva);
         for (int i = 0; i < r.detalles().size(); i++)
             guardarOcupantes(reserva.getDetalles().get(i), r.detalles().get(i).ocupantes());
-        var turno = cuenta.turnoOperador(r.idUsuario());
-        cobroInmediato.cobrar(cuenta.principal(reserva, turno), r.cobro(), r.idUsuario(), turno);
+        if (r.cobro() != null) {
+            var turno = cuenta.turnoOperador(r.idUsuario());
+            var c = cuenta.principal(reserva, turno);
+            cobros.pagar(c, new PagoCuentaDTO("COBRO-INMEDIATO-" + c.getIdComprobante(),
+                r.idUsuario(), turno.getIdTurno(), r.cobro().idFormaPago(),
+                r.cobro().monto(), r.cobro().numeroOperacion()));
+        }
         return respuesta(reserva);
     }
 
@@ -276,15 +286,8 @@ public class ReservaServiceImpl implements ReservaService {
     public ReservaDetalleRespuestaDTO cambiarEstado(Long id, String accion, OperacionUsuarioDTO r) {
         reglas.validar(r);
         reglas.usuario(r.idUsuario());
-        var actual =
-                detalles
-                        .findById(id)
-                        .orElseThrow(() -> new RecursoNoEncontradoException("La estancia no existe"));
-        reservas.bloquear(actual.getReserva().getIdReserva()).orElseThrow();
-        var h = habitaciones.bloquear(actual.getHabitacion().getIdHabitacion()).orElseThrow();
-        entityManager.refresh(h);
-        var d = detalles.bloquear(id).orElseThrow();
-        entityManager.refresh(d);
+        var d = bloquearDetalle(id);
+        var h = d.getHabitacion();
         var ahora = ahora();
         switch (accion) {
             case "ingreso" -> {
@@ -336,6 +339,71 @@ public class ReservaServiceImpl implements ReservaService {
         }
         detalles.flush();
         return respuestaDetalle(d);
+    }
+
+    @Override
+    @Transactional
+    public ReservaDetalleRespuestaDTO registrarSalida(Long id, ReservaSalidaDTO r) {
+        reglas.validar(r);
+        reglas.usuario(r.idUsuario());
+        boolean financiera = r.cobro() != null || r.comprobante() != null;
+        exigir(!financiera || r.claveOperacion() != null, "Indica la clave de operación del check-out");
+        var detalle = bloquearDetalle(id);
+        var firma = r.claveOperacion() == null ? null : reglas.firma(r);
+        if (detalle.getEstadoDetalle() == EstadoReserva.FINALIZADA && !financiera && firma == null)
+            return respuestaDetalle(detalle);
+        if (detalle.getClaveSalida() != null) {
+            exigir(Objects.equals(detalle.getClaveSalida(), r.claveOperacion())
+                && Objects.equals(detalle.getFirmaSalida(), firma)
+                && Objects.equals(detalle.getIdUsuarioSalida(), r.idUsuario()),
+                "La clave de salida o sus datos no coinciden con el check-out registrado");
+            return respuestaDetalle(detalle).conLiquidacion(detalle.getIdPagoSalida(), detalle.getIdComprobanteSalida());
+        }
+        exigir(r.claveOperacion() == null || !detalles.existsByClaveSalida(r.claveOperacion()),
+            "La clave de salida ya fue usada en otra estancia");
+        exigir(detalle.getEstadoDetalle() == EstadoReserva.EN_CURSO, "Solo puede salir una estancia en curso");
+        var reserva = detalle.getReserva();
+        var turno = financiera ? cuenta.turnoOperador(r.idUsuario()) : null;
+        exigir(r.idTurno() == null || (turno != null && turno.getIdTurno().equals(r.idTurno())),
+            "El turno debe pertenecer a la sesión actual");
+        Long idPago = null;
+        Long idComprobante = null;
+        if (r.cobro() != null) {
+            var c = cuenta.principal(reserva, turno);
+            exigir(r.cobro().monto().signum() > 0 && cuenta.saldo(c).compareTo(r.cobro().monto()) == 0,
+                "El importe del check-out debe cubrir exactamente el saldo vigente de la cuenta principal");
+            var clavePago = hash("SALIDA-RESERVA:" + r.claveOperacion());
+            cobros.pagar(c, new PagoCuentaDTO(clavePago, r.idUsuario(), turno.getIdTurno(),
+                r.cobro().idFormaPago(), r.cobro().monto(), r.cobro().numeroOperacion()));
+            idPago = pagos.findByClaveIdempotencia(clavePago).orElseThrow().getIdPago();
+        }
+        salida.finalizar(detalle, ahora().truncatedTo(java.time.temporal.ChronoUnit.MICROS));
+        if (r.comprobante() != null) {
+            cuenta.validarEmisionFinal(reserva);
+            var c = cuenta.principal(reserva, turno);
+            idComprobante = cobros.emitir(c, new ComprobanteCuentaDTO(r.idUsuario(), turno.getIdTurno(),
+                r.comprobante().tipo(), r.comprobante().idClienteReceptor())).getIdComprobante();
+        }
+        if (firma != null) {
+            detalle.setClaveSalida(r.claveOperacion());
+            detalle.setFirmaSalida(firma);
+            detalle.setIdUsuarioSalida(r.idUsuario());
+            detalle.setIdPagoSalida(idPago);
+            detalle.setIdComprobanteSalida(idComprobante);
+        }
+        detalles.flush();
+        return respuestaDetalle(detalle).conLiquidacion(idPago, idComprobante);
+    }
+
+    private DetalleReserva bloquearDetalle(Long id) {
+        var actual = detalles.findById(id)
+            .orElseThrow(() -> new RecursoNoEncontradoException("La estancia no existe"));
+        cuenta.bloquear(actual.getReserva().getIdReserva());
+        var habitacion = habitaciones.bloquear(actual.getHabitacion().getIdHabitacion()).orElseThrow();
+        entityManager.refresh(habitacion);
+        var detalle = detalles.bloquear(id).orElseThrow();
+        entityManager.refresh(detalle);
+        return detalle;
     }
 
     @Override

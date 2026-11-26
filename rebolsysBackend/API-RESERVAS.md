@@ -1,6 +1,6 @@
-# Reservas con pago completo al registrar
+# Reservas con anticipos y liquidación al check-out
 
-El [flujo objetivo de cobro y liquidación](API-FLUJO-PAGOS-RESERVAS.md) define el cambio a saldo pendiente y facturación consolidada al check-out.
+El [flujo de cobro y liquidación](API-FLUJO-PAGOS-RESERVAS.md) describe los permisos, la trazabilidad y el contrato de check-out.
 
 El registro lo realiza un operador autenticado mediante JWT. El titular puede ser
 una persona natural adulta o una empresa; los ocupantes son personas naturales.
@@ -8,19 +8,20 @@ una persona natural adulta o una empresa; los ocupantes son personas naturales.
 ## Proceso
 
 1. Seleccionar titular, habitaciones, fechas y ocupantes opcionales.
-2. Elegir la forma de pago y confirmar el total del alojamiento. POST
-   /api/v1/reservas requiere cobro: {idFormaPago, monto, numeroOperacion opcional}.
-3. El servicio valida disponibilidad, identidades y ocupantes; guarda reserva,
-   estancias, ocupantes, cuenta, pago e ingreso COBRO_RESERVA en una transacción.
-   Si falla el cobro o no coincide con el total, se revierte toda la reserva.
+2. Registrar la reserva con saldo pendiente, con un anticipo o con el pago total.
+   Si se cobra, el recepcionista debe tener el permiso de cobro y un turno abierto.
+3. El servicio valida disponibilidad, identidades y ocupantes y guarda la reserva,
+   sus estancias y, cuando se incluye un anticipo, el pago en una transacción.
 4. Completar ocupantes antes del check-in. Cada menor necesita un responsable
    adulto en su habitación; se mantienen los límites de personas y camas.
 5. Registrar check-in dentro del periodo reservado. La habitación pasa a OCUPADO.
-6. Las ventas a huéspedes se pagan completas al registrarse, en cuentas propias.
-   El alojamiento no recibe cargos nuevos a pagar durante el check-out.
-7. El check-out conserva la comprobación de saldo cero y deja la habitación
-   POR_LIMPIAR. Los saldos históricos deben liquidarse antes de la salida.
-8. Al llegar la hora programada en Lima, el detalle de una estancia EN_CURSO
+6. Las ventas a huéspedes pueden cargarse a la cuenta principal de la reserva.
+   Las ventas que se cobran de inmediato conservan su propia cuenta.
+7. El check-out liquida el importe pendiente de la cuenta principal y deja la
+   habitación POR_LIMPIAR. Las cuentas históricas separadas se liquidan antes.
+8. El comprobante interno de la cuenta principal se emite al registrar la última
+   salida o después. La interfaz de recepción ofrece emitirlo tras ese check-out.
+9. Al llegar la hora programada en Lima, el detalle de una estancia EN_CURSO
    sin salida registrada devuelve `salidaPendiente: true`. La habitación sigue
    ocupada hasta que recepción registra la salida y se guarda su hora real.
 
@@ -29,15 +30,15 @@ con al menos una habitación por revisar. La lista Angular se actualiza cada
 30 segundos mientras no hay un diálogo u operación activa.
 
 El saldo debe ser cero en cada cuenta: un sobrepago en alojamiento no compensa una
-deuda de consumos para autorizar el checkout. Una nueva reserva debe tener su
-salida en el futuro, aunque se admite registrar el ingreso previsto anterior a la
-hora actual para una llegada del mismo día.
+deuda de consumos para autorizar el checkout. Al registrar una nueva reserva,
+el ingreso previsto debe estar en el futuro y la salida debe ser posterior.
 
 El cierre automático está desactivado por defecto en `application.yaml`.
-Con `CHECKOUT_AUTOMATICO_HABILITADO=true`, el servidor vuelve a finalizar
-estancias vencidas con saldo liquidado. Ese modo usa
-`CHECKOUT_AUTOMATICO_INTERVALO` (60000 ms) y
+Quita `CHECKOUT_AUTOMATICO_HABILITADO=true` si la instalación lo activaba expresamente;
+cuando se activa usa `CHECKOUT_AUTOMATICO_INTERVALO` (60000 ms) y
 `CHECKOUT_AUTOMATICO_ESPERA_INICIAL` (10000 ms).
+El check-out guarda la clave de reintento y su resultado en `DETALLE_RESERVA`.
+Para actualizar una base existente, aplica [V22](src/main/resources/db/iteration/V22__idempotencia_salida_en_detalle_reserva.sql).
 
 ## Contrato
 
@@ -54,14 +55,14 @@ Ejemplo de POST /api/v1/reservas (sustituir identificadores y fechas):
     "costoEstadia": 80.00,
     "ocupantes": []
   }],
-  "cobro": {"idFormaPago": 1, "monto": 80.00, "numeroOperacion": null}
+  "cobro": {"idFormaPago": 1, "monto": 20.00, "numeroOperacion": null}
 }
 ~~~
 
-El servidor incorpora el usuario autenticado y resuelve su único turno abierto.
+El servidor incorpora el usuario autenticado y, si hay anticipo, resuelve su turno abierto.
 El servidor recalcula el alojamiento con la tarifa efectiva de cada habitación y
 noches de hasta 24 horas, igual que el formulario. Rechaza tarifas desactualizadas
-e importes manipulados. El monto debe cubrir exactamente ese total. Repetir
+e importes manipulados. El anticipo debe ser positivo y estar dentro del saldo. Repetir
 claveRegistro y contenido, incluido cobro, recupera la misma reserva sin otro pago.
 Una clave usada con contenido diferente produce 409.
 
@@ -73,12 +74,12 @@ Una clave usada con contenido diferente produce 409.
 | GET /reservas/{id}/cuenta | Consultar alojamiento, cuentas propias de ventas y pagos; solo lectura. |
 | PUT /reservas/detalles/{id}/ocupantes | Completar ocupantes antes del ingreso. |
 | POST /reservas/detalles/{id}/ingreso | Check-in con ocupantes y disponibilidad validados. |
-| POST /reservas/detalles/{id}/salida | Check-out después de saldar todas las cuentas. |
-| POST /reservas/{id}/consumos | Registrar venta asociada con cobro completo en la misma transacción. |
-| POST /reservas/{id}/pagos | Regularizar saldos históricos; no se necesita después del nuevo registro. |
-| POST /reservas/{id}/comprobantes | Emitir documento interno de alojamiento o de una venta concreta. |
+| POST /reservas/detalles/{id}/salida | Registrar check-out y, opcionalmente, el cobro del saldo principal y la emisión interna. |
+| POST /reservas/{id}/consumos | Registrar una venta asociada y cargarla a la cuenta principal si se omite el cobro. |
+| POST /reservas/{id}/pagos | Registrar abonos en la cuenta principal o liquidar una cuenta histórica separada. |
+| POST /reservas/{id}/comprobantes | Emitir la cuenta principal tras la última salida o emitir un documento de una venta separada. |
 
-admiteConsumosConsolidados se conserva como campo de respuesta con valor false.
+admiteConsumosConsolidados indica si la cuenta admite cargos de una estancia en curso.
 Las cuentas históricas y sus pagos se mantienen. Una reserva pagada conserva las
 restricciones de cancelación: requiere gestionar devolución o rectificación.
 No se elimina ni devuelve dinero de manera automática.
@@ -87,9 +88,9 @@ No se elimina ni devuelve dinero de manera automática.
 
 api/postman/reservas-flujo.postman_collection.json usa JWT y una base de pruebas:
 crea alojamiento pagado por S/80, tres consumos pagados por S/14 en cuentas propias,
-registra ingreso y salida y comprueba cuatro cuentas con saldo cero. No ejecutarla
-sobre datos de producción. Las pruebas H2 verifican atomicidad, rechazo de abonos,
-reintentos y check-in/check-out; las pruebas opcionales Oracle requieren revisión
+registra ingreso y salida y comprueba cuatro cuentas con saldo cero. Úsala con
+un recepcionista autorizado para el cobro. Las pruebas H2 verifican anticipos,
+trazabilidad por operador, rollback y reintentos de check-out. Las pruebas opcionales Oracle requieren revisión
 contra el esquema y los catálogos de la instancia antes de habilitarse.
 
 La [revisión del 21 de noviembre de 2026](REVISION-2026-11-21.md) detalla los

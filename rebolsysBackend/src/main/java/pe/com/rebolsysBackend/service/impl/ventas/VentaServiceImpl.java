@@ -130,7 +130,8 @@ public class VentaServiceImpl implements VentaService {
   @Override
   @Transactional
   public VentaResponseDTO registrarConfirmada(VentaRequestDTO r) {
-    exigir(r.cobro() != null, "Se requiere el pago completo para confirmar la venta");
+    boolean cargoReserva = r.cobro() == null && r.modalidadCobro() == ModalidadCobro.RESERVA;
+    exigir(cargoReserva || r.cobro() != null, "Se requiere el pago completo para confirmar la venta");
     var venta = registrar(r);
     // La firma del registro incluye el cobro: recuperar una operación ya pagada no abre otro turno.
     if (venta.estadoVenta() == EstadoVenta.CONFIRMADA) return venta;
@@ -143,6 +144,7 @@ public class VentaServiceImpl implements VentaService {
           && Objects.equals(venta.compradorNombreLibre(), limpiar(r.compradorNombreLibre())),
           "El borrador fue editado; consulta y confirma su contenido actual");
     }
+    if (cargoReserva) return confirmarStock(venta.idVenta(), new OperacionUsuarioDTO(r.idUsuario()), true);
     return confirmarCobrada(venta.idVenta(), new VentaConfirmacionDTO(r.idUsuario(), r.cobro()));
   }
 
@@ -193,14 +195,14 @@ public class VentaServiceImpl implements VentaService {
     exigir(!lineasCuenta.existsByDetalleVentaVentaIdVenta(id)
             || comprobantes.findByClaveIdempotencia("CUENTA-V-" + id).isPresent(),
         "El consumo histórico pertenece a la cuenta de la reserva; regulariza esa cuenta");
-    var resultado = confirmarStock(id, new OperacionUsuarioDTO(r.idUsuario()));
+    var resultado = confirmarStock(id, new OperacionUsuarioDTO(r.idUsuario()), false);
     var venta = ventas.findById(id).orElseThrow();
     var turno = cuentaReserva.turnoOperador(r.idUsuario());
     cobroInmediato.cobrar(cuentaReserva.cuentaVenta(venta, turno), r.cobro(), r.idUsuario(), turno);
     return resultado;
   }
 
-  private VentaResponseDTO confirmarStock(Long id, OperacionUsuarioDTO r) {
+  private VentaResponseDTO confirmarStock(Long id, OperacionUsuarioDTO r, boolean cargoReserva) {
     reglas.validar(r);
     var previo = ventas.findById(id).orElseThrow(() -> new RecursoNoEncontradoException("La venta no existe"));
     if (previo.getDetalleReserva() != null)
@@ -213,7 +215,7 @@ public class VentaServiceImpl implements VentaService {
     }
     exigir(
         v.getEstadoVenta() == EstadoVenta.BORRADOR, "Solo puede confirmarse una venta en borrador");
-    cuentaReserva.turnoOperador(r.idUsuario());
+    var turno = cuentaReserva.turnoOperador(r.idUsuario());
     if (v.getDetalleReserva() != null) {
       var d = reservas.bloquear(v.getDetalleReserva().getIdDetalleReserva()).orElseThrow();
       entityManager.refresh(d);
@@ -238,7 +240,8 @@ public class VentaServiceImpl implements VentaService {
     v.setEstadoVenta(EstadoVenta.CONFIRMADA);
     v.setFechaConfirmacion(ahora());
     ventas.flush();
-    cuentaReserva.registrarVenta(v, r.idUsuario());
+    if (cargoReserva) cuentaReserva.cargarConsumo(v, turno);
+    else cuentaReserva.registrarVenta(v, r.idUsuario());
     return respuesta(v);
   }
 

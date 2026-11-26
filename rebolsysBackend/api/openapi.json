@@ -22,6 +22,255 @@
     }
   ],
   "paths": {
+    "/api/v1/pagos/yape/config": {
+      "get": {
+        "tags": [
+          "Pagos Yape"
+        ],
+        "summary": "Consultar la configuración y modo vigente de Yape",
+        "responses": {
+          "200": {
+            "description": "Configuración de cobros con Yape",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagoYapeConfiguracion"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado"
+          }
+        }
+      }
+    },
+    "/api/v1/reservas/{id}/yape": {
+      "get": {
+        "tags": [
+          "Pagos Yape"
+        ],
+        "summary": "Consultar el último intento de cobro Yape de una reserva",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Estado persistido del intento",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagoYapeRespuesta"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "Reserva sin intentos"
+          },
+          "403": {
+            "description": "Se requiere rol Recepcionista y permiso de cobro"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Pagos Yape"
+        ],
+        "summary": "Iniciar o recuperar un cobro Yape mediante teléfono y código OTP",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SolicitudCobroYape"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Estado persistido del intento",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagoYapeRespuesta"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "403": {
+            "description": "Se requiere rol Recepcionista y permiso de cobro"
+          },
+          "404": {
+            "description": "Reserva no encontrada"
+          },
+          "409": {
+            "description": "Operación incompatible con el estado de la reserva, el saldo o el turno"
+          }
+        }
+      }
+    },
+    "/api/v1/reservas/{id}/yape/{clave}/conciliar": {
+      "post": {
+        "tags": [
+          "Pagos Yape"
+        ],
+        "summary": "Consultar y aplicar el estado de una orden Yape pendiente",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Estado persistido del intento",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagoYapeRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Se requiere rol Recepcionista y permiso de cobro"
+          },
+          "404": {
+            "description": "Intento no encontrado en la reserva"
+          },
+          "409": {
+            "description": "Operación incompatible con el estado de la reserva, el saldo o el turno"
+          }
+        }
+      }
+    },
+    "/api/v1/webhooks/yape": {
+      "post": {
+        "tags": [
+          "Pagos Yape"
+        ],
+        "summary": "Recibir notificaciones firmadas de órdenes Yape desde Mercado Pago",
+        "security": [],
+        "parameters": [
+          {
+            "name": "data.id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-request-id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-signature",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "type",
+                  "live_mode",
+                  "data"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "order"
+                    ]
+                  },
+                  "live_mode": {
+                    "type": "boolean"
+                  },
+                  "data": {
+                    "type": "object",
+                    "required": [
+                      "id"
+                    ],
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Notificación procesada"
+          },
+          "400": {
+            "description": "Notificación inválida"
+          },
+          "403": {
+            "description": "Firma inválida o ambiente incorrecto"
+          },
+          "503": {
+            "description": "No fue posible consultar la orden"
+          }
+        }
+      }
+    },
     "/api/v1/ventas/{id}": {
       "get": {
         "tags": [
@@ -1883,7 +2132,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "description": "Las ventas SEPARADA requieren el cobro completo. Las ventas RESERVA sin cobro se cargan a la cuenta principal y requieren la autorización de consumos."
       }
     },
     "/api/v1/tipos-item": {
@@ -2309,7 +2559,7 @@
         "tags": [
           "Reservas"
         ],
-        "summary": "Registrar reserva con ocupantes opcionales y pago completo en una transacción",
+        "summary": "Registrar reserva con ocupantes y anticipo opcionales",
         "operationId": "registrar_1",
         "requestBody": {
           "content": {
@@ -2337,7 +2587,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "description": "El anticipo requiere rol RECEPCIONISTA, permiso RESERVAS:COBRAR y turno propio abierto."
       }
     },
     "/api/v1/reservas/{idReserva}/pagos": {
@@ -2384,7 +2635,55 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "description": "Requiere rol RECEPCIONISTA, permiso RESERVAS:COBRAR y turno propio abierto."
+      }
+    },
+    "/api/v1/reservas/{idReserva}/pagos/{idPago}": {
+      "delete": {
+        "tags": [
+          "Reservas"
+        ],
+        "summary": "Eliminar un detalle de pago según reglas de negocio",
+        "operationId": "eliminarPago",
+        "parameters": [
+          {
+            "name": "idReserva",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "idPago",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CuentaReservaDTO"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Requiere rol RECEPCIONISTA, permiso RESERVAS:COBRAR, cuenta en borrador, estancia no finalizada, turno propio abierto sin arqueos y pago no liquidado en línea vía Mercado Pago."
       }
     },
     "/api/v1/reservas/{idReserva}/consumos": {
@@ -2469,7 +2768,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "description": "Una venta RESERVA sin cobro se carga a la cuenta principal. Un cobro explícito conserva la venta pagada en cuenta separada."
       }
     },
     "/api/v1/reservas/{idReserva}/comprobantes": {
@@ -2478,7 +2778,7 @@
           "Reservas"
         ],
         "summary": "Emitir registro interno de boleta o factura de una cuenta",
-        "description": "Conserva pagos y número de reserva. Esta etapa no integra SUNAT.",
+        "description": "Emite la cuenta principal liquidada al finalizar todas las estancias; las cuentas de venta históricas conservan su emisión individual.",
         "operationId": "emitir_1",
         "parameters": [
           {
@@ -2541,7 +2841,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/OperacionUsuarioDTO"
+                "$ref": "#/components/schemas/ReservaSalidaDTO"
               }
             }
           },
@@ -2557,13 +2857,27 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "Datos inválidos"
+          },
+          "401": {
+            "description": "Sesión ausente o inválida"
+          },
+          "403": {
+            "description": "Rol o permiso insuficiente"
+          },
+          "409": {
+            "description": "Saldo, turno, estado o clave de operación en conflicto"
           }
         },
         "security": [
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "summary": "Registrar check-out y opcionalmente liquidar y emitir comprobante",
+        "description": "Con cobro o emisión, envía claveOperacion. El cobro exige RECEPCIONISTA y RESERVAS:COBRAR. Sin saldo pendiente, una solicitud de salida sin cobro sigue siendo válida. Reutiliza la misma clave al reintentar."
       }
     },
     "/api/v1/reservas/detalles/{id}/ingreso": {
@@ -6286,6 +6600,126 @@
   },
   "components": {
     "schemas": {
+      "PagoYapeConfiguracion": {
+        "type": "object",
+        "required": [
+          "habilitado",
+          "modo",
+          "ambiente"
+        ],
+        "properties": {
+          "habilitado": {
+            "type": "boolean"
+          },
+          "modo": {
+            "type": "string",
+            "enum": [
+              "SIMULADO",
+              "MERCADO_PAGO"
+            ]
+          },
+          "ambiente": {
+            "type": "string",
+            "enum": [
+              "PRUEBA",
+              "PRODUCCION"
+            ]
+          }
+        }
+      },
+      "SolicitudCobroYape": {
+        "type": "object",
+        "required": [
+          "claveOperacion",
+          "importe",
+          "telefono",
+          "otp"
+        ],
+        "properties": {
+          "claveOperacion": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "importe": {
+            "type": "number",
+            "minimum": 0.01
+          },
+          "telefono": {
+            "type": "string",
+            "pattern": "[0-9]{9}"
+          },
+          "otp": {
+            "type": "string",
+            "pattern": "[0-9]{6}"
+          }
+        }
+      },
+      "PagoYapeRespuesta": {
+        "type": "object",
+        "required": [
+          "claveOperacion",
+          "importe",
+          "telefonoEnmascarado",
+          "modo",
+          "ambiente",
+          "estado"
+        ],
+        "properties": {
+          "claveOperacion": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "importe": {
+            "type": "number",
+            "minimum": 0.01
+          },
+          "telefonoEnmascarado": {
+            "type": "string"
+          },
+          "modo": {
+            "type": "string",
+            "enum": [
+              "SIMULADO",
+              "MERCADO_PAGO"
+            ]
+          },
+          "ambiente": {
+            "type": "string",
+            "enum": [
+              "PRUEBA",
+              "PRODUCCION"
+            ]
+          },
+          "estado": {
+            "type": "string",
+            "enum": [
+              "ENVIANDO",
+              "PENDIENTE",
+              "APLICADO",
+              "RECHAZADO",
+              "REVISION"
+            ]
+          },
+          "ordenProveedor": {
+            "nullable": true,
+            "type": "string"
+          },
+          "idPago": {
+            "nullable": true,
+            "type": "integer",
+            "format": "int64"
+          },
+          "mensajeProveedor": {
+            "nullable": true,
+            "type": "string"
+          },
+          "creado": {
+            "nullable": true,
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "VentaEditarDTO": {
         "required": [
           "detalles",
@@ -6876,6 +7310,19 @@
             "items": {
               "$ref": "#/components/schemas/ReservaOcupanteRespuestaDTO"
             }
+          },
+          "saldoPendiente": {
+            "type": "number"
+          },
+          "idPago": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "idComprobante": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
           }
         }
       },
@@ -8161,7 +8608,6 @@
       "ReservaRegistroRequestDTO": {
         "required": [
           "claveRegistro",
-          "cobro",
           "detalles",
           "idCliente",
           "idUsuario"
@@ -10174,6 +10620,53 @@
             "type": "string"
           }
         }
+      },
+      "ReservaSalidaDTO": {
+        "type": "object",
+        "properties": {
+          "idUsuario": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "idTurno": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "claveOperacion": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "cobro": {
+            "$ref": "#/components/schemas/CobroInmediatoDTO"
+          },
+          "comprobante": {
+            "$ref": "#/components/schemas/ReservaSalidaComprobanteDTO"
+          }
+        }
+      },
+      "ReservaSalidaComprobanteDTO": {
+        "type": "object",
+        "properties": {
+          "tipo": {
+            "type": "string",
+            "enum": [
+              "BOLETA",
+              "FACTURA"
+            ]
+          },
+          "idClienteReceptor": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "idClienteReceptor",
+          "tipo"
+        ]
       }
     },
     "securitySchemes": {

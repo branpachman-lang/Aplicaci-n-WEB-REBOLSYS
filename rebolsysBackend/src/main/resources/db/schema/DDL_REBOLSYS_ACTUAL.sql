@@ -425,8 +425,20 @@ CREATE TABLE "DETALLE_RESERVA" (
     fechaIngresoReal TIMESTAMP,
     fechaSalidaReal TIMESTAMP,
     costoEstadia NUMBER(12,2) NOT NULL,
+    claveSalida VARCHAR2(64),
+    firmaSalida VARCHAR2(64),
+    idUsuarioSalida NUMBER,
+    idPagoSalida NUMBER,
+    idComprobanteSalida NUMBER,
     estadoDetalle VARCHAR2(20) DEFAULT 'CONFIRMADA' NOT NULL,
     CONSTRAINT pn_dr_pk PRIMARY KEY (idDetalleReserva),
+    CONSTRAINT dr_salida_clave_uq UNIQUE (claveSalida),
+    CONSTRAINT dr_salida_usuario_fk FOREIGN KEY (idUsuarioSalida) REFERENCES usuario(idUsuario),
+    CONSTRAINT dr_salida_datos_ck CHECK (
+        (claveSalida IS NULL AND firmaSalida IS NULL AND idUsuarioSalida IS NULL
+            AND idPagoSalida IS NULL AND idComprobanteSalida IS NULL)
+        OR (claveSalida IS NOT NULL AND firmaSalida IS NOT NULL AND idUsuarioSalida IS NOT NULL)
+    ),
     CONSTRAINT pn_dr_reserva_fk FOREIGN KEY (idReserva) REFERENCES reserva(idReserva),
     CONSTRAINT pn_dr_habitacion_fk FOREIGN KEY (idHabitacion) REFERENCES habitacion(idHabitacion),
     CONSTRAINT pn_dr_fechas_ck CHECK (fechaSalida > fechaIngreso),
@@ -708,6 +720,12 @@ CREATE TABLE "PAGO" (
     CONSTRAINT pn_pago_monto_ck CHECK (monto>0),
     CONSTRAINT pn_pago_verificado_ck CHECK (verificado IN (0,1))
 );
+
+ALTER TABLE detalle_reserva ADD CONSTRAINT dr_salida_pago_fk
+    FOREIGN KEY (idPagoSalida) REFERENCES pago(idPago);
+
+ALTER TABLE detalle_reserva ADD CONSTRAINT dr_salida_comprobante_fk
+    FOREIGN KEY (idComprobanteSalida) REFERENCES comprobante(idComprobante);
 
 -- 44. TICKET_MANTENIMIENTO (conservada)
 CREATE TABLE "TICKET_MANTENIMIENTO" (

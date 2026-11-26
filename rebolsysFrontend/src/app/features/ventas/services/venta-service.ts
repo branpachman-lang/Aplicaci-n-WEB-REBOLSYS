@@ -66,9 +66,10 @@ export class VentaService {
           );
         const total = data.detalles.reduce((sum, d) =>
           sum + Math.round((d.precioEsperado ?? 0) * 100) * d.cantidad, 0) / 100;
+        const cargoReserva = data.modoVenta === 'CARGO_RESERVA' && !!data.idDetalleReserva;
         const forma = data.cobro?.idFormaPago ?? s.idFormaPagoEfectivo;
-        if (!forma) throw Error('Selecciona una forma de pago.');
-        if ((!data.cobro || forma === s.idFormaPagoEfectivo) && total > 0 &&
+        if (!cargoReserva && !forma) throw Error('Selecciona una forma de pago.');
+        if (!cargoReserva && (!data.cobro || forma === s.idFormaPagoEfectivo) && total > 0 &&
             (data.efectivoRecibido === null || !Number.isFinite(data.efectivoRecibido) ||
              data.efectivoRecibido < total ||
              Math.abs(data.efectivoRecibido * 100 - Math.round(data.efectivoRecibido * 100)) > 1e-6))
@@ -83,8 +84,8 @@ export class VentaService {
           modalidadCobro: data.idDetalleReserva ? 'RESERVA' : 'SEPARADA',
           idDetalleReserva: data.idDetalleReserva,
           detalles: data.detalles,
-          cobro: { idFormaPago: forma, monto: total,
-            numeroOperacion: data.cobro?.numeroOperacion ?? null },
+          ...(cargoReserva ? {} : { cobro: { idFormaPago: forma, monto: total,
+            numeroOperacion: data.cobro?.numeroOperacion ?? null } }),
         };
         return this.http.post<VentaApi>(this.base + '/confirmadas', solicitud).pipe(
           tap(v => { trabajo.idVenta = v.idVenta; this.conservar(trabajo); }),

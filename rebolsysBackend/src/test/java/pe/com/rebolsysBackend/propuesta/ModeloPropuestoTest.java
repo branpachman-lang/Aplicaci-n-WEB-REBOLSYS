@@ -16,7 +16,7 @@ import org.springframework.core.type.filter.AnnotationTypeFilter;
 
 class ModeloPropuestoTest {
   @Test
-  void mapearTablasYColumnasDelEsquemaV2() throws Exception {
+  void mapearTablasYColumnasDelEsquemaActual() throws Exception {
     var registry =
         new StandardServiceRegistryBuilder()
             .applySetting("hibernate.dialect", "org.hibernate.dialect.OracleDialect")
@@ -55,7 +55,7 @@ class ModeloPropuestoTest {
               table.getColumns().stream()
                   .map(c -> c.getName().toUpperCase(Locale.ROOT))
                   .collect(Collectors.toSet()));
-      assertThat(esperado).hasSize(46);
+      assertThat(esperado).hasSize(46).doesNotContainKey("RESERVA_SALIDA_OPERACION");
       assertThat(real).isEqualTo(esperado);
     } finally {
       StandardServiceRegistryBuilder.destroy(registry);

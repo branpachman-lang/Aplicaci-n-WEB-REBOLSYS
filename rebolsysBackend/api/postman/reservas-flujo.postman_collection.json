@@ -470,64 +470,6 @@
       ]
     },
     {
-      "name": "22 - Emitir boleta principal",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "url": "{{baseUrl}}/api/v1/reservas/{{idReserva}}/comprobantes",
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"idUsuario\": \"{{idUsuario}}\",\n  \"idTurno\": \"{{idTurno}}\",\n  \"tipo\": \"BOLETA\",\n  \"idClienteReceptor\": \"{{idCliente}}\"\n}"
-        }
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('HTTP 200',()=>pm.response.to.have.status(200));",
-              "pm.collectionVariables.set('numeroBoletaPrincipal',pm.response.json().numero);pm.test('Solo alojamiento por 80',()=>pm.expect(pm.response.json().total).to.eql(80));"
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "name": "23 - Repetir emisión sin nueva numeración",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "url": "{{baseUrl}}/api/v1/reservas/{{idReserva}}/comprobantes",
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"idUsuario\": \"{{idUsuario}}\",\n  \"idTurno\": \"{{idTurno}}\",\n  \"tipo\": \"BOLETA\",\n  \"idClienteReceptor\": \"{{idCliente}}\"\n}"
-        }
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('HTTP 200',()=>pm.response.to.have.status(200));",
-              "pm.test('Mismo documento',()=>pm.expect(pm.response.json().numero).to.eql(pm.collectionVariables.get('numeroBoletaPrincipal')));"
-            ]
-          }
-        }
-      ]
-    },
-    {
       "name": "24 - Rechazar consumo con pago parcial",
       "request": {
         "method": "POST",
@@ -556,7 +498,7 @@
       ]
     },
     {
-      "name": "25 - Nuevo consumo pagado después de emitir alojamiento",
+      "name": "25 - Nuevo consumo con pago separado",
       "request": {
         "method": "POST",
         "header": [
@@ -608,6 +550,64 @@
             "exec": [
               "pm.test('HTTP 200',()=>pm.response.to.have.status(200));",
               "pm.test('Estadía finalizada',()=>pm.expect(pm.response.json().estadoDetalle).to.eql('FINALIZADA'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "27a - Emitir boleta principal después del check-out",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/reservas/{{idReserva}}/comprobantes",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"idUsuario\": \"{{idUsuario}}\",\n  \"idTurno\": \"{{idTurno}}\",\n  \"tipo\": \"BOLETA\",\n  \"idClienteReceptor\": \"{{idCliente}}\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200',()=>pm.response.to.have.status(200));",
+              "pm.collectionVariables.set('numeroBoletaPrincipal',pm.response.json().numero);pm.test('Solo alojamiento por 80',()=>pm.expect(pm.response.json().total).to.eql(80));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "27b - Repetir emisión sin nueva numeración",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/reservas/{{idReserva}}/comprobantes",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"idUsuario\": \"{{idUsuario}}\",\n  \"idTurno\": \"{{idTurno}}\",\n  \"tipo\": \"BOLETA\",\n  \"idClienteReceptor\": \"{{idCliente}}\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200',()=>pm.response.to.have.status(200));",
+              "pm.test('Mismo documento',()=>pm.expect(pm.response.json().numero).to.eql(pm.collectionVariables.get('numeroBoletaPrincipal')));"
             ]
           }
         }

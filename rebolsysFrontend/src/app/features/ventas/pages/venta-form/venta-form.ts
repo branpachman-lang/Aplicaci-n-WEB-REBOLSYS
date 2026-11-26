@@ -99,6 +99,9 @@ export class VentaForm implements OnInit {
   categoria = signal<number | null>(null);
   tipoComprador = signal<"EXTERNO" | "HOSPEDAJE">("EXTERNO");
   modoVenta = signal<"SEPARADA" | "CARGO_RESERVA">("SEPARADA");
+  admiteCargo = signal(false);
+  consultandoCuenta = signal(false);
+  private consultaCuenta = 0;
   reservaId = signal<number | null>(null);
   buscarHabitacion = signal("");
   compradorNombre = signal("");
@@ -243,7 +246,7 @@ export class VentaForm implements OnInit {
     this.tipoComprador.set(tipo);
     this.reservaId.set(null);
     this.compradorNombre.set("");
-    this.modoVenta.set("SEPARADA");
+    this.actualizarModoVenta();
     this.buscarHabitacion.set("");
     this.limpiarClienteExterno();
   }
@@ -394,7 +397,25 @@ export class VentaForm implements OnInit {
     if (this.guardando() || this.solicitudFijada() || this.pendiente()) return;
     this.reservaId.set(id);
     this.compradorNombre.set(this.seleccionada()?.clienteNombre || "");
-    this.modoVenta.set("SEPARADA");
+    this.actualizarModoVenta();
+  }
+  private actualizarModoVenta() {
+    const consulta = ++this.consultaCuenta;
+    this.modoVenta.set('SEPARADA');
+    this.admiteCargo.set(false);
+    const reserva = this.seleccionada();
+    this.consultandoCuenta.set(reserva?.estadoDetalle === 'EN_CURSO');
+    if (reserva?.estadoDetalle !== 'EN_CURSO') return;
+    this.reservaService.cuenta(reserva.idReserva).pipe(
+      catchError(() => of(null)),
+      takeUntilDestroyed(this.destroy),
+    ).subscribe(cuenta => {
+      if (consulta !== this.consultaCuenta) return;
+      this.consultandoCuenta.set(false);
+      const admite = cuenta?.admiteConsumosConsolidados ?? false;
+      this.admiteCargo.set(admite);
+      if (admite) this.modoVenta.set('CARGO_RESERVA');
+    });
   }
   abrirIngreso() {
     const r = this.seleccionada();
@@ -437,6 +458,7 @@ export class VentaForm implements OnInit {
           );
           this.guardando.set(false);
           this.ingresoAbierto.set(null);
+          this.actualizarModoVenta();
           this.error.set("");
               },
         error: (e) => {
@@ -505,6 +527,7 @@ export class VentaForm implements OnInit {
     this.fallidas.update((actual) => new Set([...actual, id]));
   }
   confirmarVenta() {
+    if (this.consultandoCuenta()) return;
     if (this.guardando()) return;
     if (this.solicitudFijada() && this.solicitud) {
       this.registrar(this.solicitud.efectivoRecibido, this.solicitud.cobro);
@@ -598,7 +621,7 @@ export class VentaForm implements OnInit {
     const r = this.seleccionada();
     this.solicitud = {
       claveRegistro: this.clave,
-      modoVenta: "SEPARADA",
+      modoVenta: r ? this.modoVenta() : 'SEPARADA',
       idDetalleReserva: r?.idDetalleReserva ?? null,
       idCliente,
       compradorNombre: nombre,
@@ -609,7 +632,8 @@ export class VentaForm implements OnInit {
       })),
       efectivoRecibido: null,
     };
-    if (this.total() === 0) this.registrar(0);
+    if (this.solicitud.modoVenta === 'CARGO_RESERVA') this.registrar(null);
+    else if (this.total() === 0) this.registrar(0);
     else {
       this.errorPago.set("");
       this.pagoAbierto.set(true);

@@ -2,7 +2,7 @@
 
 La recepción puede registrar una reserva, cargar consumos durante la estancia y cobrar el saldo al hacer el check-out. Cada acción se atribuye al operador que la ejecuta. El titular de la reserva, el comprador y el receptor del comprobante se registran como datos del cliente.
 
-Esta especificación define el flujo objetivo para `develop-gamarra`. Los contratos de [reservas](API-RESERVAS.md) y [ventas](API-VENTAS.md) describen el comportamiento disponible hoy.
+El flujo se implementa en `develop-gamarra`. Consulta los contratos de [reservas](API-RESERVAS.md) y [ventas](API-VENTAS.md) para los detalles de cada ruta.
 
 ## Usuarios y turnos
 
@@ -34,14 +34,14 @@ Oracle guarda el estado por habitación en `DETALLE_RESERVA`. Una reserva de var
 
 La transición normal es `CONFIRMADA → EN_CURSO → FINALIZADA`. La cancelación de una estancia en curso se considera una baja excepcional. Las reglas para valorar el alojamiento ya prestado y decidir devoluciones o rectificaciones requieren definición antes de habilitar esa transición. Mientras haya importes o documentos por regularizar, la operación devuelve un conflicto y conserva el estado. Una estancia finalizada se rectifica mediante el flujo que corresponda a sus documentos y pagos.
 
-Llegar a la hora programada de salida permite señalar una estancia vencida. La finalización requiere registrar la salida real. Este cambio afecta al proceso actual de check-out automático que marca como finalizadas las estancias vencidas y liquidadas.
+La finalización se registra al hacer el check-out. El cierre automático queda desactivado por defecto. Si una instalación ya tenía `CHECKOUT_AUTOMATICO_HABILITADO=true`, debe quitar ese ajuste para que recepción registre la salida manualmente.
 
 ## Flujo de cobro y emisión
 
 1. **Registrar reserva.** `POST /api/v1/reservas` calcula el alojamiento con las tarifas del servidor y registra las habitaciones como confirmadas. El campo `cobro` pasa a ser opcional. Si se incluye, puede cubrir un anticipo o el total vigente. El registro y su anticipo, si existe, se guardan en una transacción.
 2. **Registrar check-in.** `POST /api/v1/reservas/detalles/{id}/ingreso` valida ocupantes, fechas y disponibilidad. Registra el ingreso aunque quede un saldo pendiente.
 3. **Cargar un consumo.** `POST /api/v1/reservas/{idReserva}/consumos` registra y confirma la venta asociada a una estancia `EN_CURSO`. Aplica el movimiento de stock una vez y agrega sus líneas a la cuenta principal de la reserva, con sus referencias a `DETALLE_VENTA`. La cuenta principal se crea cuando se necesita registrar el primer pago o consumo. Cuando se crea, el borrador toma un turno vigente del operador. La venta a un comprador externo conserva su cuenta y flujo de cobro independiente.
-4. **Consultar y abonar.** `GET /api/v1/reservas/{idReserva}/cuenta` muestra alojamiento, consumos, cobros verificados y saldo. `POST /api/v1/reservas/{idReserva}/pagos` permite aplicar abonos a la cuenta principal o regularizar una cuenta histórica individual. El backend valida importe positivo y evita sobrepagos. El pago y su ingreso de caja se guardan juntos.
+4. **Consultar y abonar.** `GET /api/v1/reservas/{idReserva}/cuenta` muestra alojamiento, consumos, cobros verificados y saldo. `POST /api/v1/reservas/{idReserva}/pagos` permite aplicar abonos a la cuenta principal o regularizar una cuenta histórica individual. `DELETE /api/v1/reservas/{idReserva}/pagos/{idPago}` permite eliminar un detalle de pago únicamente si la cuenta está en `BORRADOR`, ninguna estancia está `FINALIZADA` ni vinculada como pago de salida, el turno del pago sigue abierto para el mismo recepcionista sin arqueos guardados, y el pago no corresponde a una orden acreditada en línea por `MERCADO_PAGO`. El backend valida importe positivo, evita sobrepagos y mantiene sincronizados `PAGO` y `FLUJO_CAJA`.
 5. **Registrar check-out.** `POST /api/v1/reservas/detalles/{id}/salida` acepta un cobro opcional por el saldo pendiente de la cuenta principal. El backend calcula el saldo vigente dentro de la transacción. Con deuda en esa cuenta, el importe enviado debe cubrirla por completo. Las cuentas históricas separadas deben quedar liquidadas antes de la salida. Con saldo cero, basta registrar la salida. Si falla el cobro o una validación local, se revierte toda esa solicitud.
 6. **Emitir el comprobante.** En el último check-out se puede solicitar una boleta o factura interna con el alojamiento y las ventas pendientes de emisión. También puede emitirse después mediante `POST /api/v1/reservas/{idReserva}/comprobantes`. En ambos casos se toma el turno vigente de quien emite. La emisión usa todos los cargos incluidos y descuenta los abonos solo al calcular el saldo por cobrar. El envío electrónico sigue la operación de facturación existente.
 
@@ -51,7 +51,7 @@ Llegar a la hora programada de salida permite señalar una estancia vencida. La 
 - El comprobante final del nuevo flujo incluye todas las líneas de alojamiento y consumo de la cuenta principal. Una venta con un comprobante ya emitido se muestra en la liquidación con su propio documento. Su importe y su pago se cuentan una vez. Para cuentas separadas históricas, se conserva el vínculo con sus pagos y se regularizan por separado antes de finalizar. Su consolidación requeriría un procedimiento de traslado de cargos y pagos que conserve la trazabilidad.
 - Para una reserva con varias habitaciones se puede registrar la salida de cada estancia. Se valida el saldo de la reserva en cada salida. El comprobante consolidado se habilita al cerrar la última estancia, cuando todos los demás detalles están finalizados o cancelados. Así, los consumos que se agreguen después de una salida anterior pueden quedar incluidos.
 
-## Contrato propuesto para el check-out
+## Contrato del check-out
 
 Ejemplo para un saldo pendiente de S/ 74.00 y emisión interna en la misma operación.
 
@@ -76,7 +76,7 @@ Content-Type: application/json
 }
 ```
 
-- `claveOperacion` identifica el check-out. Se guarda junto con el actor, la estancia y el resultado, incluso si el check-out se hace con saldo cero. `cobro` se omite cuando el saldo es cero. `comprobante` se omite si la emisión se hará después. Si la solicitud incluye la emisión, esta participa en la misma transacción local y el backend valida tipo y receptor antes de confirmar la operación.
+- `claveOperacion` identifica el check-out. Es obligatoria si incluye cobro o emisión. Cuando se envía, se guarda junto con el actor, la estancia y el resultado, incluso si el check-out se hace con saldo cero. Las solicitudes anteriores sin clave funcionan para salidas con saldo cero. `cobro` se omite cuando el saldo es cero. `comprobante` se omite si la emisión se hará después. Si la solicitud incluye la emisión, esta participa en la misma transacción local y el backend valida tipo y receptor antes de confirmar la operación.
 - La respuesta `200` incluye el detalle de estancia con `estadoDetalle` y `fechaSalidaReal`, el `saldoPendiente` y, cuando se generan, `idPago` e `idComprobante`. Repetir una operación confirmada con la misma clave, actor y datos recupera los resultados guardados, aunque el turno de aquella operación haya cerrado. Una clave ya usada con otro actor, alcance o contenido devuelve `409`.
 - Una sesión ausente o inválida devuelve `401`. La falta de rol o permiso devuelve `403`. Un importe inválido devuelve `400`. La falta de turno vigente para cobrar o emitir, la modificación del saldo o un estado incompatible devuelven `409`. Si quedan saldos en cuentas históricas separadas, la respuesta indica las cuentas que deben regularizarse antes de registrar la salida.
 - El backend serializa consumos, cobros y check-out sobre la misma reserva y vuelve a leer sus saldos antes de finalizar. Dos intentos simultáneos no producen dos pagos, salidas ni números de comprobante.
