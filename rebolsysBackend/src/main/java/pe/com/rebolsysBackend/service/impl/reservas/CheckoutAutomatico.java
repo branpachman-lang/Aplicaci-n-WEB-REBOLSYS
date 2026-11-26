@@ -12,8 +12,7 @@ import pe.com.rebolsysBackend.repository.reservas.DetalleReservaRepository;
 @Component
 @RequiredArgsConstructor
 @Slf4j
-@ConditionalOnProperty(name = "app.reservas.checkout-automatico.habilitado", havingValue = "true",
-    matchIfMissing = true)
+@ConditionalOnProperty(name = "app.reservas.checkout-automatico.habilitado", havingValue = "true")
 public class CheckoutAutomatico {
   private final DetalleReservaRepository detalles;
   private final CheckoutVencidoService checkout;

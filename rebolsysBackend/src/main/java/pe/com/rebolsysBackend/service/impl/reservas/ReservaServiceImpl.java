@@ -9,6 +9,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -58,6 +59,9 @@ public class ReservaServiceImpl implements ReservaService {
     private final CuentaReservaGestion cuenta;
     private final CobroInmediatoService cobroInmediato;
     private final SalidaReservaGestion salida;
+
+    @Value("${app.reservas.tolerancia-ingreso:2h}")
+    private Duration toleranciaIngreso;
 
     @Override
     @Transactional
@@ -404,6 +408,7 @@ public class ReservaServiceImpl implements ReservaService {
     }
 
     private ReservaDetalleRespuestaDTO respuestaDetalle(DetalleReserva d, List<ReservaOcupanteRespuestaDTO> huespedes) {
+        var momentoConsulta = ahora();
         return new ReservaDetalleRespuestaDTO(
                 d.getIdDetalleReserva(),
                 d.getHabitacion().getIdHabitacion(),
@@ -414,6 +419,13 @@ public class ReservaServiceImpl implements ReservaService {
                 d.getFechaSalidaReal(),
                 d.getCostoEstadia(),
                 d.getEstadoDetalle(),
+                d.getEstadoDetalle() == EstadoReserva.CONFIRMADA
+                        && d.getFechaIngresoReal() == null
+                        && !momentoConsulta.isBefore(d.getFechaIngreso().plus(toleranciaIngreso)),
+                d.getEstadoDetalle() == EstadoReserva.EN_CURSO
+                        && d.getFechaIngresoReal() != null
+                        && d.getFechaSalidaReal() == null
+                        && !momentoConsulta.isBefore(d.getFechaSalida()),
                 huespedes);
     }
 }

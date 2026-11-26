@@ -72,8 +72,9 @@ app:
     ttl-catalogos: 10m
     ttl-referencias: 30m
   reservas:
+    tolerancia-ingreso: ${RESERVAS_TOLERANCIA_INGRESO:2h}
     checkout-automatico:
-      habilitado: ${CHECKOUT_AUTOMATICO_HABILITADO:true}
+      habilitado: ${CHECKOUT_AUTOMATICO_HABILITADO:false}
       intervalo: ${CHECKOUT_AUTOMATICO_INTERVALO:60000}
       espera-inicial: ${CHECKOUT_AUTOMATICO_ESPERA_INICIAL:10000}
   correo:

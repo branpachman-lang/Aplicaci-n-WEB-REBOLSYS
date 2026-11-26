@@ -149,6 +149,35 @@ class CobroInmediatoIntegracionTest {
     assertThatThrownBy(() -> clientes.registrarTitular(empresaConPasaporte)).hasMessageContaining("RUC");
   }
 
+  @Test
+  void marcaElIngresoVencidoSinCambiarElEstadoDeLaEstancia() {
+    var creada = reservas.registrar(reserva(UUID.randomUUID().toString(), "80.00"));
+    var detalle = creada.detalles().getFirst();
+    assertThat(detalle.ingresoVencido()).isFalse();
+    tx.executeWithoutResult(s -> em.find(DetalleReserva.class, detalle.idDetalleReserva())
+        .setFechaIngreso(ReglasPropuesta.ahora().minusHours(3)));
+    var pendiente = reservas.obtener(creada.idReserva()).detalles().getFirst();
+    assertThat(pendiente.ingresoVencido()).isTrue();
+    assertThat(pendiente.estadoDetalle()).isEqualTo(EstadoReserva.CONFIRMADA);
+    var ingresada = reservas.cambiarEstado(detalle.idDetalleReserva(), "ingreso", new OperacionUsuarioDTO(usuario));
+    assertThat(ingresada.ingresoVencido()).isFalse();
+  }
+
+  @Test
+  void rechazaLaMismaReferenciaEnOtraCuentaSinRegistrarUnSegundoCobro() {
+    var solicitud = reserva(UUID.randomUUID().toString(), "80.00");
+    String referencia = "AB004812";
+    var original = new ReservaRegistroRequestDTO(solicitud.claveRegistro(), solicitud.idCliente(),
+        solicitud.idUsuario(), solicitud.detalles(), new CobroInmediatoDTO(forma, new BigDecimal("80.00"), referencia));
+    var registrada = reservas.registrar(original);
+    assertThat(reservas.registrar(original).idReserva()).isEqualTo(registrada.idReserva());
+    var otro = venta(UUID.randomUUID().toString(), null, new CobroInmediatoDTO(forma, new BigDecimal("7.00"), " ab004812 "));
+    assertThatThrownBy(() -> ventas.registrarConfirmada(otro))
+        .hasMessageContaining("ya está registrada en la reserva R" + registrada.idReserva());
+    sinVenta(otro.claveRegistro());
+    tx.executeWithoutResult(s -> assertThat(cantidad("Pago", "numeroOperacion", referencia)).isEqualTo(1));
+  }
+
   private CobroInmediatoDTO cobro(String monto) { return new CobroInmediatoDTO(forma, new BigDecimal(monto), null); }
   private ReservaRegistroRequestDTO reserva(String clave, String monto) {
     var ahora = ReglasPropuesta.ahora();
@@ -460,6 +489,21 @@ class CobroInmediatoIntegracionTest {
       assertThat(d.getEstadoDetalle()).isEqualTo(estado);
       assertThat(d.getHabitacion().getEstadoHabitacion()).isEqualTo(habitacionEsperada);
     });
+  }
+
+  @Test
+  void unaSalidaVencidaSigueOcupadaHastaQueRecepcionLaConfirma() {
+    Long id = estanciaVencida(ReglasPropuesta.ahora().minusMinutes(1));
+    Long idReserva = tx.execute(s -> em.find(DetalleReserva.class, id).getReserva().getIdReserva());
+    var pendiente = reservas.obtener(idReserva).detalles().getFirst();
+    assertThat(pendiente.salidaPendiente()).isTrue();
+    assertThat(pendiente.fechaSalidaReal()).isNull();
+    comprobarEstancia(id, EstadoReserva.EN_CURSO, EstadoHabitacion.OCUPADO);
+
+    var salida = reservas.cambiarEstado(id, "salida", new OperacionUsuarioDTO(usuario));
+    assertThat(salida.salidaPendiente()).isFalse();
+    assertThat(salida.fechaSalidaReal()).isAfter(pendiente.fechaSalida());
+    comprobarEstancia(id, EstadoReserva.FINALIZADA, EstadoHabitacion.POR_LIMPIAR);
   }
 
   @Test void checkoutVencidoFinalizaAlLlegarLaHoraSinDuplicarAuditoriaNiPagos() {

@@ -6,6 +6,5 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 @Configuration(proxyBeanMethods = false)
 @EnableScheduling
-@ConditionalOnProperty(name = "app.reservas.checkout-automatico.habilitado", havingValue = "true",
-    matchIfMissing = true)
+@ConditionalOnProperty(name = "app.reservas.checkout-automatico.habilitado", havingValue = "true")
 public class CheckoutAutomaticoConfig {}

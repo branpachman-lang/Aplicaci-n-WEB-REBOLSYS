@@ -81,6 +81,7 @@ table {
 .tabla-comprobante { width: 100%; min-width: 0; table-layout: fixed; border-collapse: collapse; }
 .tabla-comprobante th,
 .tabla-comprobante td { border: 1px solid var(--line); }
+.detalle-etiqueta { display: none; }
 .tabla-comprobante th:first-child,
 .tabla-comprobante td:first-child { width: 48%; }
 .tabla-comprobante th:nth-child(2),
@@ -110,6 +111,42 @@ table {
   .factura-datos { grid-template-columns: 1fr; }
   .ticket-a4 .ticket-estadia { grid-template-columns: 1fr; }
   .ticket-a4 .ticket-estadia h3 { grid-column: auto; }
+}
+@media screen and (max-width: 520px) {
+  .ticket-a4 { padding: 12px; }
+  .receipt-sheet .button { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+  .tabla-comprobante,
+  .tabla-comprobante tbody { display: block; }
+  .tabla-comprobante thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .tabla-comprobante tbody tr {
+    display: grid;
+    grid-template-columns: minmax(0, 0.65fr) repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .tabla-comprobante tbody td {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 4px;
+    width: auto;
+    padding: 0;
+    border: 0;
+    text-align: left;
+    overflow-wrap: anywhere;
+  }
+  .tabla-comprobante tbody td:first-child {
+    grid-column: 1 / -1;
+    font-weight: 600;
+  }
+  .detalle-etiqueta { display: block; color: var(--muted); font-size: 12px; }
 }
 td,
 th {

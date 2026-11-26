@@ -1,5 +1,6 @@
 :host { display: block; }
 .delivery-actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 12px 0; }
+.delivery-actions .button { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
 .delivery-form { padding: 16px; background: #f7f7fb; border: 1px solid #dedbea; border-radius: 10px; }
 .delivery-form .field { margin-bottom: 12px; }
 @media print { :host { display: none; } }

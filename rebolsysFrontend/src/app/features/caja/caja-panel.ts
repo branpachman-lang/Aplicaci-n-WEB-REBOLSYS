@@ -1,7 +1,7 @@
 import { ArchivoProtegido } from '../../shared/directives/archivo-protegido';
 import { generarClaveOperacion } from '../../core/utils/clave-operacion';
 import { CurrencyPipe } from '@angular/common';
-import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, Injector, afterNextRender, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { finalize, map, of, switchMap } from 'rxjs';
@@ -20,6 +20,7 @@ import { ArqueoCaja, CajaApi, DatosMovimiento, MovimientoCaja, TurnoCaja } from 
 export class CajaPanel {
   private readonly api = inject(CajaApi);
   private readonly destroy = inject(DestroyRef);
+  private readonly injector = inject(Injector);
   private readonly avisos = inject(NotificacionService);
   private readonly sesion = inject(SesionService);
   readonly turno = signal<TurnoCaja | null>(null);
@@ -129,6 +130,11 @@ export class CajaPanel {
     this.declaraciones.set({});
     this.cierreIncierto.set(false);
     this.cierre.set('conteo');
+  }
+
+  cambiarPasoCierre(paso: 'conteo' | 'resumen', titulo: HTMLElement) {
+    this.cierre.set(paso);
+    afterNextRender(() => titulo.focus(), { injector: this.injector });
   }
 
   declarar(id: number, monto: number | null) {

@@ -6863,6 +6863,14 @@
               "CANCELADA"
             ]
           },
+          "ingresoVencido": {
+            "type": "boolean",
+            "description": "La estancia sigue confirmada y superó la tolerancia de ingreso sin check-in."
+          },
+          "salidaPendiente": {
+            "type": "boolean",
+            "description": "La estancia sigue en curso y llegó la hora programada sin confirmación de salida."
+          },
           "ocupantes": {
             "type": "array",
             "items": {
