@@ -103,7 +103,7 @@ npm test -- --watch=false
 npm run build
 ```
 
-`package.json` no define un comando E2E. La configuración de análisis estático está en [`sonar-project.properties`](sonar-project.properties) y los informes en [`../docs/calidad/`](../docs/calidad/). El build de Angular establece límites de tamaño inicial de 500 kB para advertencia y 1 MB para error, y límites por hoja de estilos de componente de 4 kB y 8 kB respectivamente.
+`package.json` no define un comando E2E. La configuración de análisis estático está en [`sonar-project.properties`](sonar-project.properties) y los informes en [`../docs/calidad/`](../docs/calidad/). El build de Angular establece límites de tamaño inicial de 500 kB para advertencia y 1 MB para error, y límites por hoja de estilos de componente de 6.5 kB para advertencia y 8 kB para error.
 
 Para revisar errores durante el desarrollo, consulta la consola del navegador y la pestaña Network. Los errores de solicitudes API también se registran en la salida del backend.
 

@@ -348,6 +348,7 @@ export class ReservaList implements OnDestroy {
     });
   }
 
+
   verDetalle(r: ReservaApi) {
     this.cancelarDetalle.set(null);
     this.eliminarPagoId.set(null);

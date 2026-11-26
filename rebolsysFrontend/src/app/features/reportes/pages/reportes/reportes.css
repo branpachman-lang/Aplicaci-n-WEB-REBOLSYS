@@ -22,8 +22,9 @@
 .tabla-financiera th { padding: .8rem .65rem; font-size: .78rem; }
 .tabla-financiera td { padding: .75rem .65rem; font-size: .84rem; }
 .tabla-financiera tbody tr:nth-child(even) { background: #f8f7fc; }
-.resumen-financiero { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin: 1rem; padding: 1rem; border-radius: .6rem; background: #f7f6fc; }
+.resumen-financiero { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: 1rem; margin: 1rem; padding: 1rem; border-radius: .6rem; background: #f7f6fc; }
 .resumen-financiero div { display: grid; gap: .4rem; }
+.resumen-financiero strong { overflow-wrap: anywhere; }
 .resumen-financiero span { color: var(--muted); font-size: .85rem; }
 .resumen-financiero strong { font-size: 1.05rem; }
 .pie-impresion { display: none; }

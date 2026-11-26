@@ -81,21 +81,21 @@
   @let reservas = respuesta()?.contenido ?? [];
   @if (reservas.length) {
   <div class="table-scroll">
-    <table class="reservations-table" role="table" aria-label="Reservas">
-      <thead role="rowgroup">
-        <tr role="row">
-          <th scope="col" role="columnheader">N.º RESERVA</th>
-          <th scope="col" role="columnheader">CLIENTE Y ESTANCIA</th>
-          <th scope="col" role="columnheader">HABITACIONES</th>
-          <th scope="col" role="columnheader">ESTADO</th>
-          <th scope="col" role="columnheader">IMPORTE</th>
-          <th scope="col" role="columnheader">ACCIONES</th>
+    <table class="reservations-table" aria-label="Reservas">
+      <thead>
+        <tr>
+          <th scope="col">N.º RESERVA</th>
+          <th scope="col">CLIENTE Y ESTANCIA</th>
+          <th scope="col">HABITACIONES</th>
+          <th scope="col">ESTADO</th>
+          <th scope="col">IMPORTE</th>
+          <th scope="col">ACCIONES</th>
         </tr>
       </thead>
-      <tbody role="rowgroup">
+      <tbody>
         @for (r of reservas; track r.idReserva) {
-        <tr role="row">
-          <td class="reserva-numero" role="cell">
+        <tr>
+          <td class="reserva-numero">
             <button class="reservation-id text-button" (click)="verDetalle(r)">
               #{{ 'R' + r.idReserva }}</button
             ><small
@@ -103,7 +103,7 @@
               : "habitaciones" }}</small
             >
           </td>
-          <td class="reserva-cliente" role="cell">
+          <td class="reserva-cliente">
             <strong class="customer-name">{{ r.titular }}</strong
             ><small
               >{{ r.detalles[0].fechaIngreso | date: "dd MMM yyyy" }}
@@ -114,7 +114,7 @@
               r.detalles[0].fechaSalida | date: "HH:mm" }}</small
             >
           </td>
-          <td class="reserva-habitaciones" role="cell">
+          <td class="reserva-habitaciones">
             <div class="room-chips">
               @for (h of r.detalles; track h.idDetalleReserva) {
               <span>{{ h.numeroCuarto }}</span>
@@ -122,7 +122,7 @@
             </div>
             <small>{{ numeroHuespedes(r) }} huéspedes registrados</small>
           </td>
-          <td class="reserva-estado" role="cell">
+          <td class="reserva-estado">
             <span [class]="'badge ' + estadoReserva(r).toLowerCase()"
               >{{ estadoTexto(estadoReserva(r)) }}</span
             >
@@ -133,7 +133,7 @@
               <small class="pending-text">Salida pendiente de confirmar</small>
             }
           </td>
-          <td class="reserva-importe" role="cell">
+          <td class="reserva-importe">
             <strong
               >{{ r.cuenta.totalCargos | currency: "PEN" : "S/ " : "1.2-2"
               }}</strong
@@ -152,7 +152,7 @@
               }}</small
             >
           </td>
-          <td class="reserva-acciones" role="cell">
+          <td class="reserva-acciones">
             <div class="row-actions">
               <button class="button small" (click)="verDetalle(r)">
                 Ver detalle
@@ -568,4 +568,5 @@
       }
     </section>
   </div>
+
 }

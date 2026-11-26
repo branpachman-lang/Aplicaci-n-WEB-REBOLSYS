@@ -78,22 +78,22 @@
     <section class="ticket-seccion ticket-detalle">
       <h3 id="comprobante-detalle">Detalle de {{doc.tipo === 'FACTURA' ? 'consumo' : 'servicios'}}</h3>
     <div class="table-scroll">
-      <table class="tabla-comprobante" role="table" aria-labelledby="comprobante-detalle">
-        <thead role="rowgroup">
-          <tr role="row">
-            <th scope="col" role="columnheader">Concepto</th>
-            <th scope="col" role="columnheader">Cant.</th>
-            <th scope="col" role="columnheader">Precio unitario</th>
-            <th scope="col" role="columnheader">Importe</th>
+      <table class="tabla-comprobante" aria-labelledby="comprobante-detalle">
+        <thead>
+          <tr>
+            <th scope="col">Concepto</th>
+            <th scope="col">Cant.</th>
+            <th scope="col">Precio unitario</th>
+            <th scope="col">Importe</th>
           </tr>
         </thead>
-        <tbody role="rowgroup">
+        <tbody>
           @for(l of doc.lineas;track $index){
-          <tr role="row">
-            <td role="cell">{{l.descripcion}}</td>
-            <td role="cell"><span class="detalle-etiqueta" aria-hidden="true">Cant.</span>{{l.cantidad}}</td>
-            <td role="cell"><span class="detalle-etiqueta" aria-hidden="true">Precio unitario</span>{{(l.cantidad ? l.total / l.cantidad : l.total) | currency:'PEN':'S/ '}}</td>
-            <td role="cell"><span class="detalle-etiqueta" aria-hidden="true">Importe</span>{{l.total | currency:'PEN':'S/ '}}</td>
+          <tr>
+            <td>{{l.descripcion}}</td>
+            <td><span class="detalle-etiqueta" aria-hidden="true">Cant.</span>{{l.cantidad}}</td>
+            <td><span class="detalle-etiqueta" aria-hidden="true">Precio unitario</span>{{(l.cantidad ? l.total / l.cantidad : l.total) | currency:'PEN':'S/ '}}</td>
+            <td><span class="detalle-etiqueta" aria-hidden="true">Importe</span>{{l.total | currency:'PEN':'S/ '}}</td>
           </tr>
           }
         </tbody>

@@ -1,7 +1,7 @@
 <fieldset [disabled]="ocupado()">
   <legend>Huéspedes de la habitación {{ estancia().numeroCuarto }}</legend>
   @for (huesped of huespedes; track huesped.idCliente) {
-    <div class="detail-line">
+    <div class="detail-line guest-editor-person">
       <strong>{{ huesped.nombre }}</strong>
       <div class="form-grid">
         <label class="field">Responsable del menor
@@ -31,7 +31,7 @@
       </button>
     </div>
   }
-  <div class="form-grid">
+  <div class="form-grid guest-editor-search">
     <label class="field">Tipo de documento
       <select [(ngModel)]="tipoDocumento" (ngModelChange)="cambiarDocumento()">
         <option [ngValue]="null">Seleccionar documento</option>
@@ -43,7 +43,9 @@
       </select>
     </label>
     <label class="field">Número de documento
-      <input [(ngModel)]="numeroDocumento" (ngModelChange)="cambiarDocumento()" maxlength="50" (keydown.enter)="$event.preventDefault(); buscar()" />
+      <input [(ngModel)]="numeroDocumento" (ngModelChange)="cambiarDocumento()" [attr.maxlength]="limiteDocumento()"
+        [attr.inputmode]="esDni() ? 'numeric' : 'text'" (input)="ajustarDocumento($event)"
+        (keydown.enter)="$event.preventDefault(); buscar()" />
     </label>
     <button class="button subtle small" type="button" [disabled]="!tipoDocumento || !numeroDocumento.trim()" (click)="buscar()">
       Buscar y agregar huésped
@@ -63,9 +65,9 @@
     </div>
   }
   @if (error()) { <p class="field-error" role="alert">{{ error() }}</p> }
-  <div class="row-actions">
+  <div class="row-actions guest-editor-actions">
     <button class="button subtle small" type="button" (click)="cerrar.emit()"><app-icon name="close" /> {{ textoVolver() }}</button>
-    <button class="button primary small" type="button" [disabled]="nuevo()" (click)="guardar()">
+    <button class="button primary small" type="button" [disabled]="nuevo() || ocupado() || !huespedes.length" (click)="guardar()">
       <app-icon name="check" /> Guardar huéspedes
     </button>
   </div>

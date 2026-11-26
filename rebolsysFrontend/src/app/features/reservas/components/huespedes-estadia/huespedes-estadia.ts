@@ -19,6 +19,7 @@ interface HuespedEditable extends OcupanteRegistro {
   selector: 'app-huespedes-estadia',
   imports: [FormsModule, Icon],
   templateUrl: './huespedes-estadia.html',
+  styleUrl: './huespedes-estadia.css',
 })
 export class HuespedesEstadia implements OnInit {
   readonly estancia = input.required<DetalleReserva>();
@@ -68,9 +69,47 @@ export class HuespedesEstadia implements OnInit {
     this.error.set('');
   }
 
-  buscar() {
+  esDni() {
+    const documento = this.documentos().find(item => item.id === this.tipoDocumento);
+    return documento?.codigoSunat === '1' || documento?.nombre.toUpperCase() === 'DNI';
+  }
+
+  limiteDocumento() {
+    return this.esDni() ? 8 : 50;
+  }
+
+  ajustarDocumento(evento: Event) {
+    const input = evento.target as HTMLInputElement;
+    const valor = (this.esDni() ? input.value.replace(/\D/g, '') : input.value)
+      .slice(0, this.limiteDocumento());
+    input.value = valor;
+    this.numeroDocumento = valor;
+    this.error.set('');
+  }
+
+  validarDocumento() {
     const documento = this.numeroDocumento.trim();
-    if (this.ocupado() || this.tipoDocumento === null || !documento) return;
+    if (!documento) return 'Ingresa el número de documento del huésped.';
+    if (this.esDni() && !/^\d{8}$/.test(documento)) return 'El DNI debe contener exactamente 8 dígitos.';
+    if (documento.length > this.limiteDocumento()) {
+      return `El documento admite hasta ${this.limiteDocumento()} caracteres.`;
+    }
+    if (!/\S/.test(documento)) return 'Ingresa un número de documento válido.';
+    return '';
+  }
+
+  buscar() {
+    if (this.ocupado()) return;
+    if (this.tipoDocumento === null) {
+      this.error.set('Selecciona el tipo de documento del huésped.');
+      return;
+    }
+    const errorDocumento = this.validarDocumento();
+    if (errorDocumento) {
+      this.error.set(errorDocumento);
+      return;
+    }
+    const documento = this.numeroDocumento.trim();
     this.cambiarDocumento();
     this.ejecutar(this.clientes.buscarPorDocumento(this.tipoDocumento, documento), ({ idCliente, datos }) => {
       if (!idCliente || datos.empresa) {
@@ -94,8 +133,20 @@ export class HuespedesEstadia implements OnInit {
   }
 
   registrar() {
-    if (this.ocupado() || !this.nuevo() || this.tipoDocumento === null ||
-        !this.nombres.trim() || !this.apellidos.trim() || !this.nacimiento) return;
+    if (this.ocupado() || !this.nuevo()) return;
+    if (this.tipoDocumento === null) {
+      this.error.set('Selecciona el tipo de documento del huésped.');
+      return;
+    }
+    const errorDocumento = this.validarDocumento();
+    if (errorDocumento) {
+      this.error.set(errorDocumento);
+      return;
+    }
+    if (!this.nombres.trim() || !this.apellidos.trim() || !this.nacimiento) {
+      this.error.set('Completa nombres, apellidos y fecha de nacimiento del huésped.');
+      return;
+    }
     const persona: ClienteDatos = {
       idTipoDocumento: this.tipoDocumento,
       numeroDocumento: this.numeroDocumento.trim(),
@@ -138,6 +189,10 @@ export class HuespedesEstadia implements OnInit {
 
   guardar() {
     if (this.ocupado() || this.nuevo()) return;
+    if (!this.huespedes.length) {
+      this.error.set('Agrega al menos un huésped antes de guardar.');
+      return;
+    }
     const ocupantes = this.huespedes.map(({ idCliente, ocupaPlazaCama, idClienteResponsable, parentescoResponsable }) =>
       ({ idCliente, ocupaPlazaCama, idClienteResponsable,
         parentescoResponsable: idClienteResponsable === null ? null : parentescoResponsable }));
