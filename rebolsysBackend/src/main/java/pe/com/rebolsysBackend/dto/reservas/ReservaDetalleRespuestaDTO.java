@@ -16,4 +16,6 @@ public record ReservaDetalleRespuestaDTO(
     LocalDateTime fechaSalidaReal,
     BigDecimal costoEstadia,
     EstadoReserva estadoDetalle,
+    boolean ingresoVencido,
+    boolean salidaPendiente,
     List<ReservaOcupanteRespuestaDTO> ocupantes) {}

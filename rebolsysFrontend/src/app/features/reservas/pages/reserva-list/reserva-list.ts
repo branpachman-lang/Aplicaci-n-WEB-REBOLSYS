@@ -31,6 +31,20 @@ import {
   estadoReserva,
 } from "../../models/reserva-api.model";
 
+type AccionEstadia = 'ingreso' | 'salida' | 'cancelacion';
+
+const PERMISOS_ESTADIA: Record<AccionEstadia, string> = {
+  ingreso: 'RESERVAS:REGISTRAR_INGRESO',
+  salida: 'RESERVAS:REGISTRAR_SALIDA',
+  cancelacion: 'RESERVAS:CANCELAR',
+};
+
+const MENSAJES_ESTADIA: Record<AccionEstadia, string> = {
+  ingreso: 'Se registró el ingreso',
+  salida: 'Se registró la salida',
+  cancelacion: 'Se canceló la estancia',
+};
+
 @Component({
   selector: "app-reservas",
   imports: [
@@ -66,6 +80,9 @@ export class ReservaList implements OnDestroy {
   estado = "";
   pagando = signal<ReservaResumen | null>(null);
   detalle = signal<ReservaResumen | null>(null);
+  accionEstadia = signal<{ id: number; accion: AccionEstadia } | null>(null);
+  procesandoEstadia = signal(false);
+  errorEstadia = signal('');
   comprobante = signal<ReservaApi | null>(null);
   abrirComprobante(r: ReservaApi) {
     if (this.comprobante()) return;
@@ -89,6 +106,8 @@ export class ReservaList implements OnDestroy {
   private carga?: Subscription;
   private detalleId = 0;
   estadoReserva = estadoReserva;
+  readonly ingresoPendiente = (detalle: DetalleReserva) => detalle.ingresoVencido === true;
+  readonly salidaPendiente = (detalle: DetalleReserva) => detalle.salidaPendiente === true;
   pagosPendientes = this.servicio.pagosPendientes;
   registroPendiente = this.servicio.registroPendiente;
 
@@ -191,6 +210,8 @@ export class ReservaList implements OnDestroy {
   }
   verDetalle(r: ReservaApi) {
     const id = ++this.detalleId;
+    this.accionEstadia.set(null);
+    this.errorEstadia.set('');
     forkJoin({ reserva: this.servicio.obtener(r.idReserva), cuenta: this.servicio.cuenta(r.idReserva) })
       .pipe(takeUntilDestroyed(this.destroy))
       .subscribe({
@@ -199,6 +220,47 @@ export class ReservaList implements OnDestroy {
         },
         error: (e) => this.avisos.mostrar(mensajeError(e), true),
       });
+  }
+  puedeGestionarEstadia(h: DetalleReserva, accion: AccionEstadia) {
+    if (!this.acceso.permite(PERMISOS_ESTADIA[accion])) return false;
+    if (accion === 'salida') return h.estadoDetalle === 'EN_CURSO';
+    return h.estadoDetalle === 'CONFIRMADA' && (accion === 'ingreso' || h.ingresoVencido === true);
+  }
+  pedirAccionEstadia(h: DetalleReserva, accion: AccionEstadia) {
+    if (this.procesandoEstadia() || !this.puedeGestionarEstadia(h, accion)) return;
+    this.errorEstadia.set('');
+    this.accionEstadia.set({ id: h.idDetalleReserva, accion });
+  }
+  gestionarEstadia(r: ReservaResumen, h: DetalleReserva) {
+    const confirmacion = this.accionEstadia();
+    if (this.procesandoEstadia() || confirmacion?.id !== h.idDetalleReserva
+      || !this.puedeGestionarEstadia(h, confirmacion.accion)) return;
+    const { accion } = confirmacion;
+    const id = h.idDetalleReserva;
+    this.procesandoEstadia.set(true);
+    this.errorEstadia.set('');
+    const operacion = accion === 'ingreso' ? this.servicio.ingresar(id)
+      : accion === 'salida' ? this.servicio.registrarSalida(id)
+      : this.servicio.cancelarEstadia(id);
+    operacion.pipe(takeUntilDestroyed(this.destroy)).subscribe({
+      next: (actualizada) => {
+        this.procesandoEstadia.set(false);
+        this.accionEstadia.set(null);
+        this.avisos.mostrar(`${MENSAJES_ESTADIA[accion]} de la habitación ${h.numeroCuarto}.`);
+        const detalle = this.detalle();
+        if (detalle?.idReserva === r.idReserva) {
+          this.detalle.set({ ...detalle, detalles: detalle.detalles.map(item =>
+            item.idDetalleReserva === id ? actualizada : item,
+          ) });
+          if (accion === 'cancelacion') this.verDetalle(r);
+        }
+        this.cargar();
+      },
+      error: (e) => {
+        this.procesandoEstadia.set(false);
+        this.errorEstadia.set(mensajeError(e));
+      },
+    });
   }
   abrirPago(r: ReservaApi) {
     const pendiente = this.pagosPendientes().find(

@@ -5,6 +5,7 @@ import {
   HostListener,
   OnDestroy,
   inject,
+  input,
   output,
 } from '@angular/core';
 
@@ -14,6 +15,7 @@ export class DialogFocus implements AfterViewInit, OnDestroy {
   private static overflowOriginal = '';
   private element: ElementRef<HTMLElement> = inject(ElementRef);
   private previous = document.activeElement as HTMLElement | null;
+  dialogInitialFocus = input<HTMLElement>();
   dialogEscape = output<void>();
   private focusable() {
     return [
@@ -29,7 +31,7 @@ export class DialogFocus implements AfterViewInit, OnDestroy {
     queueMicrotask(() => {
       if (DialogFocus.abiertos.at(-1) !== this || !this.element.nativeElement.isConnected) return;
       const fields = this.focusable();
-      (fields.find((el) => el.tagName === 'INPUT') || fields[0])?.focus();
+      (this.dialogInitialFocus() ?? fields.find((el) => el.tagName === 'INPUT') ?? fields[0])?.focus();
     });
   }
   ngOnDestroy() {
@@ -51,7 +53,7 @@ export class DialogFocus implements AfterViewInit, OnDestroy {
       if (!fields.length) return;
       const first = fields[0],
         last = fields[fields.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
+      if (event.shiftKey && (document.activeElement === first || document.activeElement === this.dialogInitialFocus())) {
         event.preventDefault();
         last.focus();
       } else if (!event.shiftKey && document.activeElement === last) {

@@ -20,27 +20,24 @@ una persona natural adulta o una empresa; los ocupantes son personas naturales.
    El alojamiento no recibe cargos nuevos a pagar durante el check-out.
 7. El check-out conserva la comprobación de saldo cero y deja la habitación
    POR_LIMPIAR. Los saldos históricos deben liquidarse antes de la salida.
-8. El servidor revisa cada minuto las estancias EN_CURSO cuyo checkout ya venció
-   (hora de Lima). Si cada cuenta está liquidada, las finaliza automáticamente y
-   registra la transición a limpieza en auditoría. Las reservas con deuda siguen
-   en curso y se vuelven a evaluar; las CONFIRMADAS no se finalizan sin ingreso.
+8. Al llegar la hora programada en Lima, el detalle de una estancia EN_CURSO
+   sin salida registrada devuelve `salidaPendiente: true`. La habitación sigue
+   ocupada hasta que recepción registra la salida y se guarda su hora real.
 
-La primera revisión ocurre diez segundos después del arranque. Una estancia
-vencida durante una parada se recupera al volver a iniciar la API. La salida real
-guarda la hora del procesamiento; no se retrocede artificialmente al checkout
-programado. GET sigue siendo solo lectura. La lista Angular se actualiza cada
-30 segundos, pausando la actualización mientras hay un diálogo u operación activa.
+GET es de solo lectura. El filtro **Salidas pendientes** muestra las reservas
+con al menos una habitación por revisar. La lista Angular se actualiza cada
+30 segundos mientras no hay un diálogo u operación activa.
 
 El saldo debe ser cero en cada cuenta: un sobrepago en alojamiento no compensa una
 deuda de consumos para autorizar el checkout. Una nueva reserva debe tener su
 salida en el futuro, aunque se admite registrar el ingreso previsto anterior a la
 hora actual para una llegada del mismo día.
 
-Las opciones `app.reservas.checkout-automatico.habilitado`, `intervalo` y
-`espera-inicial` se configuran en `application.yaml`. Sus variables de entorno son
-`CHECKOUT_AUTOMATICO_HABILITADO` (true), `CHECKOUT_AUTOMATICO_INTERVALO` (60000 ms)
-y `CHECKOUT_AUTOMATICO_ESPERA_INICIAL` (10000 ms). El backend debe permanecer en
-ejecución para procesar vencimientos. No se requieren cambios de esquema.
+El cierre automático está desactivado por defecto en `application.yaml`.
+Con `CHECKOUT_AUTOMATICO_HABILITADO=true`, el servidor vuelve a finalizar
+estancias vencidas con saldo liquidado. Ese modo usa
+`CHECKOUT_AUTOMATICO_INTERVALO` (60000 ms) y
+`CHECKOUT_AUTOMATICO_ESPERA_INICIAL` (10000 ms).
 
 ## Contrato
 

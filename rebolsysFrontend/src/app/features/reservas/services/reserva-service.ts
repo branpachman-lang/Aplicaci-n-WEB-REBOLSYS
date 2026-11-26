@@ -71,7 +71,7 @@ export class ReservaService {
               const texto = buscar.trim().toLocaleLowerCase("es");
               const filtradas = lista.filter(
                 (r) =>
-                  (!estado || estadoReserva(r) === estado) &&
+                  this.coincideEstado(r, estado) &&
                   (!texto ||
                     [
                       r.titular,
@@ -101,12 +101,29 @@ export class ReservaService {
   obtener(id: number) {
     return this.http.get<ReservaApi>(`${this.base}/${id}`);
   }
+  private coincideEstado(reserva: ReservaApi, estado: string) {
+    switch (estado) {
+      case '': return true;
+      case 'INGRESO_VENCIDO': return reserva.detalles.some((detalle) => detalle.ingresoVencido);
+      case 'SALIDA_PENDIENTE': return reserva.detalles.some((detalle) => detalle.salidaPendiente);
+      default: return estadoReserva(reserva) === estado;
+    }
+  }
   cuenta(id: number) {
     return this.http.get<CuentaReserva>(`${this.base}/${id}/cuenta`);
   }
   ingresar(idDetalleReserva: number) {
+    return this.cambiarEstadoEstadia(idDetalleReserva, 'ingreso');
+  }
+  registrarSalida(idDetalleReserva: number) {
+    return this.cambiarEstadoEstadia(idDetalleReserva, 'salida');
+  }
+  cancelarEstadia(idDetalleReserva: number) {
+    return this.cambiarEstadoEstadia(idDetalleReserva, 'cancelacion');
+  }
+  private cambiarEstadoEstadia(idDetalleReserva: number, accion: 'ingreso' | 'salida' | 'cancelacion') {
     return this.sesion.cargar().pipe(concatMap(s => this.http.post<DetalleReserva>(
-      `${this.base}/detalles/${idDetalleReserva}/ingreso`, { idUsuario: s.idUsuario },
+      `${this.base}/detalles/${idDetalleReserva}/${accion}`, { idUsuario: s.idUsuario },
     )));
   }
   crear(datos: RegistroReservaApi) {

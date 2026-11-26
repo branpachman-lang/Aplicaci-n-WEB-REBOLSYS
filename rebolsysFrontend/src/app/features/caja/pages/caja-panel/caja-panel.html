@@ -58,7 +58,7 @@
         <thead><tr><th>Fecha y hora</th><th>Concepto</th><th>Tipo</th><th>Importe</th><th>Evidencia</th></tr></thead>
         <tbody>
           @for (m of historial()?.contenido ?? []; track m.idFlujo) {
-            <tr><td>{{ fecha(m.fechaHora) }}</td><td>{{ m.concepto }}</td><td>{{ m.tipo }}</td>
+            <tr><td>{{ fecha(m.fechaHora) }}</td><td class="movimiento-concepto">{{ m.concepto }}</td><td>{{ m.tipo }}</td>
               <td [class.salida]="m.signo < 0">{{ m.signo === 1 ? '+' : '−' }} {{ m.monto | currency:'PEN':'S/ ' }}</td>
               <td>@if (m.evidencia) { <a class="text-button" [href]="m.evidencia" [archivoProtegido]="m.evidencia" [descargarArchivo]="true">Descargar</a> } @else { — }</td>
             </tr>
@@ -104,9 +104,14 @@
             <textarea name="concepto" rows="3" [(ngModel)]="concepto" maxlength="1000" required></textarea>
           </label>
           <div class="field span-2">
-            <label for="caja-adjunto">Adjuntar comprobante <span class="optional">Opcional</span></label>
-            <input #adjunto id="caja-adjunto" type="file" accept="image/jpeg,image/png" (change)="adjuntar($event)" />
-            <small class="muted">Foto JPG o PNG, hasta 5 MB.</small>
+            <span>Adjuntar comprobante <span class="optional">Opcional</span></span>
+            <input #adjunto type="file" accept="image/jpeg,image/png" hidden (change)="adjuntar($event)" />
+            <div class="caja-adjunto">
+              <button class="button small" type="button" aria-label="Elegir archivo para el comprobante"
+                aria-describedby="caja-adjunto-ayuda" (click)="adjunto.click()">Elegir archivo</button>
+              <span class="muted" role="status">{{ archivo?.name ?? (archivoInvalido ? 'Archivo no válido' : 'Sin archivo seleccionado') }}</span>
+            </div>
+            <small id="caja-adjunto-ayuda" class="muted">Foto JPG o PNG, hasta 5 MB.</small>
             @if (archivo || archivoInvalido) { <button class="button small" type="button" (click)="quitarAdjunto(adjunto)">Quitar adjunto</button> }
           </div>
         </fieldset>
@@ -126,22 +131,32 @@
 @if (cierre(); as paso) {
   @if (turno(); as t) {
     <div class="modal-backdrop">
-      <section appDialog (dialogEscape)="cerrarDialogo()" class="modal wide-modal modal-arqueo" role="dialog" aria-modal="true" aria-labelledby="titulo-cierre">
-        <h2 id="titulo-cierre">{{ paso === 'conteo' ? 'Arqueo de caja' : 'Confirmar cierre' }}</h2>
+      <section appDialog [dialogInitialFocus]="tituloCierre" (dialogEscape)="cerrarDialogo()"
+        class="modal wide-modal modal-arqueo" role="dialog" aria-modal="true" aria-labelledby="titulo-cierre">
+        <h2 #tituloCierre id="titulo-cierre" tabindex="-1">{{ paso === 'conteo' ? 'Arqueo de caja' : 'Confirmar cierre' }}</h2>
         <p class="muted">Turno #{{ t.idTurno }} · Apertura {{ fecha(t.fechaApertura) }} · Fondo {{ t.montoBase | currency:'PEN':'S/ ' }}</p>
         <div class="table-scroll">
-          <table>
-            <thead><tr><th>Forma de pago</th><th>Esperado</th><th>Declarado</th><th>Diferencia</th></tr></thead>
-            <tbody>@for (a of t.arqueos; track a.idFormaPago) {
+          <table class="tabla-arqueo" role="table" aria-label="Importes por forma de pago">
+            <thead role="rowgroup"><tr role="row">
+              <th scope="col" role="columnheader">Forma de pago</th>
+              <th scope="col" role="columnheader">Esperado</th>
+              <th scope="col" role="columnheader">Declarado</th>
+              <th scope="col" role="columnheader">Diferencia</th>
+            </tr></thead>
+            <tbody role="rowgroup">@for (a of t.arqueos; track a.idFormaPago) {
               @let valor = declaraciones()[a.idFormaPago];
               @let dif = diferencia(a);
-              <tr><td>{{ a.formaPago }}</td><td>{{ a.montoCalculado | currency:'PEN':'S/ ' }}</td>
-                <td>@if (paso === 'conteo') {
+              <tr role="row">
+                <th scope="row" role="rowheader">{{ a.formaPago }}</th>
+                <td role="cell"><span class="arqueo-etiqueta" aria-hidden="true">Esperado</span>{{ a.montoCalculado | currency:'PEN':'S/ ' }}</td>
+                <td role="cell"><span class="arqueo-etiqueta" aria-hidden="true">Declarado</span>
+                  @if (paso === 'conteo') {
                   <input type="number" min="0" max="99999999.99" step="0.01" inputmode="decimal" [attr.aria-label]="'Monto declarado en ' + a.formaPago"
                     [ngModel]="valor" (ngModelChange)="declarar(a.idFormaPago, $event)" [disabled]="ocupado()" required />
                   @if (valor != null && !importeValido(valor, 99999999.99)) { <small class="salida">Ingresa un importe válido con hasta dos decimales.</small> }
                 } @else { {{ valor | currency:'PEN':'S/ ' }} }</td>
-                <td [class.salida]="dif !== null && dif < 0">
+                <td role="cell" [class.salida]="dif !== null && dif < 0">
+                  <span class="arqueo-etiqueta" aria-hidden="true">Diferencia</span>
                   @if (dif === null) { — } @else {
                     {{ dif > 0 ? '+' : '' }}{{ dif | currency:'PEN':'S/ ' }}
                     <small>{{ dif < 0 ? 'Faltante' : dif > 0 ? 'Sobrante' : 'Cuadra' }}</small>
@@ -160,9 +175,11 @@
         <div class="modal-actions">
           <button class="button" type="button" [disabled]="ocupado()" (click)="cerrarDialogo()">Cancelar</button>
           @if (paso === 'conteo') {
-            <button class="button primary" type="button" [disabled]="ocupado() || !declaracionesValidas()" (click)="cierre.set('resumen')">Revisar cierre</button>
+            <button class="button primary" type="button" [disabled]="ocupado() || !declaracionesValidas()"
+              (click)="cambiarPasoCierre('resumen', tituloCierre)">Revisar cierre</button>
           } @else {
-            <button class="button" type="button" [disabled]="ocupado() || cierreIncierto()" (click)="cierre.set('conteo')">Corregir montos</button>
+            <button class="button" type="button" [disabled]="ocupado() || cierreIncierto()"
+              (click)="cambiarPasoCierre('conteo', tituloCierre)">Corregir montos</button>
             <button class="button primary" type="button" [disabled]="ocupado()" (click)="confirmarCierre()">
               {{ ocupado() ? 'Procesando…' : cierreIncierto() ? 'Consultar estado' : 'Confirmar cierre' }}
             </button>

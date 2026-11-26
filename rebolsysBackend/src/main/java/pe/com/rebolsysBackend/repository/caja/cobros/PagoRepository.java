@@ -10,6 +10,7 @@ import pe.com.rebolsysBackend.entity.Pago;
 public interface PagoRepository extends JpaRepository<Pago, Long> {
     List<Pago> findByComprobanteIdComprobante(Long id);
     Optional<Pago> findByClaveIdempotencia(String clave);
+    Optional<Pago> findFirstByFormaPagoIdFormaPagoAndNumeroOperacionIgnoreCaseOrderByIdPago(Long idFormaPago, String numeroOperacion);
     List<Pago> findByClaveIdempotenciaIn(java.util.Collection<String> claves);
 
     interface ImporteForma {
