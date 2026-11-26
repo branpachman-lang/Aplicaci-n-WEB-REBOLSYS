@@ -30,9 +30,9 @@ import { ClienteDatos } from "../../../clientes/models/cliente.model";
 import { tipoDocumento } from '../../../clientes/utils/persona-validacion';
 import { numeroComprobante } from '../../../../core/utils/numero-comprobante';
 import { erroresDeValidacion } from '../../../../core/utils/http-error';
-import { CuentaDocumento } from "../../models/reserva-api.model";
+import { CuentaDocumento, ReservaApi } from '../../models/reserva-api.model';
 import { Emision, PrepararEmision } from "../../models/emision.model";
-import { ReservaResumen, ReservaService } from "../../services/reserva-service";
+import { ReservaService } from "../../services/reserva-service";
 import { ComprobanteService } from "../../services/comprobante-service";
 
 @Component({
@@ -42,7 +42,7 @@ import { ComprobanteService } from "../../services/comprobante-service";
   styleUrl: "./comprobante-dialog.css",
 })
 export class ComprobanteDialog implements OnInit {
-  reserva = input<ReservaResumen | null>(null);
+  reserva = input<ReservaApi | null>(null);
   venta = input<Venta | null>(null);
   private readonly elemento = inject(ElementRef<HTMLElement>);
   private readonly impresion = inject(ImpresionService);

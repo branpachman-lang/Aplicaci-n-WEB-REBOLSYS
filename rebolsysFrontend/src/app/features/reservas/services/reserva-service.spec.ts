@@ -125,13 +125,29 @@ describe('Contrato de reservas con el backend actual', () => {
     expect(servicio.pagosPendientes()).toEqual([]);
   });
 
-  it('filtra todas las páginas y consulta únicamente la cuenta de la reserva coincidente', () => {
+  it('carga una página de 20 reservas y sus saldos con una sola petición', () => {
+    const next = vi.fn();
+    servicio.listar(0, 20).subscribe(next);
+    const req = http.expectOne((r) => r.url === base + '/reservas');
+    expect(req.request.params.get('tamanio')).toBe('20');
+    expect(req.request.params.get('incluirCuenta')).toBe('true');
+    const contenido = Array.from({ length: 20 }, (_, id) => ({ idReserva: id + 1, cuenta: { saldoPendiente: 118 } }));
+    req.flush({ contenido, pagina: 0, tamanio: 20, totalElementos: 20, totalPaginas: 1, ultima: true });
+    http.expectNone((r) => r.url.endsWith('/cuenta'));
+    expect(next.mock.calls[0][0].contenido).toEqual(contenido);
+  });
+
+  it('usa los importes del listado filtrado sin consultar cuentas individuales', () => {
     const next = vi.fn();
     servicio.listar(0, 10, 'R11').subscribe(next);
-    const reserva = (id: number) => ({ idReserva: id, titular: 'Prueba', detalles: [{ numeroCuarto: '101', estadoDetalle: 'CONFIRMADA' }] });
-    http.expectOne((r) => r.url === base + '/reservas' && r.params.get('pagina') === '0').flush({ contenido: [reserva(10)], pagina: 0, ultima: false });
-    http.expectOne((r) => r.url === base + '/reservas' && r.params.get('pagina') === '1').flush({ contenido: [reserva(11)], pagina: 1, ultima: true });
-    http.expectOne(base + '/reservas/11/cuenta').flush({ idReserva: 11, saldoPendiente: 118 });
+    const reserva = (id: number) => ({ idReserva: id, titular: 'Prueba',
+      detalles: [{ numeroCuarto: '101', estadoDetalle: 'CONFIRMADA' }], cuenta: { saldoPendiente: 118 } });
+    for (const pagina of [0, 1]) {
+      const req = http.expectOne((r) => r.url === base + '/reservas' && r.params.get('pagina') === String(pagina));
+      expect(req.request.params.get('incluirCuenta')).toBe('true');
+      req.flush({ contenido: [reserva(10 + pagina)], pagina, ultima: pagina === 1 });
+    }
+    http.expectNone((r) => r.url.endsWith('/cuenta'));
     expect(next.mock.calls[0][0]).toMatchObject({ totalElementos: 1, contenido: [{ idReserva: 11, cuenta: { saldoPendiente: 118 } }] });
   });
 });

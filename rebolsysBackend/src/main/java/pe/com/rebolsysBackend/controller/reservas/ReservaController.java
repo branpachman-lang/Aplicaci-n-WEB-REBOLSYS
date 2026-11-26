@@ -3,6 +3,7 @@ package pe.com.rebolsysBackend.controller.reservas;
 import org.springframework.security.access.prepost.PreAuthorize;
 import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.*;
 import lombok.RequiredArgsConstructor;
@@ -41,8 +42,10 @@ public class ReservaController {
   @GetMapping
   public PaginaResponseDTO<ReservaRespuestaDTO> listar(
       @RequestParam(defaultValue = "0") @Min(0) int pagina,
-      @RequestParam(defaultValue = "10") @Min(1) @Max(100) int tamanio) {
-    return reservaservice.listar(pagina, tamanio);
+      @RequestParam(defaultValue = "10") @Min(1) @Max(100) int tamanio,
+      @Parameter(description = "Incluir importes resumidos de la cuenta por reserva")
+      @RequestParam(defaultValue = "false") boolean incluirCuenta) {
+    return reservaservice.listar(pagina, tamanio, incluirCuenta);
   }
 
   @PreAuthorize("hasRole('GERENTE') or hasAuthority('RESERVAS:REGISTRAR_INGRESO')")

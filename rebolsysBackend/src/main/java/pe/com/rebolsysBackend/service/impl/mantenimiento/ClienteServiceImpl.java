@@ -1,9 +1,14 @@
 package pe.com.rebolsysBackend.service.impl.mantenimiento;
 
+import java.util.List;
+import java.util.Locale;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pe.com.rebolsysBackend.service.impl.comun.ReglasPropuesta;
+import pe.com.rebolsysBackend.dto.mantenimiento.ClienteDetalleDTO;
+import pe.com.rebolsysBackend.dto.mantenimiento.ClienteGuardarDTO;
 import pe.com.rebolsysBackend.dto.mantenimiento.ClienteRegistroRequestDTO;
 import pe.com.rebolsysBackend.dto.mantenimiento.ClienteResumenResponseDTO;
 import pe.com.rebolsysBackend.entity.Huesped;
@@ -44,6 +49,59 @@ public class ClienteServiceImpl implements ClienteService {
     return new ClienteResumenResponseDTO(
         perfil.getEsCliente() == 1 ? perfil.getIdPerfil() : null,
         datos(perfil));
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public List<ClienteResumenResponseDTO> buscarTitulares(
+      boolean empresa, Long tipo, String numero, String nombre) {
+    var documento = limpiar(numero);
+    var identidad = limpiar(nombre);
+    ReglasPropuesta.exigir(
+        documento != null || identidad != null, "Ingresa el nombre o el número de documento");
+    return perfiles.buscarTitulares(
+            empresa,
+            tipo,
+            documento == null ? null : documento.toUpperCase(Locale.ROOT),
+            identidad == null ? null : ReglasPropuesta.patronBusqueda(identidad),
+            PageRequest.of(0, 21))
+        .stream()
+        .map(perfil -> new ClienteResumenResponseDTO(perfil.getIdPerfil(), datos(perfil)))
+        .toList();
+  }
+
+  @Override
+  @Transactional
+  public ClienteDetalleDTO registrarTitular(ClienteRegistroRequestDTO solicitud) {
+    var tipo = tiposDocumento.findById(solicitud.idTipoDocumento())
+        .orElseThrow(() -> new ReglaNegocioException("Selecciona un tipo de documento válido"));
+    boolean empresa = Boolean.TRUE.equals(solicitud.empresa());
+    String codigo = tipo.getCodigoSunat();
+    ReglasPropuesta.exigir(
+        empresa ? "6".equals(codigo) : "1".equals(codigo) || "4".equals(codigo) || "7".equals(codigo),
+        empresa ? "La persona jurídica debe identificarse con RUC"
+            : "Selecciona DNI, carné de extranjería o pasaporte");
+    ReglasPropuesta.exigir(
+        empresa || (solicitud.fechaNacimiento() != null
+            && !solicitud.fechaNacimiento().plusYears(18).isAfter(ReglasPropuesta.ahora().toLocalDate())),
+        "El titular de la reserva debe tener al menos 18 años");
+
+    var numero = solicitud.numeroDocumento().trim().toUpperCase(Locale.ROOT);
+    var existente = perfiles
+        .findFirstByTipoDocumentoIdTipoDocumentoAndNumeroDocumentoIgnoreCaseOrderByIdPerfil(
+            solicitud.idTipoDocumento(), numero);
+    if (existente.isPresent()) {
+      var perfil = existente.get();
+      ReglasPropuesta.exigir(empresa == juridicas.existsById(perfil.getIdPerfil()),
+          "El documento ya corresponde a otro tipo de persona");
+      if (perfil.getEsCliente() == 1) return obtener(perfil.getIdPerfil());
+      numero = perfil.getNumeroDocumento();
+    }
+    var datos = new ClienteRegistroRequestDTO(
+        solicitud.idTipoDocumento(), numero, solicitud.empresa(), solicitud.nombres(),
+        solicitud.apellidos(), solicitud.fechaNacimiento(), solicitud.razonSocial(),
+        solicitud.direccionFiscal(), solicitud.correo(), solicitud.telefono());
+    return guardar(null, new ClienteGuardarDTO(datos, null));
   }
 
   @Override

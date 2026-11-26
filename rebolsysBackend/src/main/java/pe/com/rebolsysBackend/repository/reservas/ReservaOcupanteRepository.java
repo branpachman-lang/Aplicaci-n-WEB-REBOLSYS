@@ -10,13 +10,10 @@ public interface ReservaOcupanteRepository extends JpaRepository<ReservaOcupante
   List<ReservaOcupante> findByDetalleReservaIdDetalleReservaOrderByIdReservaOcupante(Long id);
 
   @Query("""
-      select o from ReservaOcupante o
-      join fetch o.huesped h
-      join fetch h.perfil
-      where o.detalleReserva.idDetalleReserva in :ids
-      order by o.idReservaOcupante
+      select o from ReservaOcupante o join fetch o.huesped h join fetch h.perfil
+      where o.detalleReserva.reserva.idReserva in :ids order by o.idReservaOcupante
       """)
-  List<ReservaOcupante> findConHuespedPorDetalles(@Param("ids") Collection<Long> ids);
+  List<ReservaOcupante> ocupantesDeReservas(Collection<Long> ids);
 
   @Query(
       "select o from ReservaOcupante o where o.detalleReserva.habitacion.idHabitacion=:id and"

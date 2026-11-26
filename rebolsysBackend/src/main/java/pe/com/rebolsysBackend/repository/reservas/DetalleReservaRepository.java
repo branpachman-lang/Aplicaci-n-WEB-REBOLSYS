@@ -19,6 +19,12 @@ public interface DetalleReservaRepository extends JpaRepository<DetalleReserva, 
 
   List<DetalleReserva> findByReservaIdReservaOrderByIdDetalleReserva(Long id);
 
+  @Query("""
+      select d from DetalleReserva d join fetch d.habitacion
+      where d.reserva.idReserva in :ids order by d.idDetalleReserva
+      """)
+  List<DetalleReserva> detallesDeReservas(Collection<Long> ids);
+
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query("select d from DetalleReserva d where d.idDetalleReserva=:id")
   Optional<DetalleReserva> bloquear(@Param("id") Long id);
@@ -49,13 +55,6 @@ public interface DetalleReservaRepository extends JpaRepository<DetalleReserva, 
       where d.estadoDetalle = pe.com.rebolsysBackend.enums.EstadoReserva.EN_CURSO
       """)
   Set<Long> habitacionesEnCurso();
-
-  @Query("""
-      select d from DetalleReserva d join fetch d.habitacion
-      where d.reserva.idReserva in :ids
-      order by d.idDetalleReserva
-      """)
-  List<DetalleReserva> findConHabitacionPorReservas(@Param("ids") Collection<Long> ids);
 
   List<DetalleReserva> findByHabitacionIdHabitacion(Long id);
 

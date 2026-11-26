@@ -15,3 +15,7 @@ export interface Cliente {
   idCliente: number | null;
   datos: ClienteDatos;
 }
+
+export function nombreCliente(datos: ClienteDatos): string {
+  return datos.empresa ? datos.razonSocial ?? '' : [datos.nombres, datos.apellidos].filter(Boolean).join(' ');
+}

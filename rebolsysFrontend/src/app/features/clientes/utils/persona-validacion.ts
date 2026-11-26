@@ -1,6 +1,22 @@
 import { AbstractControl, ValidationErrors } from '@angular/forms';
 import { Catalogo } from '../../../core/models/catalogo.model';
 
+const formatoFechaLima = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' });
+
+export function documentosTitular(documentos: Catalogo[], empresa: boolean) {
+  return documentos.filter(({ codigoSunat }) =>
+    empresa ? codigoSunat === '6' : ['1', '4', '7'].some((codigo) => codigoSunat === codigo),
+  );
+}
+
+export function fechaMaximaTitular(referencia = formatoFechaLima.format(new Date())) {
+  const [anio, mes, dia] = referencia.split('-').map(Number);
+  const ultimoDiaActual = new Date(Date.UTC(anio, mes, 0)).getUTCDate();
+  const ultimoDiaNacimiento = new Date(Date.UTC(anio - 18, mes, 0)).getUTCDate();
+  const diaLimite = dia === ultimoDiaActual ? ultimoDiaNacimiento : Math.min(dia, ultimoDiaNacimiento);
+  return `${anio - 18}-${String(mes).padStart(2, '0')}-${String(diaLimite).padStart(2, '0')}`;
+}
+
 export function tipoDocumento(
   documento: Catalogo | undefined,
 ): 'DNI' | 'RUC' | 'OTRO' {
@@ -50,7 +66,5 @@ export function titularAdulto(
   control: AbstractControl,
 ): ValidationErrors | null {
   if (!control.value) return null;
-  const fecha = new Date();
-  const referencia = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}-${String(fecha.getDate()).padStart(2, '0')}`;
-  return esAdulto(control.value, referencia) ? null : { titularMenor: true };
+  return esAdulto(control.value, formatoFechaLima.format(new Date())) ? null : { titularMenor: true };
 }

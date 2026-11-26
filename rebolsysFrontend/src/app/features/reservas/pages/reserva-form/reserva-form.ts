@@ -3,7 +3,8 @@ import { generarClaveOperacion } from '../../../../core/utils/clave-operacion';
 import { DialogFocus } from "../../../../shared/directives/dialog-focus";
 import { NotificacionService } from "../../../../core/services/notificacion.service";
 import { Catalogos } from "../../../../core/models/catalogo.model";
-import { ClienteDatos } from "../../../clientes/models/cliente.model";
+import { Cliente, ClienteDatos, nombreCliente } from "../../../clientes/models/cliente.model";
+import { ClienteBuscador } from '../../../clientes/components/cliente-buscador/cliente-buscador';
 import { Habitacion } from "../../../habitaciones/models/habitacion.model";
 import { Huesped, Registro, Estancia } from "../../models/reserva.model";
 import { fechaLocal, noches } from "../../../../core/utils/fechas";
@@ -48,6 +49,8 @@ import {
 import { DocumentoConsultaService } from "../../../clientes/services/documento-consulta-service";
 import {
   tipoDocumento,
+  documentosTitular,
+  fechaMaximaTitular,
   fechaNacimientoValida,
   titularAdulto,
   esAdulto,
@@ -63,6 +66,7 @@ import {
     Icon,
     PagoModal,
     DialogFocus,
+    ClienteBuscador,
   ],
   templateUrl: "./reserva-form.html",
   styleUrl: "./reserva-form.css",
@@ -97,6 +101,12 @@ export class ReservaForm implements OnInit {
   private clienteClave = "";
   buscando = signal(false);
   clienteMensaje = signal("");
+  clienteSeleccionado = signal<Cliente | null>(null);
+  clienteModal = signal<'registro' | 'nacimiento' | null>(null);
+  guardandoCliente = signal(false);
+  clienteError = signal('');
+  readonly nombreCliente = nombreCliente;
+  readonly fechaMaximaTitular = fechaMaximaTitular;
   pagoAbierto = signal(false);
   huespedEn = signal<number | null>(null);
   guestMensaje = signal("");
@@ -127,7 +137,7 @@ export class ReservaForm implements OnInit {
       apellidos: [""],
       fechaNacimiento: [""],
       razonSocial: [""],
-      direccionFiscal: [""],
+      direccionFiscal: ["", Validators.maxLength(200)],
       correo: ["", [Validators.email, Validators.maxLength(100)]],
       telefono: ["", Validators.maxLength(15)],
     }),
@@ -320,14 +330,7 @@ export class ReservaForm implements OnInit {
     this.cliente
       .get("idTipoDocumento")!
       .valueChanges.pipe(takeUntilDestroyed(this.destroy))
-      .subscribe(() => {
-        {
-          const tipo = this.tipoDocumentoGrupo(this.cliente);
-          if (tipo === "DNI")
-            this.cliente.get("empresa")!.setValue(false, { emitEvent: false });
-        }
-        this.validarCliente();
-      });
+      .subscribe(() => this.validarDocumento(this.cliente));
     this.guestForm
       .get("idTipoDocumento")!
       .valueChanges.pipe(takeUntilDestroyed(this.destroy))
@@ -336,6 +339,7 @@ export class ReservaForm implements OnInit {
       .pipe(takeUntilDestroyed(this.destroy))
       .subscribe(() => {
         if (
+          this.clienteModal() ||
           !this.clienteClave ||
           this.esEmpresa() ||
           this.claveClienteActual() !== this.clienteClave
@@ -397,7 +401,7 @@ export class ReservaForm implements OnInit {
             }
           }
           this.cliente.patchValue({
-            idTipoDocumento: catalogos.documentos[0]?.id || null,
+            idTipoDocumento: this.documentosCliente()[0]?.id ?? null,
           });
           this.validarCliente();
           this.cargando.set(false);
@@ -412,6 +416,70 @@ export class ReservaForm implements OnInit {
   }
   esEmpresa() {
     return !!this.cliente.get("empresa")?.value;
+  }
+  documentosCliente() {
+    return documentosTitular(this.catalogos()?.documentos ?? [], this.esEmpresa());
+  }
+  cambiarTipoCliente() {
+    this.consultaClienteId++;
+    this.buscando.set(false);
+    this.clienteMensaje.set('');
+    this.clienteError.set('');
+    this.prepararCliente({ empresa: this.esEmpresa() });
+  }
+  abrirRegistroCliente(datos: Pick<ClienteDatos, 'empresa' | 'idTipoDocumento' | 'numeroDocumento'>) {
+    this.clienteModal.set('registro');
+    this.prepararCliente(datos);
+  }
+  seleccionarCliente(cliente: Cliente) {
+    this.clienteModal.set(cliente.datos.empresa || cliente.datos.fechaNacimiento ? null : 'nacimiento');
+    this.clienteSeleccionado.set(cliente);
+    this.prepararCliente(cliente.datos);
+  }
+  cerrarClienteModal() {
+    if (this.guardandoCliente()) return;
+    this.consultaClienteId++;
+    this.buscando.set(false);
+    this.clienteModal.set(null);
+    this.prepararCliente(this.clienteSeleccionado()?.datos);
+  }
+  private prepararCliente(datos?: Partial<ClienteDatos>) {
+    this.clienteMensaje.set('');
+    this.clienteError.set('');
+    this.cliente.reset({
+      idTipoDocumento: null, numeroDocumento: '', empresa: false,
+      nombres: '', apellidos: '', fechaNacimiento: '', razonSocial: '',
+      direccionFiscal: '', correo: '', telefono: '',
+      ...datos,
+    });
+    this.validarCliente();
+  }
+  guardarClienteModal() {
+    if (this.guardandoCliente() || this.buscando() || !this.clienteModal()) return;
+    this.cliente.markAllAsTouched();
+    this.clienteError.set('');
+    const datos = this.datosCliente();
+    if (!this.documentosCliente().some((doc) => doc.id === datos.idTipoDocumento)) {
+      this.clienteError.set('Selecciona un tipo de documento válido.');
+      return;
+    }
+    if (this.cliente.invalid) return;
+    const seleccionado = this.clienteSeleccionado();
+    const solicitud = this.clienteModal() === 'nacimiento'
+      ? this.clienteService.completarNacimiento(seleccionado!.idCliente!, datos.fechaNacimiento!)
+      : this.clienteService.registrarTitular(datos);
+    this.guardandoCliente.set(true);
+    solicitud.pipe(takeUntilDestroyed(this.destroy)).subscribe({
+      next: ({ idCliente, persona }) => {
+        this.guardandoCliente.set(false);
+        this.clienteModal.set(null);
+        this.seleccionarCliente({ idCliente, datos: persona });
+      },
+      error: (e) => {
+        this.guardandoCliente.set(false);
+        this.clienteError.set(mensajeError(e));
+      },
+    });
   }
   actualizarDisponibilidad() {
     if (this.registroIniciado()) return;
@@ -458,14 +526,10 @@ export class ReservaForm implements OnInit {
       });
   }
   validarCliente() {
-    if (this.esEmpresa() && this.tipoDocumentoGrupo(this.cliente) === "DNI") {
-      const ruc = this.catalogos()?.documentos.find(
-        (documento) => tipoDocumento(documento) === "RUC",
-      );
-      if (ruc)
-        this.cliente
-          .get("idTipoDocumento")!
-          .setValue(ruc.id, { emitEvent: false });
+    const documentos = this.documentosCliente();
+    const tipo = this.cliente.get('idTipoDocumento')!;
+    if (!documentos.some((documento) => documento.id === tipo.value)) {
+      tipo.setValue(documentos[0]?.id ?? null, { emitEvent: false });
     }
     this.validarDocumento(this.cliente);
     const nacimiento = this.cliente.get("fechaNacimiento")!;
@@ -481,7 +545,7 @@ export class ReservaForm implements OnInit {
         .setValidators(
           this.esEmpresa()
             ? [Validators.maxLength(100)]
-            : [Validators.required, Validators.maxLength(100)],
+            : [Validators.required, Validators.pattern(/\S/), Validators.maxLength(100)],
         );
       this.cliente.get(name)!.updateValueAndValidity();
     }
@@ -489,7 +553,7 @@ export class ReservaForm implements OnInit {
       .get("razonSocial")!
       .setValidators(
         this.esEmpresa()
-          ? [Validators.required, Validators.maxLength(250)]
+          ? [Validators.required, Validators.pattern(/\S/), Validators.maxLength(250)]
           : [Validators.maxLength(250)],
       );
     this.cliente.get("razonSocial")!.updateValueAndValidity();
@@ -550,7 +614,7 @@ export class ReservaForm implements OnInit {
       nombres: 'Los nombres', apellidos: 'Los apellidos', razonSocial: 'La razón social',
       direccionFiscal: 'La dirección fiscal', correo: 'El correo electrónico', telefono: 'El teléfono',
     };
-    if (control.hasError('required')) {
+    if (control.hasError('required') || control.hasError('pattern')) {
       const obligatorios: Record<string, string> = {
         idTipoDocumento: 'Selecciona el tipo de documento.', nombres: 'Ingresa los nombres.',
         apellidos: 'Ingresa los apellidos.', razonSocial: 'Ingresa la razón social.',
@@ -601,6 +665,7 @@ export class ReservaForm implements OnInit {
     return this.clienteService.buscarPorDocumento(tipoId, numero).pipe(
       map((cliente) => ({
         datos: cliente.datos as Partial<ClienteDatos>,
+        cliente,
         origen: "local",
       })),
       catchError((error) => {
@@ -620,6 +685,7 @@ export class ReservaForm implements OnInit {
                   direccionFiscal: documento.direccionFiscal,
                 }) as Partial<ClienteDatos>,
             origen: "apisperu",
+            cliente: null,
           })),
         );
       }),
@@ -641,6 +707,7 @@ export class ReservaForm implements OnInit {
     const numero = numeroDocumento.trim();
     this.buscando.set(true);
     this.clienteMensaje.set("");
+    this.clienteError.set('');
     this.consultarPersona(idTipoDocumento, numero)
       .pipe(takeUntilDestroyed(this.destroy))
       .subscribe({
@@ -653,11 +720,15 @@ export class ReservaForm implements OnInit {
             actual.numeroDocumento.trim() !== numero
           )
             return;
-          const datos = { ...resultado.datos };
-          if (resultado.origen !== 'local' && this.tipoDocumentoGrupo(this.cliente) === 'RUC' && !this.esEmpresa()) {
-            delete datos.empresa; delete datos.razonSocial;
+          if (resultado.datos.empresa !== this.esEmpresa()) {
+            this.clienteError.set('El documento ya corresponde a otro tipo de persona.');
+            return;
           }
-          this.cliente.patchValue(datos);
+          if (this.clienteModal() === 'registro' && resultado.cliente?.idCliente) {
+            this.seleccionarCliente(resultado.cliente);
+            return;
+          }
+          this.cliente.patchValue(resultado.datos);
           this.validarCliente();
           this.clienteMensaje.set(
             resultado.origen === "local"
@@ -666,10 +737,11 @@ export class ReservaForm implements OnInit {
           );
         },
         error: (error) => {
-          if (id === this.consultaClienteId) {
-            this.buscando.set(false);
-            this.alertar(mensajeError(error));
-          }
+          if (id !== this.consultaClienteId) return;
+          this.buscando.set(false);
+          const actual = this.cliente.getRawValue();
+          if (actual.idTipoDocumento === idTipoDocumento && (actual.numeroDocumento ?? '').trim() === numero)
+            this.clienteError.set(mensajeError(error));
         },
       });
   }
@@ -987,7 +1059,7 @@ export class ReservaForm implements OnInit {
       !errorIdentidadesReserva(titular, [anterior.persona]);
     const persona: ClienteDatos = {
       idTipoDocumento: v.idTipoDocumento,
-      numeroDocumento: v.numeroDocumento.trim(),
+      numeroDocumento: (v.numeroDocumento ?? '').trim(),
       empresa: false,
       nombres: v.nombres.trim(),
       apellidos: v.apellidos.trim(),
@@ -1094,6 +1166,12 @@ export class ReservaForm implements OnInit {
   }
   revisar() {
     if (this.guardando() || this.registroIniciado()) return;
+    if (this.clienteModal()) return;
+    if (!this.clienteSeleccionado()) {
+      this.alertar('Busca y selecciona al cliente, o regístralo antes de continuar.');
+      this.form.markAllAsTouched();
+      return;
+    }
     if (this.comprobando() || this.errorDisponibilidad()) {
       this.alertar(
         this.errorDisponibilidad() ||
