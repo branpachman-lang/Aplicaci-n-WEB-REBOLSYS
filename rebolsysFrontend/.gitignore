@@ -54,11 +54,11 @@ proxy.qa.json
 **/*.spec.ts
 /tsconfig.spec.json
 # Las pruebas de autenticación JWT forman parte del contrato versionado.
-!src/app/core/services/token-service.spec.ts
-!src/app/core/services/proteccion-sesion-interceptor.spec.ts
-!src/app/core/services/sesion-service.spec.ts
-!src/app/core/services/sesion-guard.spec.ts
-!src/app/core/services/permisos-ui.spec.ts
+!src/app/core/auth/token-service.spec.ts
+!src/app/core/interceptors/proteccion-sesion-interceptor.spec.ts
+!src/app/core/auth/sesion-service.spec.ts
+!src/app/core/guards/sesion-guard.spec.ts
+!src/app/core/auth/permisos-ui.spec.ts
 !src/app/shared/directives/archivo-protegido.spec.ts
 !tsconfig.spec.json
 !src/app/features/ventas/services/cobro-inmediato.spec.ts
@@ -70,8 +70,10 @@ proxy.qa.json
 !src/app/features/reservas/components/comprobante-dialog/comprobante-dialog.spec.ts
 !src/app/features/reservas/pages/reserva-list/reserva-list.spec.ts
 !src/app/features/reservas/services/reserva-service.spec.ts
-!src/app/features/caja/caja-panel.spec.ts
-!src/app/features/seguridad/acceso.spec.ts
+!src/app/features/caja/pages/caja-panel/caja-panel.spec.ts
+!src/app/features/accesos/pages/acceso/acceso.spec.ts
+!src/app/features/limpieza/pages/limpieza-panel/limpieza-panel.spec.ts
+!src/app/features/reportes/pages/reportes/reportes.spec.ts
 !src/app/core/utils/http-error.spec.ts
 !src/app/shared/components/aviso-sesion/aviso-sesion.spec.ts
 !src/app/layout/header/header.spec.ts

@@ -6,7 +6,7 @@ import { CatalogoService } from '../../../../core/services/catalogo-service';
 import { Catalogos } from '../../../../core/models/catalogo.model';
 import { generarClaveOperacion } from '../../../../core/utils/clave-operacion';
 import { VentaCarrito } from "../../components/venta-carrito/venta-carrito";
-import { PermisosUi } from "../../../../core/services/permisos-ui";
+import { PermisosUi } from "../../../../core/auth/permisos-ui";
 import {
   Component,
   DestroyRef,
@@ -21,11 +21,11 @@ import { FormsModule } from "@angular/forms";
 import { CurrencyPipe, DatePipe } from "@angular/common";
 import { RouterLink, Router } from "@angular/router";
 import { catchError, forkJoin, of } from "rxjs";
-import { ProductoService } from "../../../productos/services/producto-service";
-import { CategoriaService } from "../../../categorias/services/categoria-service";
+import { ProductoService } from "../../../mantenimiento/services/producto-service";
+import { CategoriaService } from "../../../mantenimiento/services/categoria-service";
 import { VentaService } from "../../services/venta-service";
-import { Producto } from "../../../productos/models/producto.model";
-import { Categoria } from "../../../categorias/models/categoria.model";
+import { Producto } from "../../../mantenimiento/models/producto.model";
+import { Categoria } from "../../../mantenimiento/models/categoria.model";
 import { Venta, VentaRequest, ReservaVenta } from "../../models/venta.model";
 import {
   CobroReserva,

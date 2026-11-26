@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Directive, ElementRef, effect, inject, input } from '@angular/core';
-import { esUrlApi } from '../../core/services/token-service';
+import { esUrlApi } from '../../core/auth/token-service';
 
 @Directive({ selector: 'img[imagenProtegida]' })
 export class ImagenProtegida {

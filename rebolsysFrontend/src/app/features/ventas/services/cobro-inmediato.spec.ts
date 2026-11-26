@@ -7,7 +7,7 @@ import { VentaService } from './venta-service';
 import { VentaRequest } from '../models/venta.model';
 import { ReservaService } from '../../reservas/services/reserva-service';
 import { RegistroReservaApi } from '../../reservas/models/reserva-api.model';
-import { SesionService, SesionActual } from '../../../core/services/sesion-service';
+import { SesionService, SesionActual } from '../../../core/auth/sesion-service';
 import { environment } from '../../../../environments/environment';
 
 describe('Registro con cobro inmediato', () => {

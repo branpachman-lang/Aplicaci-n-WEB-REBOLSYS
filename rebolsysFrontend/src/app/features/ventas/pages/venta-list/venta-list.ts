@@ -1,6 +1,6 @@
 import { notificarCambios } from '../../../../core/services/avisos-formulario';
 import { Component, OnInit, inject, signal } from "@angular/core";
-import { PermisosUi } from "../../../../core/services/permisos-ui";
+import { PermisosUi } from "../../../../core/auth/permisos-ui";
 import { CurrencyPipe, DatePipe } from "@angular/common";
 import { ActivatedRoute, Router, RouterLink } from "@angular/router";
 import { VentaService } from "../../services/venta-service";

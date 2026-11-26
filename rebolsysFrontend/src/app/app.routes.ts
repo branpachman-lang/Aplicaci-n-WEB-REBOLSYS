@@ -1,12 +1,12 @@
 import { Routes } from "@angular/router";
 import { MainLayout } from "./layout/main-layout/main-layout";
-import { sesionGuard } from "./core/services/sesion-guard";
+import { sesionGuard } from "./core/guards/sesion-guard";
 
 export const routes: Routes = [
   { path: "login", title: "Iniciar sesión · REBOLSYS", loadComponent: () =>
-    import("./features/seguridad/acceso").then(m => m.Acceso) },
+    import("./features/accesos/pages/acceso/acceso").then(m => m.Acceso) },
   { path: "cambiar-contrasena", title: "Cambiar contraseña · REBOLSYS", data: { cambio: true },
-    loadComponent: () => import("./features/seguridad/acceso").then(m => m.Acceso) },
+    loadComponent: () => import("./features/accesos/pages/acceso/acceso").then(m => m.Acceso) },
   {
     path: "",
     component: MainLayout,
@@ -17,14 +17,14 @@ export const routes: Routes = [
         path: "inicio",
         title: "Inicio · REBOLSYS",
         loadComponent: () =>
-          import("./features/inicio/inicio").then((m) => m.Inicio),
+          import("./features/inicio/pages/inicio/inicio").then((m) => m.Inicio),
       },
       {
         path: "habitaciones",
         data: { permisos: ["HABITACIONES:VER"] },
         title: "Estado de habitaciones · REBOLSYS",
         loadChildren: () =>
-          import("./features/habitaciones/habitaciones.routes").then(
+          import("./features/mantenimiento/habitaciones.routes").then(
             (m) => m.HABITACIONES_ROUTES,
           ),
       },
@@ -48,7 +48,7 @@ export const routes: Routes = [
         path: "configuraciones",
         title: "Configuraciones · REBOLSYS",
         loadChildren: () =>
-          import("./features/configuraciones/configuraciones.routes").then(
+          import("./features/configuracion-sistema/configuraciones.routes").then(
             (m) => m.CONFIGURACIONES_ROUTES,
           ),
       },
@@ -56,25 +56,25 @@ export const routes: Routes = [
         path: 'reportes',
         title: 'Reportes · REBOLSYS',
         data: { soloGerencia: true },
-        loadComponent: () => import('./features/reportes/reportes').then(m => m.Reportes),
+        loadComponent: () => import('./features/reportes/pages/reportes/reportes').then(m => m.Reportes),
       },
       {
         path: "limpieza",
         title: "Informes y habitaciones · REBOLSYS",
         data: { permisos: ["LIMPIEZA:VER_INICIO", "LIMPIEZA:VER_HABITACIONES", "LIMPIEZA:VER_INFORMES", "LIMPIEZA:VER_TICKETS"] },
-        loadComponent: () => import("./features/limpieza/limpieza-panel").then(m => m.LimpiezaPanel),
+        loadComponent: () => import("./features/limpieza/pages/limpieza-panel/limpieza-panel").then(m => m.LimpiezaPanel),
       },
       {
         path: "caja",
         title: "Caja · REBOLSYS",
         data: { permisos: ["CAJA:VER", "CAJA:CERRAR", "CAJA:REGISTRAR_INGRESO", "GASTOS:CREAR"] },
-        loadComponent: () => import("./features/caja/caja-panel").then(m => m.CajaPanel),
+        loadComponent: () => import("./features/caja/pages/caja-panel/caja-panel").then(m => m.CajaPanel),
       },
       {
         path: "seguridad",
         title: "Seguridad · REBOLSYS",
         data: { soloActiva: true, permisos: ["EMPLEADOS:VER", "EMPLEADOS:CREAR", "USUARIOS:VER", "ROLES:VER"] },
-        loadComponent: () => import("./features/seguridad/gestion-seguridad").then(m => m.GestionSeguridad),
+        loadComponent: () => import("./features/accesos/pages/gestion-seguridad/gestion-seguridad").then(m => m.GestionSeguridad),
       },
       {
         path: "productos",

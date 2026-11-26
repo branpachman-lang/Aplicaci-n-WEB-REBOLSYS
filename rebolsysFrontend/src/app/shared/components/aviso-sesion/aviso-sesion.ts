@@ -2,8 +2,8 @@ import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import { interval } from 'rxjs';
-import { SesionService } from '../../../core/services/sesion-service';
-import { TokenService } from '../../../core/services/token-service';
+import { SesionService } from '../../../core/auth/sesion-service';
+import { TokenService } from '../../../core/auth/token-service';
 
 const UMBRAL_SEGUNDOS = 120;
 

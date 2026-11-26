@@ -5,7 +5,7 @@ import { NotificacionService } from "../../../../core/services/notificacion.serv
 import { Catalogos } from "../../../../core/models/catalogo.model";
 import { Cliente, ClienteDatos, nombreCliente } from "../../../clientes/models/cliente.model";
 import { ClienteBuscador } from '../../../clientes/components/cliente-buscador/cliente-buscador';
-import { Habitacion } from "../../../habitaciones/models/habitacion.model";
+import { Habitacion } from "../../../mantenimiento/models/habitacion.model";
 import { Huesped, Registro, Estancia } from "../../models/reserva.model";
 import { fechaLocal, noches } from "../../../../core/utils/fechas";
 import { nombre } from "../../../../core/utils/texto";
@@ -14,7 +14,7 @@ import { Icon } from "../../../../shared/components/icono/icono";
 import { PagoModal } from "../../../../shared/components/pago-modal/pago-modal";
 import { CatalogoService } from "../../../../core/services/catalogo-service";
 import { ClienteService } from "../../../clientes/services/cliente-service";
-import { HabitacionService } from "../../../habitaciones/services/habitacion-service";
+import { HabitacionService } from "../../../mantenimiento/services/habitacion-service";
 import { ReservaService } from "../../services/reserva-service";
 import { esMenorDeSiete, errorOcupacion } from "../../utils/ocupacion";
 import { claveDocumento, errorIdentidadesReserva } from "../../utils/identidad-reserva";

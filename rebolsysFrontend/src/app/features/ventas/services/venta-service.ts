@@ -19,9 +19,9 @@ import {
 } from "rxjs";
 import { ReservaApi } from "../../reservas/models/reserva-api.model";
 import { CuentaDocumento } from "../../reservas/models/reserva-api.model";
-import { SesionService } from "../../../core/services/sesion-service";
+import { SesionService } from "../../../core/auth/sesion-service";
 import { VentaApi } from "../models/venta-api.model";
-import { Producto } from "../../productos/models/producto.model";
+import { Producto } from "../../mantenimiento/models/producto.model";
 import { pendienteOperacion } from "../../../core/services/pendiente-operacion";
 import { coincideReserva } from "../utils/buscar-reserva";
 
