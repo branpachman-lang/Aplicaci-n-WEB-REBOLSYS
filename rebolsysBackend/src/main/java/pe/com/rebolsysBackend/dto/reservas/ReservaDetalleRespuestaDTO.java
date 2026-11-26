@@ -15,6 +15,7 @@ public record ReservaDetalleRespuestaDTO(
     LocalDateTime fechaIngresoReal,
     LocalDateTime fechaSalidaReal,
     BigDecimal costoEstadia,
+    @JsonInclude(JsonInclude.Include.NON_NULL) BigDecimal montoDevuelto,
     EstadoReserva estadoDetalle,
     boolean ingresoVencido,
     boolean salidaPendiente,
@@ -25,16 +26,16 @@ public record ReservaDetalleRespuestaDTO(
 
   public ReservaDetalleRespuestaDTO(Long idDetalleReserva, Long idHabitacion, String numeroCuarto,
       LocalDateTime fechaIngreso, LocalDateTime fechaSalida, LocalDateTime fechaIngresoReal,
-      LocalDateTime fechaSalidaReal, BigDecimal costoEstadia, EstadoReserva estadoDetalle,
+      LocalDateTime fechaSalidaReal, BigDecimal costoEstadia, BigDecimal montoDevuelto, EstadoReserva estadoDetalle,
       boolean ingresoVencido, boolean salidaPendiente, List<ReservaOcupanteRespuestaDTO> ocupantes) {
     this(idDetalleReserva, idHabitacion, numeroCuarto, fechaIngreso, fechaSalida, fechaIngresoReal,
-        fechaSalidaReal, costoEstadia, estadoDetalle, ingresoVencido, salidaPendiente, ocupantes,
+        fechaSalidaReal, costoEstadia, montoDevuelto, estadoDetalle, ingresoVencido, salidaPendiente, ocupantes,
         null, null, null);
   }
 
   public ReservaDetalleRespuestaDTO conLiquidacion(Long idPago, Long idComprobante) {
     return new ReservaDetalleRespuestaDTO(idDetalleReserva, idHabitacion, numeroCuarto,
-        fechaIngreso, fechaSalida, fechaIngresoReal, fechaSalidaReal, costoEstadia, estadoDetalle,
+        fechaIngreso, fechaSalida, fechaIngresoReal, fechaSalidaReal, costoEstadia, montoDevuelto, estadoDetalle,
         ingresoVencido, salidaPendiente, ocupantes, BigDecimal.ZERO, idPago, idComprobante);
   }
 }

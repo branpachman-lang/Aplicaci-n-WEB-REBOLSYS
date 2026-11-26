@@ -959,7 +959,7 @@ class PropuestaOracleTest {
   }
 
   @Test
-  void anularSinPagosLiberaHabitacionYAnticipoExigeFlujoDeDevolucion() {
+  void anularLiberaHabitacionYDevuelveAnticipo() {
     var r = reservas.registrar(reserva("sin-pagos", false));
     reservas.cambiarEstado(
         r.detalles().getFirst().idDetalleReserva(),
@@ -968,15 +968,11 @@ class PropuestaOracleTest {
     assertThat(cuentasReserva.cuenta(r.idReserva()).totalAlojamiento()).isZero();
     var r2 = reservas.registrar(reserva("con-anticipo", false));
     cuentasReserva.pagar(r2.idReserva(), pago("anticipo-anulacion", "10", null));
-    assertThatThrownBy(
-            () ->
-                reservas.cambiarEstado(
-                    r2.detalles().getFirst().idDetalleReserva(),
-                    "cancelacion",
-                    new OperacionUsuarioDTO(usuario)))
-        .isInstanceOf(ReglaNegocioException.class)
-        .hasMessageContaining("devolución");
-    assertThat(cuentasReserva.cuenta(r2.idReserva()).totalPagado()).isEqualByComparingTo("10");
+    em.find(TurnoCaja.class, turno).setMontoBase(BigDecimal.TEN);
+    var cancelada = reservas.cambiarEstado(r2.detalles().getFirst().idDetalleReserva(),
+        "cancelacion", new OperacionUsuarioDTO(usuario));
+    assertThat(cancelada.montoDevuelto()).isEqualByComparingTo("10");
+    assertThat(cuentasReserva.cuenta(r2.idReserva()).totalPagado()).isZero();
   }
 
   @Test

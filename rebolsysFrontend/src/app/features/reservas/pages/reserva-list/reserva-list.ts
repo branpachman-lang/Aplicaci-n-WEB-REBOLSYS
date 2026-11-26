@@ -1,7 +1,7 @@
 import { notificarCambios } from '../../../../core/services/avisos-formulario';
 import { generarClaveOperacion } from '../../../../core/utils/clave-operacion';
 import { PermisosUi } from "../../../../core/auth/permisos-ui";
-import { Component, computed, DestroyRef, OnDestroy, inject, signal } from "@angular/core";
+import { Component, computed, DestroyRef, OnDestroy, inject, signal, viewChild } from "@angular/core";
 import { CurrencyPipe, DatePipe } from "@angular/common";
 import { FormsModule } from "@angular/forms";
 import { RouterLink,Router,ActivatedRoute } from "@angular/router";
@@ -10,7 +10,6 @@ import { finalize, forkJoin, Subscription } from 'rxjs';
 import { DialogFocus } from "../../../../shared/directives/dialog-focus";
 import { Tooltip } from '../../../../shared/directives/tooltip';
 import { NotificacionService } from "../../../../core/services/notificacion.service";
-import { ClienteService } from "../../../clientes/services/cliente-service";
 import { CatalogoService } from "../../../../core/services/catalogo-service";
 import { Catalogos } from "../../../../core/models/catalogo.model";
 import { Pagina } from "../../../../core/models/pagina-response";
@@ -19,6 +18,7 @@ import { Icon } from "../../../../shared/components/icono/icono";
 import { PagoModal } from "../../../../shared/components/pago-modal/pago-modal";
 import { ComprobanteDialog } from '../../components/comprobante-dialog/comprobante-dialog';
 import { PagoYape } from '../../components/pago-yape/pago-yape';
+import { HuespedesEstadia } from '../../components/huespedes-estadia/huespedes-estadia';
 import {
   ReservaService,
   ReservaFila,
@@ -65,6 +65,7 @@ const MENSAJES_ESTADIA: Record<AccionEstadia, string> = {
     Tooltip,
     ComprobanteDialog,
     PagoYape,
+    HuespedesEstadia,
   ],
   templateUrl: "./reserva-list.html",
   styleUrl: "./reserva-list.css",
@@ -72,7 +73,6 @@ const MENSAJES_ESTADIA: Record<AccionEstadia, string> = {
 export class ReservaList implements OnDestroy {
   readonly acceso = inject(PermisosUi);
   private readonly servicio = inject(ReservaService);
-  private readonly clienteService = inject(ClienteService);
   private readonly catalogoService = inject(CatalogoService);
   private readonly avisos = inject(NotificacionService);
   private readonly destroy = inject(DestroyRef);
@@ -107,15 +107,7 @@ export class ReservaList implements OnDestroy {
     h => h.idDetalleReserva === this.habitacionRapidaId(),
   ));
   editandoOcupantes = signal<DetalleReserva | null>(null);
-  ocupantesEditados = signal<{ idCliente: number; nombre: string; ocupaPlazaCama: boolean; idClienteResponsable: number | null; parentescoResponsable: 'PADRE' | 'MADRE' | 'TUTOR' | null }[]>([]);
-  documentoHuesped = '';
-  tipoDocumentoHuesped: number | null = null;
-  nuevoHuesped = { nombres: '', apellidos: '', fechaNacimiento: '', telefono: '' };
-  registrandoHuesped = signal(false);
-  buscandoHuesped = signal(false);
-  guardandoOcupantes = signal(false);
-  errorOcupantes = signal('');
-  ocupantesOcupado = computed(() => this.buscandoHuesped() || this.registrandoHuesped() || this.guardandoOcupantes());
+  readonly editorOcupantes = viewChild(HuespedesEstadia);
   errorEstadia = signal('');
   comprobante = signal<ReservaApi | null>(null);
   abrirComprobante(r: ReservaApi) {
@@ -264,6 +256,7 @@ export class ReservaList implements OnDestroy {
     return (
       this.acceso.puedeCobrarReserva() &&
       cuenta.estado === "BORRADOR" &&
+      (cuenta.idVenta !== null || !r.detalles.some(d => (d.montoDevuelto ?? 0) > 0)) &&
       sinFinalizadas &&
       (estado === "CONFIRMADA" || estado === "EN_CURSO") &&
       turnoAbierto
@@ -333,7 +326,7 @@ export class ReservaList implements OnDestroy {
   confirmarAccionRapida() {
     const operacion = this.accionRapida();
     const habitacion = this.habitacionRapida();
-    if (!operacion || !habitacion || this.procesandoEstadia() || this.ocupado()) return;
+    if (!operacion || !habitacion || this.procesandoEstadia() || this.ocupado() || this.editandoOcupantes()) return;
     const { reserva, accion } = operacion;
     if (accion === 'salida' && this.puedeGestionarEstadia(habitacion, 'salida')) {
       if (this.abrirSalida(reserva, habitacion)) this.cerrarAccionRapida();
@@ -355,154 +348,10 @@ export class ReservaList implements OnDestroy {
     });
   }
 
-  cerrarEditorOcupantes() {
-    if (!this.ocupantesOcupado()) this.editandoOcupantes.set(null);
-  }
-  abrirEditorOcupantes(h: DetalleReserva) {
-    if (this.editandoOcupantes() || h.estadoDetalle !== 'CONFIRMADA' || !this.acceso.permite('RESERVAS:EDITAR_OCUPANTES')) return;
-    if (!this.catalogos()) {
-      this.catalogoService.listar().pipe(takeUntilDestroyed(this.destroy)).subscribe({
-        next: catalogos => {
-          this.catalogos.set(catalogos);
-          const reserva = this.accionRapida()?.reserva ?? this.detalle();
-          const vigente = reserva?.detalles.find(d => d.idDetalleReserva === h.idDetalleReserva);
-          if (vigente) this.abrirEditorOcupantes(vigente);
-        },
-        error: e => this.avisos.mostrar(mensajeError(e), true),
-      });
-      return;
-    }
-    const porId = new Map(h.ocupantes.map(g => [g.idReservaOcupante, g.idCliente]));
-    this.ocupantesEditados.set(h.ocupantes.map(g => ({
-      idCliente: g.idCliente,
-      nombre: g.nombre,
-      ocupaPlazaCama: g.ocupaPlazaCama,
-      idClienteResponsable: g.idOcupanteResponsable ? porId.get(g.idOcupanteResponsable) ?? null : null,
-      parentescoResponsable: g.parentescoResponsable,
-    })));
-    this.documentoHuesped = '';
-    this.nuevoHuesped = { nombres: '', apellidos: '', fechaNacimiento: '', telefono: '' };
-    this.tipoDocumentoHuesped = this.catalogos()?.documentos[0]?.id ?? null;
-    this.errorOcupantes.set('');
-    this.editandoOcupantes.set(h);
-  }
-  buscarHuespedParaAgregar() {
-    const tipo = this.tipoDocumentoHuesped;
-    const documento = this.documentoHuesped.trim();
-    if (!tipo || !documento || this.ocupantesOcupado()) return;
-    this.buscandoHuesped.set(true);
-    this.errorOcupantes.set('');
-    this.clienteService.buscarPorDocumento(tipo, documento).pipe(takeUntilDestroyed(this.destroy)).subscribe({
-      next: cliente => {
-        this.buscandoHuesped.set(false);
-        if (!cliente.idCliente) {
-          this.errorOcupantes.set('Registra primero a esta persona en Clientes y vuelve a buscar su documento.');
-          return;
-        }
-        if (cliente.datos.empresa) {
-          this.errorOcupantes.set('Selecciona a una persona natural como huésped.');
-          return;
-        }
-        if (this.ocupantesEditados().some(g => g.idCliente === cliente.idCliente)) {
-          this.errorOcupantes.set('Este huésped ya está agregado a la habitación.');
-          return;
-        }
-        this.ocupantesEditados.update(lista => [...lista, {
-          idCliente: cliente.idCliente!,
-          nombre: [cliente.datos.nombres, cliente.datos.apellidos].filter(Boolean).join(' ') || 'Huésped',
-          ocupaPlazaCama: true,
-          idClienteResponsable: null,
-          parentescoResponsable: null,
-        }]);
-        this.documentoHuesped = '';
-      },
-      error: e => {
-        this.buscandoHuesped.set(false);
-        this.errorOcupantes.set(mensajeError(e));
-      },
-    });
-  }
-  registrarHuespedNuevo() {
-    const tipo = this.tipoDocumentoHuesped;
-    const numeroDocumento = this.documentoHuesped.trim();
-    const { nombres, apellidos, fechaNacimiento, telefono } = this.nuevoHuesped;
-    if (!tipo || !numeroDocumento || !nombres.trim() || !apellidos.trim() || !fechaNacimiento || this.ocupantesOcupado()) {
-      this.errorOcupantes.set('Completa documento, nombres, apellidos y fecha de nacimiento del huésped.');
-      return;
-    }
-    this.registrandoHuesped.set(true);
-    this.errorOcupantes.set('');
-    this.clienteService.registrar({
-      idTipoDocumento: tipo,
-      numeroDocumento,
-      empresa: false,
-      nombres: nombres.trim(),
-      apellidos: apellidos.trim(),
-      fechaNacimiento,
-      razonSocial: null,
-      direccionFiscal: null,
-      correo: null,
-      telefono: telefono.trim() || null,
-    }).pipe(takeUntilDestroyed(this.destroy)).subscribe({
-      next: cliente => {
-        this.registrandoHuesped.set(false);
-        if (this.ocupantesEditados().some(g => g.idCliente === cliente.idCliente)) {
-          this.errorOcupantes.set('Este huésped ya está agregado a la habitación.');
-          return;
-        }
-        this.ocupantesEditados.update(lista => [...lista, {
-          idCliente: cliente.idCliente,
-          nombre: [cliente.persona.nombres, cliente.persona.apellidos].filter(Boolean).join(' '),
-          ocupaPlazaCama: true,
-          idClienteResponsable: null,
-          parentescoResponsable: null,
-        }]);
-        this.documentoHuesped = '';
-        this.nuevoHuesped = { nombres: '', apellidos: '', fechaNacimiento: '', telefono: '' };
-      },
-      error: e => {
-        this.registrandoHuesped.set(false);
-        this.errorOcupantes.set(mensajeError(e));
-      },
-    });
-  }
-  guardarEdicionOcupantes() {
-    const h = this.editandoOcupantes();
-    const lista = this.ocupantesEditados();
-    if (!h || !lista.length || this.ocupantesOcupado()) {
-      this.errorOcupantes.set('La habitación debe tener al menos un huésped antes del check-in.');
-      return;
-    }
-    this.guardandoOcupantes.set(true);
-    this.errorOcupantes.set('');
-    const ocupantes = lista.map(({ idCliente, ocupaPlazaCama, idClienteResponsable, parentescoResponsable }) => ({
-      idCliente, ocupaPlazaCama, idClienteResponsable,
-      parentescoResponsable: idClienteResponsable ? parentescoResponsable : null,
-    }));
-    this.servicio.guardarOcupantes(h.idDetalleReserva, ocupantes).pipe(takeUntilDestroyed(this.destroy)).subscribe({
-      next: actualizada => {
-        this.guardandoOcupantes.set(false);
-        this.editandoOcupantes.set(null);
-        this.detalle.update(r => r ? { ...r, detalles: r.detalles.map(d => d.idDetalleReserva === actualizada.idDetalleReserva ? actualizada : d) } : r);
-        this.accionRapida.update(operacion => operacion ? {
-          ...operacion,
-          reserva: {
-            ...operacion.reserva,
-            detalles: operacion.reserva.detalles.map(d => d.idDetalleReserva === actualizada.idDetalleReserva ? actualizada : d),
-          },
-        } : operacion);
-        this.avisos.mostrar(`Huéspedes de la habitación ${h.numeroCuarto} actualizados.`);
-        this.cargar(false);
-      },
-      error: e => {
-        this.guardandoOcupantes.set(false);
-        this.errorOcupantes.set(mensajeError(e));
-      },
-    });
-  }
   verDetalle(r: ReservaApi) {
     this.cancelarDetalle.set(null);
     this.eliminarPagoId.set(null);
+    this.editandoOcupantes.set(null);
     const id = ++this.detalleId;
     this.accionEstadia.set(null);
     this.errorEstadia.set('');
@@ -518,10 +367,41 @@ export class ReservaList implements OnDestroy {
   puedeGestionarEstadia(h: DetalleReserva, accion: AccionEstadia) {
     if (!this.acceso.permite(PERMISOS_ESTADIA[accion])) return false;
     if (accion === 'salida') return h.estadoDetalle === 'EN_CURSO';
-    return h.estadoDetalle === 'CONFIRMADA';
+    return h.estadoDetalle === 'CONFIRMADA' && !h.fechaIngresoReal;
+  }
+  puedeEditarHuespedes(h: DetalleReserva) {
+    return this.acceso.permite('RESERVAS:EDITAR_OCUPANTES')
+      && h.estadoDetalle === 'CONFIRMADA' && !h.fechaIngresoReal;
+  }
+  abrirEditorOcupantes(h: DetalleReserva) {
+    if (!this.puedeEditarHuespedes(h) || this.procesandoEstadia() || this.editandoOcupantes()) return;
+    this.accionEstadia.set(null);
+    this.editandoOcupantes.set(h);
+    if (this.catalogos()) return;
+    this.catalogoService.listar().pipe(takeUntilDestroyed(this.destroy)).subscribe({
+      next: catalogos => this.catalogos.set(catalogos),
+      error: e => {
+        this.editandoOcupantes.set(null);
+        this.avisos.mostrar(mensajeError(e), true);
+      },
+    });
+  }
+  cerrarEditorOcupantes() {
+    if (!this.editorOcupantes()?.ocupado()) this.editandoOcupantes.set(null);
+  }
+  actualizarHuespedes(actualizada: DetalleReserva) {
+    const actualizar = (reserva: ReservaResumen): ReservaResumen => ({
+      ...reserva,
+      detalles: reserva.detalles.map(h => h.idDetalleReserva === actualizada.idDetalleReserva ? actualizada : h),
+    });
+    this.detalle.update(reserva => reserva && actualizar(reserva));
+    this.accionRapida.update(operacion => operacion && ({ ...operacion, reserva: actualizar(operacion.reserva) }));
+    this.editandoOcupantes.set(null);
+    this.avisos.mostrar('Se guardaron los huéspedes de la habitación.');
+    this.cargar(false);
   }
   pedirAccionEstadia(h: DetalleReserva, accion: AccionEstadia) {
-    if (this.procesandoEstadia() || !this.puedeGestionarEstadia(h, accion)) return;
+    if (this.procesandoEstadia() || this.editandoOcupantes() !== null || !this.puedeGestionarEstadia(h, accion)) return;
     this.errorEstadia.set('');
     this.accionEstadia.set({ id: h.idDetalleReserva, accion });
   }

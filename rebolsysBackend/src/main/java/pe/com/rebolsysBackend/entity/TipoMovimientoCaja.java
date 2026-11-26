@@ -22,6 +22,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 public class TipoMovimientoCaja {
+  public static final String DEVOLUCION_RESERVA = "DEVOLUCION RESERVA";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

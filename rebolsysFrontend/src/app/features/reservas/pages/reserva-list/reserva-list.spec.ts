@@ -13,6 +13,7 @@ describe('Seguimiento y check-out de reservas', () => {
   const pagina = { contenido: [reserva], pagina: 0, tamanio: 10, ultima: true };
   let servicio: { listar: ReturnType<typeof vi.fn>; obtener: ReturnType<typeof vi.fn>;
     cuenta: ReturnType<typeof vi.fn>; salir: ReturnType<typeof vi.fn>;
+    ingresar: ReturnType<typeof vi.fn>;
     eliminarPago: ReturnType<typeof vi.fn>;
     pagosPendientes: () => []; registroPendiente: () => null };
   let listarCatalogos: ReturnType<typeof vi.fn>;
@@ -22,6 +23,7 @@ describe('Seguimiento y check-out de reservas', () => {
     servicio = {
       listar: vi.fn(() => of(pagina)), obtener: vi.fn(() => of(reserva)),
       cuenta: vi.fn(() => of(cuenta)), salir: vi.fn(() => of(reserva.detalles[0])),
+      ingresar: vi.fn(() => of(reserva.detalles[0])),
       eliminarPago: vi.fn(() => of({ ...cuenta, totalPagado: 0, saldoPendiente: 80 })),
       pagosPendientes: () => [], registroPendiente: () => null,
     };
@@ -112,6 +114,31 @@ describe('Seguimiento y check-out de reservas', () => {
       cobro: { idFormaPago: 1, monto: 74, numeroOperacion: null },
     });
     expect(componente.pagando()).toBeNull();
+  });
+
+  it('actualiza solo la habitación editada y permite continuar con el check-in rápido', () => {
+    const componente = TestBed.createComponent(ReservaList).componentInstance;
+    vi.spyOn(componente.acceso, 'permite').mockReturnValue(true);
+    const confirmada = { ...reserva.detalles[0], estadoDetalle: 'CONFIRMADA' as const };
+    const otra = { ...reserva.detalles[0], idDetalleReserva: 3 };
+    const grupal = { ...reserva, detalles: [confirmada, otra] };
+    componente.detalle.set(grupal);
+    servicio.obtener.mockReturnValue(of(grupal));
+    componente.abrirAccionRapida(grupal, 'ingreso');
+    componente.confirmarAccionRapida();
+    expect(servicio.ingresar).not.toHaveBeenCalled();
+
+    componente.abrirEditorOcupantes(confirmada);
+    expect(componente.editandoOcupantes()?.idDetalleReserva).toBe(confirmada.idDetalleReserva);
+    componente.actualizarHuespedes({
+      ...confirmada,
+      ocupantes: [{ idReservaOcupante: 5, idCliente: 10, nombre: 'Huésped',
+        idOcupanteResponsable: null, parentescoResponsable: null, ocupaPlazaCama: true }],
+    });
+    expect(componente.habitacionRapida()?.ocupantes).toHaveLength(1);
+    expect(componente.detalle()?.detalles[1]).toBe(otra);
+    componente.confirmarAccionRapida();
+    expect(servicio.ingresar).toHaveBeenCalledExactlyOnceWith(confirmada.idDetalleReserva);
   });
 
   it('cancela la petición anterior al iniciar otra carga', () => {

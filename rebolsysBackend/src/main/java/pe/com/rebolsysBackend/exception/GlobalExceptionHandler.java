@@ -18,6 +18,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import pe.com.rebolsysBackend.security.SesionOperacionService;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -254,6 +255,17 @@ public class GlobalExceptionHandler {
             null
         );
         return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).headers(ex.getHeaders()).body(error);
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ErrorResponseDTO> handleUnsupportedMediaType(
+        HttpMediaTypeNotSupportedException ex, HttpServletRequest request
+    ) {
+        var status = HttpStatus.UNSUPPORTED_MEDIA_TYPE;
+        var mensaje = "El tipo de contenido no es compatible. Tipos admitidos: " + ex.getSupportedMediaTypes();
+        return ResponseEntity.status(status).headers(ex.getHeaders()).body(new ErrorResponseDTO(
+            LocalDateTime.now(ZONA_LIMA), status.value(), status.getReasonPhrase(), mensaje,
+            request.getRequestURI(), null));
     }
 
     @ExceptionHandler(Exception.class)

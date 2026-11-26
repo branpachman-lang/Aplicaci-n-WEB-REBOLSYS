@@ -132,10 +132,10 @@ describe("Formulario de reserva", () => {
   it('rechaza cruces de horario y permite ingresar exactamente a la hora de salida anterior', async () => {
     const c = (await fixture()).componentInstance;
     c.habitaciones.at(0).patchValue({idHabitacion: 1, fechaIngreso: '2027-01-02T12:00', fechaSalida: '2027-01-03T12:00'});
-    c.rooms.update(lista => lista.map(h => h.idHabitacion !== 1 ? h : {...h, reservas: [{referencia: 'R1', cliente: 'Prueba', ingreso: '2027-01-01T14:00:00', salida: '2027-01-02T12:00:00', estado: 'CONFIRMADA'}]}));
+    c.rooms.update(lista => lista.map(h => h.idHabitacion !== 1 ? h : {...h, ultimaSalidaActiva: '2027-01-02T12:00:00'}));
     expect(c.lineError(0)).toBe('');
     c.habitaciones.at(0).patchValue({fechaIngreso: '2027-01-02T11:59'});
-    expect(c.lineError(0)).toContain('ya tiene una reserva');
+    expect(c.lineError(0)).toContain('última reserva activa');
   });
   it('impide registrar una reserva de una habitación cuya tarifa está pendiente', async () => {
     const c = (await fixture()).componentInstance;
@@ -164,15 +164,16 @@ describe("Formulario de reserva", () => {
     expect(opciones.some(o => o.textContent!.includes('402') && o.textContent!.includes('50') && !o.disabled)).toBe(true);
     expect(opciones.some(o => o.textContent!.includes('506') && o.textContent!.includes('40') && !o.disabled)).toBe(true);
   });
-  it('permite una reserva futura en habitación ocupada y rechaza el cruce con su estancia activa', async () => {
+  it('permite programar a partir de la última salida activa aunque la habitación esté ocupada', async () => {
     const c = (await fixture()).componentInstance;
-    c.habitaciones.at(0).patchValue({idHabitacion: 1, fechaIngreso: '2027-01-02T12:00', fechaSalida: '2027-01-03T12:00'});
-    c.rooms.update(lista => lista.map(h => ({ ...h, estado: 'OCUPADO', ocupadaActualmente: true,
-      reservas: [{ referencia: 'R1', cliente: 'Prueba', ingreso: '2027-01-01T14:00', salida: '2027-01-02T12:00', estado: 'EN_CURSO' }],
+    c.rooms.update(lista => lista.map(h => ({
+      ...h, estado: 'OCUPADO', ocupadaActualmente: true, ultimaSalidaActiva: '2027-08-22T12:00:00',
     })));
+    const estancia = c.habitaciones.at(0);
+    estancia.patchValue({ idHabitacion: 1, fechaIngreso: '2027-08-22T11:59', fechaSalida: '2027-08-23T12:00' });
+    expect(c.lineError(0)).toContain('última reserva activa');
+    estancia.patchValue({ fechaIngreso: '2027-08-22T12:00' });
     expect(c.lineError(0)).toBe('');
-    c.habitaciones.at(0).patchValue({ fechaIngreso: '2027-01-02T11:59' });
-    expect(c.lineError(0)).toContain('ya tiene una reserva');
   });
   it('reintenta registro y pago juntos con la misma clave si se pierde la respuesta', async () => {
     const r = {idReserva:30,idCliente:1,idUsuario:1,titular:'Empresa prueba',fechaRegistro:'',claveRegistro:'prueba',detalles:[]};

@@ -109,7 +109,8 @@ public class CuentaReservaServiceImpl implements CuentaReservaService {
     }
     cuentas.cuentasReserva(id).forEach(c -> docs.add(documento(c)));
     var total =
-        docs.stream().map(CuentaDocumentoDTO::total).reduce(BigDecimal.ZERO, BigDecimal::add);
+        docs.stream().map(CuentaDocumentoDTO::total).reduce(BigDecimal.ZERO, BigDecimal::add)
+            .subtract(principal.map(gestion::cargosCancelados).orElse(BigDecimal.ZERO));
     var pagado =
         docs.stream().map(CuentaDocumentoDTO::pagado).reduce(BigDecimal.ZERO, BigDecimal::add);
     return new CuentaReservaDTO(
@@ -176,6 +177,9 @@ public class CuentaReservaServiceImpl implements CuentaReservaService {
                 && cuentaPago.getVenta().getDetalleReserva() != null
                 && cuentaPago.getVenta().getDetalleReserva().getReserva().getIdReserva().equals(idReserva));
     exigir(pertenece, "El pago no pertenece a esta reserva");
+    exigir(cuentaPago.getReserva() == null
+            || CuentaReservaGestion.devuelto(cuentaPago.getReserva().getDetalles()).signum() == 0,
+        "La cuenta de alojamiento tiene devoluciones registradas y sus pagos se conservan");
     var c =
         cuentas
             .bloquear(cuentaPago.getIdComprobante())

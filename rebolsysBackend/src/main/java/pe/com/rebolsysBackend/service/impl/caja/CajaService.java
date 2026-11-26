@@ -219,7 +219,7 @@ public class CajaService {
         .collect(toMap(FlujoCajaRepository.ImporteManual::getSigno,
             FlujoCajaRepository.ImporteManual::getMonto));
     var efectivos = formas.findAll().stream().filter(this::efectivo).toList();
-    exigir(efectivos.size() == 1, "Configura una única forma de pago Efectivo antes de registrar gastos");
+    exigir(efectivos.size() == 1, "Configura una única forma de pago Efectivo antes de registrar egresos");
     var cobrosEfectivo = pagos.sumarVerificados(turno.getIdTurno()).stream()
         .filter(p -> p.getIdFormaPago().equals(efectivos.getFirst().getIdFormaPago()))
         .map(PagoRepository.ImporteForma::getMonto).reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -228,9 +228,17 @@ public class CajaService {
   }
 
   public void validarGastoEnEfectivo(TurnoCaja turno, BigDecimal monto) {
+    validarEgresoEnEfectivo(turno, monto, "El gasto");
+  }
+
+  public void validarDevolucionEnEfectivo(TurnoCaja turno, BigDecimal monto) {
+    validarEgresoEnEfectivo(turno, monto, "La devolución");
+  }
+
+  private void validarEgresoEnEfectivo(TurnoCaja turno, BigDecimal monto, String movimiento) {
     var disponible = efectivoDisponible(turno);
     exigir(monto.compareTo(disponible) <= 0,
-        "El gasto supera el efectivo disponible en caja. Disponible: S/ " + disponible.max(BigDecimal.ZERO).toPlainString());
+        movimiento + " supera el efectivo disponible en caja. Disponible: S/ " + disponible.max(BigDecimal.ZERO).toPlainString());
   }
 
   private TurnoCaja turnoPropio(Long id, SesionActualDTO actor) {
@@ -259,7 +267,7 @@ public class CajaService {
   }
 
   private boolean tipoManual(TipoMovimientoCaja tipo) {
-    return tipo.getSigno() == -1 || (tipo.getSigno() == 1 && INGRESO_MANUAL.equals(tipo.getNombreMovimiento()));
+    return (tipo.getSigno() == -1 && !TipoMovimientoCaja.DEVOLUCION_RESERVA.equals(tipo.getNombreMovimiento())) || (tipo.getSigno() == 1 && INGRESO_MANUAL.equals(tipo.getNombreMovimiento()));
   }
 
   private Movimiento movimiento(FlujoCaja flujo) {

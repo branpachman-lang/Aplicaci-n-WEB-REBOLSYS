@@ -200,7 +200,7 @@
     <p class="muted">Sin reservas en el intervalo mostrado.</p>
     }
     <button class="button full" (click)="detalle.set(null)">Cerrar</button>
-    @if (acceso.permite('RESERVAS:CREAR') && room.estado === 'DISPONIBLE' && !room.ocupadaActualmente && room.precio > 0) {
+    @if (acceso.permite('RESERVAS:CREAR') && room.precio > 0) {
     <a
       class="button primary full"
       routerLink="/reservas/nueva"

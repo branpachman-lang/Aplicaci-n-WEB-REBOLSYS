@@ -12,9 +12,10 @@ una persona natural adulta o una empresa; los ocupantes son personas naturales.
    Si se cobra, el recepcionista debe tener el permiso de cobro y un turno abierto.
 3. El servicio valida disponibilidad, identidades y ocupantes y guarda la reserva,
    sus estancias y, cuando se incluye un anticipo, el pago en una transacción.
-4. Completar ocupantes antes del check-in. Cada menor necesita un responsable
-   adulto en su habitación; se mantienen los límites de personas y camas.
-5. Registrar check-in dentro del periodo reservado. La habitación pasa a OCUPADO.
+4. Completar o corregir los huéspedes de cada habitación desde el detalle de la reserva,
+   hasta que recepción registre su check-in. Cada menor necesita un responsable adulto en su habitación.
+5. Registrar check-in desde 30 minutos antes del ingreso programado y antes de la salida.
+   La habitación debe estar físicamente DISPONIBLE y pasa a OCUPADO.
 6. Las ventas a huéspedes pueden cargarse a la cuenta principal de la reserva.
    Las ventas que se cobran de inmediato conservan su propia cuenta.
 7. El check-out liquida el importe pendiente de la cuenta principal y deja la
@@ -32,6 +33,9 @@ con al menos una habitación por revisar. La lista Angular se actualiza cada
 El saldo debe ser cero en cada cuenta: un sobrepago en alojamiento no compensa una
 deuda de consumos para autorizar el checkout. Al registrar una nueva reserva,
 el ingreso previsto debe estar en el futuro y la salida debe ser posterior.
+Cada habitación se puede reservar desde la salida programada de su última estancia
+confirmada o en curso. El estado físico se valida al registrar el ingreso.
+`GET /habitaciones` expone ese límite como `ultimaSalidaActiva`.
 
 El cierre automático está desactivado por defecto en `application.yaml`.
 Quita `CHECKOUT_AUTOMATICO_HABILITADO=true` si la instalación lo activaba expresamente;
@@ -39,6 +43,8 @@ cuando se activa usa `CHECKOUT_AUTOMATICO_INTERVALO` (60000 ms) y
 `CHECKOUT_AUTOMATICO_ESPERA_INICIAL` (10000 ms).
 El check-out guarda la clave de reintento y su resultado en `DETALLE_RESERVA`.
 Para actualizar una base existente, aplica [V22](src/main/resources/db/iteration/V22__idempotencia_salida_en_detalle_reserva.sql).
+Para habilitar las devoluciones, aplica [V24](src/main/resources/db/iteration/V24__devolucion_reserva.sql)
+en Oracle antes de desplegar esta versión.
 
 ## Contrato
 
@@ -72,7 +78,8 @@ Una clave usada con contenido diferente produce 409.
 | --- | --- |
 | GET /reservas y /reservas/{id} | Listar y consultar reservas. |
 | GET /reservas/{id}/cuenta | Consultar alojamiento, cuentas propias de ventas y pagos; solo lectura. |
-| PUT /reservas/detalles/{id}/ocupantes | Completar ocupantes antes del ingreso. |
+| PUT /reservas/detalles/{id}/ocupantes | Reemplazar la lista de huéspedes de la habitación antes del ingreso. |
+| POST /reservas/detalles/{id}/cancelacion | Cancelar una habitación sin ingreso y registrar la devolución en caja cuando corresponda. |
 | POST /reservas/detalles/{id}/ingreso | Check-in con ocupantes y disponibilidad validados. |
 | POST /reservas/detalles/{id}/salida | Registrar check-out y, opcionalmente, el cobro del saldo principal y la emisión interna. |
 | POST /reservas/{id}/consumos | Registrar una venta asociada y cargarla a la cuenta principal si se omite el cobro. |
@@ -80,9 +87,17 @@ Una clave usada con contenido diferente produce 409.
 | POST /reservas/{id}/comprobantes | Emitir la cuenta principal tras la última salida o emitir un documento de una venta separada. |
 
 admiteConsumosConsolidados indica si la cuenta admite cargos de una estancia en curso.
-Las cuentas históricas y sus pagos se mantienen. Una reserva pagada conserva las
-restricciones de cancelación: requiere gestionar devolución o rectificación.
-No se elimina ni devuelve dinero de manera automática.
+La cancelación devuelve hasta el costo de la habitación, limitado a los pagos verificados
+que aún no se devolvieron. Si corresponde devolver dinero, el sistema crea un egreso
+de efectivo en el turno abierto del operador y expone su monto como `montoDevuelto`.
+Si el turno no tiene efectivo suficiente, la estancia y sus pagos conservan su estado.
+Los abonos y sus referencias originales quedan en el historial. La devolución queda
+registrada en caja, incluido cuando el abono original se hizo por Yape. No se envía
+una transferencia a través del proveedor. Si se reintenta la cancelación, se recupera
+el resultado sin duplicar el egreso. Los comprobantes ya emitidos conservan sus cargos
+originales para su gestión fiscal.
+
+El API responde `415` si el tipo de contenido es incompatible y `400` si el JSON es inválido.
 
 ## Pruebas
 

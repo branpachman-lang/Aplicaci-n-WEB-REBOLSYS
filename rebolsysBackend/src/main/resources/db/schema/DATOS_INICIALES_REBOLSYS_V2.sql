@@ -28,6 +28,7 @@ BEGIN
   MERGE INTO tipo_movimiento_caja t USING (
     SELECT 'GASTO' nombre,-1 signo FROM dual UNION ALL SELECT 'INGRESO_MANUAL',1 FROM dual
     UNION ALL SELECT 'COBRO_RESERVA',1 FROM dual UNION ALL SELECT 'COBRO_VENTA',1 FROM dual
+    UNION ALL SELECT 'DEVOLUCION RESERVA',-1 FROM dual
   ) s ON (t.nombreMovimiento = s.nombre)
   WHEN NOT MATCHED THEN INSERT (nombreMovimiento,signo) VALUES (s.nombre,s.signo);
 
