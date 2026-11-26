@@ -306,8 +306,20 @@ export class VentaForm implements OnInit {
     if (this.esRucExterno() && !this.direccion().trim())
       return "Ingresa la dirección fiscal del cliente con RUC.";
     const correo = this.correo().trim();
-    if (correo && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo))
-      return "Ingresa un correo válido o déjalo vacío.";
+    if (correo) {
+      const arroba = correo.indexOf('@');
+      const dominio = correo.slice(arroba + 1);
+      const punto = dominio.indexOf('.', 1);
+      if (
+        arroba <= 0 ||
+        arroba !== correo.lastIndexOf('@') ||
+        /\s/.test(correo) ||
+        punto === -1 ||
+        punto === dominio.length - 1
+      ) {
+        return "Ingresa un correo válido o déjalo vacío.";
+      }
+    }
     return "";
   }
   private llenarCliente(id: number, p: ClienteDatos) {
