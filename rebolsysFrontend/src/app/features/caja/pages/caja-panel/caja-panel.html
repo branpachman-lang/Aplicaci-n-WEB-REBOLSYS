@@ -5,7 +5,12 @@
 
 @if (!turno()?.abierto && !cargando() && !errorCarga() && puedeAbrir()) {
   <form class="panel caja-resumen" (ngSubmit)="abrirTurno()">
-    <h3>Abrir caja</h3>
+    <div class="titulo-con-ayuda">
+      <h3>Abrir caja</h3>
+      <button class="icon-button tooltip-ayuda" type="button" aria-label="Ayuda sobre el fondo de apertura"
+        appTooltip="Cuenta los billetes y monedas antes del primer movimiento. Si la caja está vacía, declara S/ 0.00."
+        [tooltipAyuda]="true"><app-icon name="info" /></button>
+    </div>
     <label class="field">Efectivo inicial (S/)
       <input type="number" name="montoBase" min="0" max="99999999.99" step="0.01"
         required [(ngModel)]="montoBase" [disabled]="ocupado()" />
@@ -29,7 +34,8 @@
             <button class="button" type="button" [disabled]="cargando() || ocupado()" (click)="abrirMovimiento(1)">Registrar ingreso</button>
           }
           @if (puedeGastar()) {
-            <button class="button" type="button" [disabled]="cargando() || ocupado()" (click)="abrirMovimiento(-1)">Registrar gasto</button>
+            <button class="button" type="button" [disabled]="cargando() || ocupado()" (click)="abrirMovimiento(-1)"
+              appTooltip="Solo puedes registrar salidas cubiertas por el efectivo disponible del turno.">Registrar gasto</button>
           }
           @if (puedeCerrar()) {
             <button class="button primary" type="button" [disabled]="cargando() || ocupado() || !t.revision" (click)="abrirCierre()">Cerrar caja</button>
@@ -146,7 +152,12 @@
     <div class="modal-backdrop">
       <section appDialog [dialogInitialFocus]="tituloCierre" (dialogEscape)="cerrarDialogo()"
         class="modal wide-modal modal-arqueo" role="dialog" aria-modal="true" aria-labelledby="titulo-cierre">
-        <h2 #tituloCierre id="titulo-cierre" tabindex="-1">{{ paso === 'conteo' ? 'Arqueo de caja' : 'Confirmar cierre' }}</h2>
+        <div class="titulo-con-ayuda">
+          <h2 #tituloCierre id="titulo-cierre" tabindex="-1">{{ paso === 'conteo' ? 'Arqueo de caja' : 'Confirmar cierre' }}</h2>
+          <button class="icon-button tooltip-ayuda" type="button" aria-label="Ayuda para interpretar el arqueo"
+            appTooltip="Esperado es lo calculado por el sistema. Declarado es lo que verificas. Diferencia es lo declarado menos lo esperado."
+            [tooltipAyuda]="true"><app-icon name="info" /></button>
+        </div>
         <p class="muted">Turno #{{ t.idTurno }} · Apertura {{ fecha(t.fechaApertura) }} · Fondo {{ t.montoBase | currency:'PEN':'S/ ' }}</p>
         <div class="table-scroll">
           <table class="tabla-arqueo" role="table" aria-label="Importes por forma de pago">

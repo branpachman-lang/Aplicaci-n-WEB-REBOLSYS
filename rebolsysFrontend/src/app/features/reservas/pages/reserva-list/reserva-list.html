@@ -59,6 +59,7 @@
       ><button
         class="icon-button"
         aria-label="Actualizar reservas"
+        appTooltip="Volver a cargar el listado con los filtros actuales."
         [disabled]="cargando()"
         (click)="cargar()"
       >
@@ -156,6 +157,17 @@
               <button class="button small" (click)="verDetalle(r)">
                 Ver detalle
               </button>
+              @if (habitacionesParaAccion(r, 'ingreso').length) {
+                <button type="button" class="button small primary" [disabled]="cargandoAccionRapida() || ocupado()"
+                  (click)="abrirAccionRapida(r, 'ingreso')"><app-icon name="check" /> Check-in</button>
+              }
+              @if (habitacionesParaAccion(r, 'salida').length) {
+                <button type="button" class="button small" [disabled]="cargandoAccionRapida() || ocupado()"
+                  (click)="abrirAccionRapida(r, 'salida')"><app-icon name="arrow-right" /> Check-out</button>
+              } @else if (habitacionesParaAccion(r, 'historial').length) {
+                <button type="button" class="button small" [disabled]="cargandoAccionRapida()"
+                  (click)="abrirAccionRapida(r, 'historial')"><app-icon name="calendar" /> Ver check-out</button>
+              }
               @if(estadoReserva(r)==='FINALIZADA' && acceso.permite('RESERVAS:EMITIR_COMPROBANTE', 'FACTURACION:VER')){
                 <button class="button small receipt-button" (click)="abrirComprobante(r)"><app-icon name="receipt"/>Boleta / Factura</button>
               }
@@ -237,7 +249,7 @@
   (cerrar)="cerrarPago()"
   (confirmar)="pagar($event)"
 />
-} @if (detalle(); as r) {
+} @if (!editandoOcupantes() && !accionRapida() ? detalle() : null; as r) {
 <div class="modal-backdrop no-print" (click)="detalle.set(null)">
   <section
     appDialog
@@ -297,7 +309,8 @@
           }
         }
         @if (h.estadoDetalle === 'CONFIRMADA' && acceso.permite('RESERVAS:EDITAR_OCUPANTES')) {
-          <button class="button small" type="button" (click)="abrirEditorOcupantes(h)">
+          <button class="button small" type="button" (click)="abrirEditorOcupantes(h)"
+            appTooltip="Los cambios de huéspedes se aplican solo a esta habitación.">
             <app-icon name="users" /> {{ h.ocupantes.length ? 'Editar huéspedes' : 'Completar huéspedes' }}
           </button>
         }
@@ -335,11 +348,13 @@
           @if (ingresoPermitido || salidaPermitida || cancelacionPermitida) {
             <div class="row-actions acciones-estadia">
               @if (ingresoPermitido) {
-                <button class="button small primary" type="button" [disabled]="procesandoEstadia()" (click)="pedirAccionEstadia(h, 'ingreso')">Registrar ingreso</button>
+                <button class="button small primary" type="button" [disabled]="procesandoEstadia()" (click)="pedirAccionEstadia(h, 'ingreso')"
+                  appTooltip="El check-in se permite desde 30 minutos antes del horario reservado si la habitación está disponible y los huéspedes están completos.">Registrar ingreso</button>
               }
               @if (salidaPermitida) {
                 @if (saldoPrincipal(r.cuenta) > 0) {
-                  <button class="button small primary" type="button" [disabled]="ocupado() || procesandoEstadia()" (click)="abrirSalida(r, h)">Cobrar y registrar check-out</button>
+                  <button class="button small primary" type="button" [disabled]="ocupado() || procesandoEstadia()" (click)="abrirSalida(r, h)"
+                    appTooltip="Abre el resumen de cobro para revisar el saldo antes de confirmar la salida.">Cobrar y registrar check-out</button>
                 } @else {
                   <button class="button small primary" type="button" [disabled]="procesandoEstadia()" (click)="pedirAccionEstadia(h, 'salida')">Registrar check-out</button>
                 }
@@ -440,6 +455,88 @@
 }
 @if(comprobante();as r){@if(catalogos();as cat){<app-comprobante-dialog [reserva]="r" [catalogos]="cat" (cerrar)="comprobante.set(null)" (actualizado)="cargar()"/>}}
 
+@if (!editandoOcupantes() ? accionRapida() : null; as operacion) {
+  <div class="modal-backdrop no-print" (click)="cerrarAccionRapida()">
+    <section class="modal" appDialog (dialogEscape)="cerrarAccionRapida()" role="dialog"
+      aria-modal="true" aria-labelledby="accion-rapida-titulo" (click)="$event.stopPropagation()">
+      <header class="modal-header">
+        <p class="eyebrow">RESERVA R{{ operacion.reserva.idReserva }}</p>
+        <button type="button" class="icon-button" aria-label="Cerrar" [disabled]="procesandoEstadia()"
+          (click)="cerrarAccionRapida()"><app-icon name="close" /></button>
+      </header>
+      <h2 id="accion-rapida-titulo">
+        @switch (operacion.accion) {
+          @case ('ingreso') { Registrar check-in }
+          @case ('salida') { Registrar check-out }
+          @case ('historial') { Consultar check-out }
+        }
+      </h2>
+      @if (habitacionesRapidas().length > 1) {
+        <label class="field">Habitación
+          <select [ngModel]="habitacionRapidaId()" [disabled]="procesandoEstadia()"
+            (ngModelChange)="habitacionRapidaId.set($event); errorEstadia.set('')">
+            <option [ngValue]="null">Selecciona una habitación</option>
+            @for (h of habitacionesRapidas(); track h.idDetalleReserva) {
+              <option [ngValue]="h.idDetalleReserva">Habitación {{ h.numeroCuarto }}</option>
+            }
+          </select>
+        </label>
+      }
+      @if (habitacionRapida(); as h) {
+        <div class="detail-line">
+          <strong>Habitación {{ h.numeroCuarto }}</strong>
+          @switch (operacion.accion) {
+            @case ('ingreso') {
+              <small>Ingreso programado: {{ h.fechaIngreso | date:'dd/MM/yyyy HH:mm' }}</small>
+              @for (g of h.ocupantes; track g.idReservaOcupante) {
+                <p>{{ g.nombre }}</p>
+              } @empty {
+                <p>Completa los huéspedes antes de registrar el ingreso.</p>
+              }
+              @if (acceso.permite('RESERVAS:EDITAR_OCUPANTES')) {
+                <button type="button" class="button small" [disabled]="procesandoEstadia()" (click)="abrirEditorOcupantes(h)">
+                  <app-icon name="users" /> {{ h.ocupantes.length ? 'Editar huéspedes' : 'Completar huéspedes' }}
+                </button>
+              }
+            }
+            @case ('salida') {
+              <small>Salida programada: {{ h.fechaSalida | date:'dd/MM/yyyy HH:mm' }}</small>
+              <p>Confirma que los huéspedes ya dejaron la habitación. Puedes registrar la salida antes de la hora programada.</p>
+              @if (operacion.reserva.cuenta.saldoPendiente > 0) {
+                <p>Saldo pendiente de la reserva: {{ operacion.reserva.cuenta.saldoPendiente | currency:'PEN':'S/ ' }}.</p>
+              }
+            }
+            @case ('historial') {
+              @if (h.fechaSalidaReal) {
+                <p>Salida registrada: {{ h.fechaSalidaReal | date:'dd/MM/yyyy HH:mm' }}.</p>
+              } @else {
+                <p>La estancia figura como finalizada. No hay una hora de salida guardada.</p>
+              }
+            }
+          }
+        </div>
+      }
+      @if (errorEstadia()) { <p class="field-error" role="alert">{{ errorEstadia() }}</p> }
+      <div class="modal-actions">
+        <button type="button" class="button" [disabled]="procesandoEstadia()" (click)="cerrarAccionRapida()">
+          <app-icon name="close" /> {{ operacion.accion === 'historial' ? 'Cerrar' : 'Volver' }}
+        </button>
+        @if (operacion.accion !== 'historial') {
+          <button type="button" class="button primary"
+            [disabled]="!habitacionRapida() || procesandoEstadia() || ocupado() || (operacion.accion === 'ingreso' && !habitacionRapida()?.ocupantes?.length)"
+            (click)="confirmarAccionRapida()">
+            <app-icon name="check" />
+            @if (procesandoEstadia()) { Registrando… }
+            @else if (operacion.accion === 'ingreso') { Confirmar ingreso }
+            @else if (saldoPrincipal(operacion.reserva.cuenta) > 0) { Revisar cobro }
+            @else { Confirmar salida }
+          </button>
+        }
+      </div>
+    </section>
+  </div>
+}
+
 @if (editandoOcupantes(); as h) {
 <div class="modal-backdrop no-print" (click)="cerrarEditorOcupantes()">
   <section class="modal wide-modal" appDialog (dialogEscape)="cerrarEditorOcupantes()"
@@ -498,7 +595,7 @@
     } @empty { <p class="inline-note">Agrega al menos un huésped para habilitar el check-in.</p> }
     @if (errorOcupantes()) { <p class="field-error" role="alert">{{ errorOcupantes() }}</p> }
     <div class="modal-actions">
-      <button class="button" type="button" [disabled]="ocupantesOcupado()" (click)="cerrarEditorOcupantes()">Cancelar</button>
+      <button class="button" type="button" [disabled]="ocupantesOcupado()" (click)="cerrarEditorOcupantes()">{{ accionRapida() ? 'Volver al check-in' : 'Volver al detalle' }}</button>
       <button class="button primary" type="button" [disabled]="ocupantesOcupado() || !ocupantesEditados().length" (click)="guardarEdicionOcupantes()">{{ guardandoOcupantes() ? 'Guardando…' : 'Guardar huéspedes' }}</button>
     </div>
   </section>

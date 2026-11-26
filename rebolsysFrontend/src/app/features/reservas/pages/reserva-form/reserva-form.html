@@ -252,26 +252,28 @@
       <app-icon name="info" />La disponibilidad y el importe final se comprueban
       al confirmar.
     </p>
-    @if (comprobando()) {
-    <p class="inline-note" role="status">Comprobando disponibilidad…</p>
-    } @if (errorDisponibilidad()) {
-    <button
-      type="button"
-      class="button full"
-      (click)="actualizarDisponibilidad()"
-    >
-      Reintentar disponibilidad
-    </button>
+    @if (comprobando() || errorDisponibilidad()) {
+      <div class="summary-availability">
+        @if (comprobando()) {
+          <p class="inline-note" role="status">Comprobando disponibilidad…</p>
+        } @else {
+          <button type="button" class="button subtle" (click)="actualizarDisponibilidad()">
+            Reintentar disponibilidad
+          </button>
+        }
+      </div>
     }
-    <button
-      class="button primary full"
-      type="submit"
-      [disabled]="!clienteSeleccionado() || guardando() || comprobando() || registroIniciado()"
-    >
-      <app-icon name="check" />{{ guardando() ? "Guardando…" : "Agregar reserva"
-      }}</button
-    ><a routerLink="/reservas" class="button danger full">Cancelar reserva</a
-    ><span class="summary-footer"
+    <div class="summary-actions">
+      <button
+        class="button primary"
+        type="submit"
+        [disabled]="!clienteSeleccionado() || guardando() || comprobando() || registroIniciado()"
+      >
+        <app-icon name="check" />{{ guardando() ? "Guardando…" : "Agregar reserva" }}
+      </button>
+      <a routerLink="/reservas" class="button danger"><app-icon name="close" />Cancelar reserva</a>
+    </div>
+    <span class="summary-footer"
       >Puedes registrar la reserva con un anticipo o con saldo pendiente.</span
     >
   </aside>
@@ -332,7 +334,7 @@
                 class="icon-button"
                 [disabled]="buscando()"
                 aria-label="Buscar cliente por documento"
-                title="Buscar en el hospedaje o consultar DNI/RUC"
+                appTooltip="Busca el documento en el hospedaje y consulta los datos de DNI o RUC cuando corresponda."
                 (click)="buscarCliente()"
               >
                 <app-icon name="search" />

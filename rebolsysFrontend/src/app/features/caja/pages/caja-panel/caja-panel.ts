@@ -10,10 +10,12 @@ import { NotificacionService } from '../../../../core/services/notificacion.serv
 import { SesionService } from '../../../../core/auth/sesion-service';
 import { mensajeError } from '../../../../core/utils/http-error';
 import { DialogFocus } from '../../../../shared/directives/dialog-focus';
+import { Icon } from '../../../../shared/components/icono/icono';
+import { Tooltip } from '../../../../shared/directives/tooltip';
 import { ArqueoCaja, CajaApi, DatosMovimiento, MovimientoCaja, TurnoCaja } from '../../services/caja-api';
 
 @Component({
-  imports: [ArchivoProtegido, CurrencyPipe, FormsModule, DialogFocus],
+  imports: [ArchivoProtegido, CurrencyPipe, FormsModule, DialogFocus, Icon, Tooltip],
   templateUrl: './caja-panel.html',
   styleUrl: './caja-panel.css',
 })
