@@ -113,6 +113,42 @@ class CobroInmediatoIntegracionTest {
         .setParameter("v", valor).getSingleResult();
   }
 
+  @Test
+  void registraYBuscaTitularesSinDuplicarElDocumento() throws Exception {
+    Long pasaporte = tx.execute(s -> {
+      var tipo = new TipoDocumento();
+      tipo.setNombreDocumento("PASAPORTE TITULAR");
+      tipo.setCodigoSunat("7");
+      em.persist(tipo);
+      return tipo.getIdTipoDocumento();
+    });
+    var mayor = ReglasPropuesta.ahora().toLocalDate().minusYears(18);
+    String ruta = "/api/v1/recepcion/clientes/titulares";
+    var persona = new ClienteRegistroRequestDTO(pasaporte, "ax091", false, "Alejandra", "Quispe Flores",
+        mayor, null, null, null, null);
+    var respuesta = mvc.perform(post(ruta).contentType(MediaType.APPLICATION_JSON)
+        .content(json.writeValueAsBytes(persona))).andExpect(status().isOk()).andReturn();
+    long id = json.readTree(respuesta.getResponse().getContentAsByteArray()).get("idCliente").asLong();
+    var duplicado = new ClienteRegistroRequestDTO(pasaporte, "AX091", false, "Nombre", "Alternativo",
+        mayor, null, null, null, null);
+    mvc.perform(post(ruta).contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsBytes(duplicado)))
+        .andExpect(status().isOk()).andExpect(jsonPath("$.idCliente").value(id))
+        .andExpect(jsonPath("$.persona.nombres").value("Alejandra"));
+    mvc.perform(get(ruta).param("empresa", "false").param("nombre", "ALEJANDRA QUISPE FLORES"))
+        .andExpect(status().isOk()).andExpect(jsonPath("$[0].idCliente").value(id));
+    mvc.perform(get(ruta).param("empresa", "false").param("tipoDocumento", pasaporte.toString())
+        .param("numeroDocumento", "ax091"))
+        .andExpect(status().isOk()).andExpect(jsonPath("$[0].idCliente").value(id));
+    mvc.perform(get(ruta).param("empresa", "true").param("numeroDocumento", "ax091"))
+        .andExpect(status().isOk()).andExpect(jsonPath("$").isEmpty());
+    var menor = new ClienteRegistroRequestDTO(pasaporte, "AX092", false, "Ana", "Prueba",
+        mayor.plusMonths(1), null, null, null, null);
+    assertThatThrownBy(() -> clientes.registrarTitular(menor)).hasMessageContaining("18 años");
+    var empresaConPasaporte = new ClienteRegistroRequestDTO(pasaporte, "AX093", true, null, null,
+        null, "Empresa de prueba", null, null, null);
+    assertThatThrownBy(() -> clientes.registrarTitular(empresaConPasaporte)).hasMessageContaining("RUC");
+  }
+
   private CobroInmediatoDTO cobro(String monto) { return new CobroInmediatoDTO(forma, new BigDecimal(monto), null); }
   private ReservaRegistroRequestDTO reserva(String clave, String monto) {
     var ahora = ReglasPropuesta.ahora();
