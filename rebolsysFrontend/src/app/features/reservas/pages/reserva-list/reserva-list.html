@@ -547,14 +547,16 @@
     </header>
     <h2 id="ocupantes-title">{{ h.ocupantes.length ? 'Editar huéspedes' : 'Completar huéspedes' }}</h2>
     <p class="subtitle">Busca una persona registrada o crea su perfil desde aquí. Los cambios solo afectan esta habitación.</p>
-    <div class="form-grid">
+    <div class="form-grid occupant-editor-search">
       <label class="field">Tipo de documento
-        <select [(ngModel)]="tipoDocumentoHuesped">
+        <select [(ngModel)]="tipoDocumentoHuesped" (ngModelChange)="documentoHuesped = ''">
           @for (doc of catalogos()?.documentos ?? []; track doc.id) { <option [ngValue]="doc.id">{{ doc.nombre }}</option> }
         </select>
       </label>
       <label class="field">Número de documento
-        <div class="input-with-button"><input [(ngModel)]="documentoHuesped" (keydown.enter)="$event.preventDefault(); buscarHuespedParaAgregar()" />
+        <div class="input-with-button"><input [(ngModel)]="documentoHuesped" [attr.maxlength]="limiteDocumentoHuesped()"
+          [attr.inputmode]="limiteDocumentoHuesped() === 50 ? 'text' : 'numeric'" (input)="ajustarDocumentoHuesped($event)"
+          (keydown.enter)="$event.preventDefault(); buscarHuespedParaAgregar()" />
           <button class="button small" type="button" [disabled]="ocupantesOcupado()" (click)="buscarHuespedParaAgregar()"><app-icon name="search" />{{ buscandoHuesped() ? 'Buscando…' : 'Buscar y agregar' }}</button>
         </div>
       </label>
@@ -574,7 +576,7 @@
       </details>
     }
     @for (g of ocupantesEditados(); track g.idCliente) {
-      <div class="detail-line">
+      <div class="detail-line occupant-editor-guest">
         <strong>{{ g.nombre }}</strong>
         <label><input type="checkbox" [(ngModel)]="g.ocupaPlazaCama" /> Usa plaza de cama</label>
         <label class="field">Responsable adulto
@@ -594,7 +596,7 @@
       </div>
     } @empty { <p class="inline-note">Agrega al menos un huésped para habilitar el check-in.</p> }
     @if (errorOcupantes()) { <p class="field-error" role="alert">{{ errorOcupantes() }}</p> }
-    <div class="modal-actions">
+    <div class="modal-actions occupant-editor-actions">
       <button class="button" type="button" [disabled]="ocupantesOcupado()" (click)="cerrarEditorOcupantes()">{{ accionRapida() ? 'Volver al check-in' : 'Volver al detalle' }}</button>
       <button class="button primary" type="button" [disabled]="ocupantesOcupado() || !ocupantesEditados().length" (click)="guardarEdicionOcupantes()">{{ guardandoOcupantes() ? 'Guardando…' : 'Guardar huéspedes' }}</button>
     </div>

@@ -389,7 +389,12 @@ export class ReservaList implements OnDestroy {
   buscarHuespedParaAgregar() {
     const tipo = this.tipoDocumentoHuesped;
     const documento = this.documentoHuesped.trim();
-    if (!tipo || !documento || this.ocupantesOcupado()) return;
+    const errorDocumento = this.validarDocumentoHuesped(documento);
+    if (!tipo || this.ocupantesOcupado()) return;
+    if (errorDocumento) {
+      this.errorOcupantes.set(errorDocumento);
+      return;
+    }
     this.buscandoHuesped.set(true);
     this.errorOcupantes.set('');
     this.clienteService.buscarPorDocumento(tipo, documento).pipe(takeUntilDestroyed(this.destroy)).subscribe({
@@ -426,8 +431,13 @@ export class ReservaList implements OnDestroy {
     const tipo = this.tipoDocumentoHuesped;
     const numeroDocumento = this.documentoHuesped.trim();
     const { nombres, apellidos, fechaNacimiento, telefono } = this.nuevoHuesped;
-    if (!tipo || !numeroDocumento || !nombres.trim() || !apellidos.trim() || !fechaNacimiento || this.ocupantesOcupado()) {
+    const errorDocumento = this.validarDocumentoHuesped(numeroDocumento);
+    if (!tipo || !nombres.trim() || !apellidos.trim() || !fechaNacimiento || this.ocupantesOcupado()) {
       this.errorOcupantes.set('Completa documento, nombres, apellidos y fecha de nacimiento del huésped.');
+      return;
+    }
+    if (errorDocumento) {
+      this.errorOcupantes.set(errorDocumento);
       return;
     }
     this.registrandoHuesped.set(true);
@@ -465,6 +475,28 @@ export class ReservaList implements OnDestroy {
         this.errorOcupantes.set(mensajeError(e));
       },
     });
+  }
+  limiteDocumentoHuesped() {
+    const tipo = this.catalogos()?.documentos.find(documento => documento.id === this.tipoDocumentoHuesped)?.nombre.toUpperCase();
+    return tipo === 'DNI' ? 8 : tipo === 'RUC' ? 11 : 50;
+  }
+  ajustarDocumentoHuesped(evento: Event) {
+    const input = evento.target as HTMLInputElement;
+    const tipo = this.catalogos()?.documentos.find(documento => documento.id === this.tipoDocumentoHuesped)?.nombre.toUpperCase();
+    const valor = (tipo === 'DNI' || tipo === 'RUC' ? input.value.replace(/\D/g, '') : input.value)
+      .slice(0, this.limiteDocumentoHuesped());
+    input.value = valor;
+    this.documentoHuesped = valor;
+    this.errorOcupantes.set('');
+  }
+  validarDocumentoHuesped(documento: string) {
+    const tipo = this.catalogos()?.documentos.find(item => item.id === this.tipoDocumentoHuesped)?.nombre.toUpperCase();
+    if (!documento) return 'Ingresa el número de documento del huésped.';
+    if (tipo === 'DNI' && !/^\d{8}$/.test(documento)) return 'El DNI debe contener exactamente 8 dígitos.';
+    if (tipo === 'RUC' && !/^\d{11}$/.test(documento)) return 'El RUC debe contener exactamente 11 dígitos.';
+    if (documento.length > this.limiteDocumentoHuesped()) return `El documento admite hasta ${this.limiteDocumentoHuesped()} caracteres.`;
+    if (!/\S/.test(documento)) return 'Ingresa un número de documento válido.';
+    return '';
   }
   guardarEdicionOcupantes() {
     const h = this.editandoOcupantes();
