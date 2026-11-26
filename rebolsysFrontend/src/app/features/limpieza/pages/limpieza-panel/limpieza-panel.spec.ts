@@ -160,4 +160,32 @@ describe("Informes y habitaciones", () => {
     expect(raiz.textContent).not.toContain("Abre tu turno");
     http.verify();
   });
+
+  it("permite editar observaciones generales y limpia la evidencia al corregir un ítem a óptimo", () => {
+    const { componente, http, boton, refrescar } = preparar(
+      ["LIMPIEZA:VER_INFORMES", "LIMPIEZA:EDITAR_INFORME"],
+    );
+    http.expectOne(req => req.url === base + "/informes")
+      .flush({ contenido: [pendiente.informe], totalElementos: 1 });
+    componente.abrirEditarInforme(32);
+    http.expectOne(base + "/informes/32").flush(pendiente);
+    refrescar();
+    expect(componente.observaciones).toBe("Revisión del turno");
+    componente.observaciones = "Observación actualizada";
+    boton("Óptimo")!.click();
+    refrescar();
+    componente.guardarInforme();
+    const peticion = http.expectOne({ method: "PATCH", url: base + "/informes/32" });
+    expect(peticion.request.body).toEqual({
+      items: [{ idItem: 9, estadoEncontrado: "BUENO", observaciones: "Pata suelta", evidencia: null }],
+      observaciones: "Observación actualizada",
+    });
+    peticion.flush({
+      ...pendiente,
+      observaciones: "Observación actualizada",
+      informe: { ...pendiente.informe, tieneIncidencias: false, incidenciasPendientes: 0 },
+      items: [{ ...pendiente.items[0], estadoEncontrado: "BUENO", estadoActualItem: "BUENO", evidencia: null, puedeCrearTicket: false }],
+    });
+    http.verify();
+  });
 });

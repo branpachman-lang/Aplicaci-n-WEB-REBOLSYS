@@ -87,6 +87,17 @@ class ResumenLimpiezaTest {
     verify(informes).countByUsuarioIdUsuarioAndEstadoInformeAndFechaHoraBetween(eq(3L), eq(EstadoInforme.POR_APROBAR), eq(turno.getFechaApertura()), any());
   }
 
+  @Test void usuarioSinEmpleadoConsultaSuActividadSinFallarPorTickets() {
+    when(sesion.actual()).thenReturn(cuenta(false, null, List.of("LIMPIEZA")));
+    when(reglas.usuario(3L)).thenReturn(new Usuario());
+    when(informes.countByUsuarioIdUsuarioAndEstadoInformeAndFechaHoraBetween(eq(3L), eq(EstadoInforme.POR_APROBAR), any(), any())).thenReturn(1L);
+    var resumen = servicio.inicio();
+    assertThat(resumen.alcance()).isEqualTo("DIA");
+    assertThat(resumen.informesEnviados()).isEqualTo(1);
+    assertThat(resumen.ticketsGenerados()).isZero();
+    verifyNoInteractions(tickets);
+  }
+
   private SesionActualDTO cuenta(boolean gerente, Long turno, List<String> roles) {
     return new SesionActualDTO(3L, "prueba", "ACTIVA", turno, null, false, gerente, roles, List.of());
   }

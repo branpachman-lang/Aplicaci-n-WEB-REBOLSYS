@@ -66,8 +66,8 @@ export class LimpiezaApi {
     return this.http.get<Pagina<Informe>>(this.base + "/informes", { params: this.parametros(filtros, pagina) });
   }
   informe(id: number) { return this.http.get<InformeDetalle>(`${this.base}/informes/${id}`); }
-  editarInforme(id: number, items: EntradaItem[]) {
-    return this.http.patch<InformeDetalle>(`${this.base}/informes/${id}`, { items });
+  editarInforme(id: number, items: EntradaItem[], observaciones: string) {
+    return this.http.patch<InformeDetalle>(`${this.base}/informes/${id}`, { items, observaciones });
   }
   aprobar(id: number) { return this.http.post<InformeDetalle>(`${this.base}/informes/${id}/aprobar`, {}); }
   eliminarInforme(id: number) { return this.http.delete<void>(`${this.base}/informes/${id}`); }

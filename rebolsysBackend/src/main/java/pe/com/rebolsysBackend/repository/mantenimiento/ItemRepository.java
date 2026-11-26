@@ -22,7 +22,7 @@ public interface ItemRepository extends JpaRepository<Item, Long> {
       and (:tipo is null or i.tipoItem.idTipoItem=:tipo)
       and (:estado is null or i.estadoItem=:estado)
       and (:sinAsignar is null
-        or (:sinAsignar=true and i.estadoItem<>pe.com.rebolsysBackend.enums.EstadoItem.EN_HABITACION)
+        or (:sinAsignar=true and i.estadoItem=pe.com.rebolsysBackend.enums.EstadoItem.ACTIVO)
         or (:sinAsignar=false and i.estadoItem=pe.com.rebolsysBackend.enums.EstadoItem.EN_HABITACION))
       and (:habitacion is null or i.habitacion.idHabitacion=:habitacion)
       and (:conservacion is null or i.condicionItem=:conservacion)
