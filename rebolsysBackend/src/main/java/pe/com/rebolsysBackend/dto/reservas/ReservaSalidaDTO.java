@@ -7,7 +7,7 @@ import pe.com.rebolsysBackend.dto.caja.cobros.CobroInmediatoDTO;
 public record ReservaSalidaDTO(
     @NotNull @Positive Long idUsuario,
     @Positive Long idTurno,
-    @Size(min = 1, max = 64) @Pattern(regexp = ".*\\S.*") String claveOperacion,
+    @Size(min = 1, max = 64) @Pattern(regexp = "(?s).{0,63}\\S.{0,63}") String claveOperacion,
     @Valid CobroInmediatoDTO cobro,
     @Valid Comprobante comprobante) {
 

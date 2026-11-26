@@ -4,11 +4,6 @@
 .field {
   margin: 14px 0;
 }
-.receipt-number {
-  margin: 16px 0;
-  font-size: 21px;
-  color: var(--azul);
-}
 .table-scroll {
   margin-top: 18px;
 }
@@ -20,8 +15,6 @@ table {
 .ticket-seccion h3 { margin: 0 0 5px; font-size: 12px; text-transform: uppercase; }
 .ticket-estadia-item { padding: 5px 0; border-top: 1px dashed #aaa; }
 .ticket-estadia-item p, .ticket-estado-pago, .ticket-medio-pago { display: flex; justify-content: space-between; gap: 8px; margin: 3px 0; }
-.ticket-receptor { margin-bottom: 5px; }
-.ticket-referencia { margin-top: 0; }
 .ticket-pago { border-top: 1px solid #888; padding-top: 8px; }
 .ticket-estado-pago strong { text-align: right; }
 .ticket-medio-pago span { max-width: 55%; }
@@ -147,10 +140,6 @@ table {
     font-weight: 600;
   }
   .detalle-etiqueta { display: block; color: var(--muted); font-size: 12px; }
-}
-td,
-th {
-  padding: 12px 8px;
 }
 .partial-choice {
   display: flex;
