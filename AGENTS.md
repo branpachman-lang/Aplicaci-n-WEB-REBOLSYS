@@ -3,7 +3,7 @@
 ## Project Structure
 
 - `rebolsysBackend/` is the Java 21 Spring Boot API backed by Oracle. Java code lives in `src/main/java`, JUnit tests in `src/test/java`, and schema and update scripts in `src/main/resources/db`. API contracts and Postman collections live in `api/`.
-- `rebolsysFrontend/` is the Angular 22 app. Find feature pages, models, and services in `src/app/features/`, reusable code in `src/app/core/` and `src/app/shared/`, and static assets in `public/`.
+- `rebolsysFrontend/` is the Angular 22 app organized by module: `src/app/core/{auth,guards,interceptors,config,models,services,utils}`, `src/app/layout/`, `src/app/shared/`, and `src/app/features/{accesos,caja,clientes,configuracion-sistema,inicio,limpieza,mantenimiento,reportes,reservas,ventas}` (each module follows `components/`, `models/`, `pages/`, `services/`, `utils/`). Static assets live in `public/`.
 - `PharmaBackend/` and `pharma-frontend/` are separate reference projects. `docs/` contains REBOLSYS design notes and diagrams. `unidad 2/` contains Oracle coursework.
 
 ## Build and Run Locally
@@ -15,6 +15,14 @@
 
 - Match indentation in the Java file you edit. Use PascalCase names such as `ReservaServiceImpl` and `ReservaRegistroRequestDTO`. Keep business rules and transactions in `service/impl`, DTO validation at the API boundary, and queries in `repository`.
 - Use two spaces and single quotes in TypeScript. Use kebab-case filenames and separate component `.ts`, `.html`, and `.css` files. Prettier is available in both Angular projects.
+
+## UI Consistency Rules
+
+- Use only design tokens defined in `rebolsysFrontend/src/styles.css` (`--space-*`, `--text-*`, `--radius-*`, `--control-h*`, and semantic colors); avoid hardcoded hex colors or ad-hoc font sizes/radii.
+- Use `.button` plus a standard variant (`primary`, `subtle`, `danger-outline`, `danger`, `small`) without creating custom button classes (`.btn-*`).
+- Use `.button.danger-outline` for destructive triggers on cards and tables; reserve solid `.button.danger` for final confirmation buttons inside modals.
+- Include an `<app-icon>` on every button within a button group, and keep the standard action order: **Consultar** → **Editar** → **acción destructiva** (`Retirar` / `Dar de baja`).
+- Avoid inline `style="..."` attributes in component templates.
 
 ## Testing
 

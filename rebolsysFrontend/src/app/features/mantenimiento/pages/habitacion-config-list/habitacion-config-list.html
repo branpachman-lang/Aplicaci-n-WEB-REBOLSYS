@@ -131,7 +131,7 @@
               <span class="room-price"
                 >S/ {{ room.precioBase | number: "1.2-2" }}</span
               >
-              <span class="muted" style="font-size: 13px">por noche</span>
+              <span class="muted">por noche</span>
             </div>
 
             @if (room.estadoHabitacion === "OCUPADO") {
@@ -175,14 +175,14 @@
             @if (room.estadoHabitacion === "OCUPADO") {
               <button
                 type="button"
-                class="button small danger"
+                class="button small danger-outline"
                 disabled
                 [title]="motivoBloqueoRetiro(room)"
                 aria-label="Retirar habitación {{
                   room.numeroCuarto
                 }} bloqueado por estar ocupada"
               >
-                Retirar
+                <app-icon name="archive" />Retirar
               </button>
             } @else if (room.estadoHabitacion === "MANTENIMIENTO") {
               <button
@@ -194,19 +194,19 @@
                   room.numeroCuarto
                 }} ya se encuentra en mantenimiento"
               >
-                Retirada
+                <app-icon name="archive" />Retirada
               </button>
             } @else {
               @if (acceso.permite("HABITACIONES:CAMBIAR_ESTADO")) {
                 <button
                   type="button"
-                  class="button small danger"
+                  class="button small danger-outline"
                   (click)="abrirRetiro(room)"
                   aria-label="Retirar habitación {{
                     room.numeroCuarto
                   }} de nuevas reservas"
                 >
-                  Retirar
+                  <app-icon name="archive" />Retirar
                 </button>
               }
             }

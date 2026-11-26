@@ -309,7 +309,7 @@
                         @if (puedeDarDeBaja) {
                           <button
                             type="button"
-                            class="button small danger"
+                            class="button small danger-outline"
                             [attr.autofocus]="puedeMover ? null : ''"
                             (click)="
                               cerrarAcciones(menuAcciones, botonAcciones);
@@ -319,7 +319,7 @@
                               enHabitacion ? 'Dar de baja por daño o pérdida' : 'Dar de baja unidad'
                             "
                           >
-                            Dar de baja
+                            <app-icon name="archive" />Dar de baja
                           </button>
                         }
                       </div>

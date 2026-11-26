@@ -22,8 +22,7 @@
 .stock-qty,.stock-min,.stat-label,.stat-sub,.stat-val { display:block; }
 .low-stock { color:#a44716; }
 .product-card-alert { margin-top:10px; padding:6px; border-radius:6px; background:#fff0b9; color:#755400; font-size:12px; }
-.product-card-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
-.btn-detail { background:#f0eefb; color:var(--azul); }
+.product-card-actions { display:grid; grid-template-columns:repeat(auto-fit,minmax(0,1fr)); gap:var(--space-2); margin-top:14px; }
 .pagination { padding:20px; }
 .detail-overview { display:grid; grid-template-columns:170px 1fr; gap:20px; padding:16px; border:1px solid var(--line); border-radius:10px; margin-bottom:24px; }
 .detail-stats-grid,.ajuste-stock-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:14px 0; }

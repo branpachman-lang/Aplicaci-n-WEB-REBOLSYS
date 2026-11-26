@@ -118,16 +118,16 @@
               <div class="product-card-actions">
                 <button
                   type="button"
-                  class="button small btn-detail"
+                  class="button small subtle"
                   (click)="abrirDetalle(p)"
                   title="Ver detalle completo y movimientos"
                 >
-                  Ver detalle
+                  <app-icon name="search" />Consultar
                 </button>
 
                 @if (sesion.permite("PRODUCTOS:EDITAR")) {
                   <a
-                    class="button small btn-edit"
+                    class="button small"
                     [routerLink]="['/configuraciones/productos', p.idProducto, 'editar']"
                   >
                     <app-icon name="edit" />Editar
@@ -137,12 +137,12 @@
                 @if (sesion.permite("PRODUCTOS:ELIMINAR")) {
                   <button
                     type="button"
-                    class="button small danger btn-retire"
+                    class="button small danger-outline"
                     [disabled]="p.estadoProducto === 'INACTIVO'"
                     (click)="iniciarDesactivacion(p)"
                     title="Retirar de venta"
                   >
-                    Retirar
+                    <app-icon name="archive" />Retirar
                   </button>
                 }
               </div>
