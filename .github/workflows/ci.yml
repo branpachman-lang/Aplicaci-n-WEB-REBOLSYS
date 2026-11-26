@@ -20,7 +20,7 @@ jobs:
           java-version: '21'
           cache: maven
       - name: Ejecutar pruebas backend y empaquetar
-        run: ./mvnw -B package
+        run: bash ./mvnw -B package
 
   frontend:
     runs-on: ubuntu-latest
