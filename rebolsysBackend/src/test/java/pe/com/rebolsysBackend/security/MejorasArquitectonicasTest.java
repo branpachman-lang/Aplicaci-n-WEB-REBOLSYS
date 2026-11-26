@@ -88,6 +88,36 @@ class MejorasArquitectonicasTest {
   }
 
   @Test
+  void loginRateLimitConservaLosContadoresAlLlenarseYAdmiteIpsAlVencer() throws Exception {
+    var reloj = new RelojMutable();
+    var errores = new RespuestaErrorSeguridad(new ObjectMapper());
+    var filtro = new LoginRateLimitFilter(errores, true, 1, Duration.ofMillis(1500), reloj);
+
+    for (int i = 0; i < 2048; i++) {
+      assertThat(intentarLogin(filtro, "2001:db8::" + Integer.toHexString(i)).getStatus())
+          .isEqualTo(200);
+    }
+
+    var saturada = intentarLogin(filtro, "2001:db8::ffff");
+    assertThat(saturada.getStatus()).isEqualTo(429);
+    assertThat(saturada.getHeader("Retry-After")).isEqualTo("2");
+    assertThat(intentarLogin(filtro, "2001:db8::1").getStatus()).isEqualTo(429);
+
+    reloj.avanzar(Duration.ofMillis(1500));
+    assertThat(intentarLogin(filtro, "2001:db8::ffff").getStatus()).isEqualTo(200);
+    assertThat(intentarLogin(filtro, "2001:db8::ffff").getStatus()).isEqualTo(429);
+  }
+
+  private MockHttpServletResponse intentarLogin(LoginRateLimitFilter filtro, String ip) throws Exception {
+    var request = new MockHttpServletRequest("POST", "/hotel/api/v1/sesion/iniciar");
+    request.setContextPath("/hotel");
+    request.setRemoteAddr(ip);
+    var response = new MockHttpServletResponse();
+    filtro.doFilter(request, response, (entrada, salida) -> response.setStatus(200));
+    return response;
+  }
+
+  @Test
   @SuppressWarnings("unchecked")
   void jwtPermiteMultiplesInstanciasConRevocacionCompartidaEnRedis() {
     var reloj = new RelojMutable();

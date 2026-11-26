@@ -23,8 +23,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
   @Override
   protected boolean shouldNotFilter(HttpServletRequest request) {
-    return !request.getRequestURI().startsWith("/api/v1/")
-        || request.getRequestURI().equals("/api/v1/sesion/iniciar")
+    String ruta = rutaAplicacion(request);
+    return (!ruta.startsWith("/api/v1/") && !ruta.startsWith("/actuator/") && !ruta.equals("/actuator"))
+        || ruta.equals("/api/v1/sesion/iniciar")
         || "OPTIONS".equals(request.getMethod());
   }
 
@@ -51,8 +52,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
       SecurityContextHolder.setContext(contexto);
       request.setAttribute(JwtService.ATRIBUTO, token);
       response.setHeader("Cache-Control", "no-store");
-      if (!request.getRequestURI().equals("/api/v1/sesion/cerrar")
-          && !request.getRequestURI().equals("/api/v1/sesion/contrasena")) {
+      String ruta = rutaAplicacion(request);
+      if (ruta.startsWith("/api/v1/") && !ruta.equals("/api/v1/sesion/cerrar")
+          && !ruta.equals("/api/v1/sesion/contrasena")) {
         var renovado = jwt.renovar(token, usuario.principal(), politica.minutosInactividad());
         if (renovado != null) {
           response.setHeader(JwtService.CABECERA_TOKEN, renovado.token());
@@ -65,5 +67,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
       return;
     }
     chain.doFilter(request, response);
+  }
+
+  private String rutaAplicacion(HttpServletRequest request) {
+    return request.getRequestURI().substring(request.getContextPath().length());
   }
 }

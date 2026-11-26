@@ -92,6 +92,8 @@ La salida queda en `dist/rebolsys-frontend/browser`. El servidor debe entregar `
 
 `vercel.json` configura instalación con `npm ci`, compilación con `npm run build`, cabeceras de seguridad y la carpeta de salida. Antes de desplegar en Vercel, reemplaza el marcador `https://api.rebolsys.example/api/:path*` por la URL estable del backend y confirma que `CORS_ALLOWED_ORIGINS` permite el dominio final. Para despliegue propio en servidor web, [`deploy/nginx.conf`](deploy/nginx.conf) incluye proxy `/api/`, caché inmutable para assets con hash y `no-cache` para `index.html`.
 
+Entrega este servidor Nginx detrás de la terminación HTTPS del entorno. Para publicar una versión, copia primero los assets con hash y reemplaza `index.html` al final. Conserva los assets de la versión previa durante la transición para que las pestañas abiertas puedan seguir cargando sus módulos y para facilitar una reversión compatible con el backend.
+
 ## Pruebas, rendimiento y calidad
 
 Ejecuta las pruebas unitarias y la compilación con:

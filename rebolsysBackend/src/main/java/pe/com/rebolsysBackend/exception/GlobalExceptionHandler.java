@@ -27,6 +27,8 @@ import org.springframework.web.method.annotation.HandlerMethodValidationExceptio
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import pe.com.rebolsysBackend.exception.dto.ErrorResponseDTO;
 
 @RestControllerAdvice
@@ -69,15 +71,19 @@ public class GlobalExceptionHandler {
         RecursoNoEncontradoException ex,
         HttpServletRequest request
     ) {
-        ErrorResponseDTO error = new ErrorResponseDTO(
-            LocalDateTime.now(ZONA_LIMA),
-            HttpStatus.NOT_FOUND.value(),
-            "Not Found",
-            ex.getMessage(),
-            request.getRequestURI(),
-            null
-        );
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+        return notFound(ex.getMessage(), request);
+    }
+
+    @ExceptionHandler({NoHandlerFoundException.class, NoResourceFoundException.class})
+    public ResponseEntity<ErrorResponseDTO> handleMissingRoute(HttpServletRequest request) {
+        return notFound("El recurso solicitado no existe", request);
+    }
+
+    private ResponseEntity<ErrorResponseDTO> notFound(String mensaje, HttpServletRequest request) {
+        var estado = HttpStatus.NOT_FOUND;
+        return ResponseEntity.status(estado).body(new ErrorResponseDTO(
+            LocalDateTime.now(ZONA_LIMA), estado.value(), estado.getReasonPhrase(),
+            mensaje, request.getRequestURI(), null));
     }
 
     @ExceptionHandler(ReglaNegocioException.class)
