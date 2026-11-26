@@ -5,6 +5,7 @@ import {
   TipoHabitacion,
   TipoHabitacionRequest,
 } from '../models/tipo-habitacion.model';
+/** Servicio HTTP de Tipos de Habitación (CU_21): listar, crear/actualizar y eliminar tipos. */
 @Injectable({ providedIn: 'root' })
 export class TipoHabitacionService {
   private readonly http = inject(HttpClient);

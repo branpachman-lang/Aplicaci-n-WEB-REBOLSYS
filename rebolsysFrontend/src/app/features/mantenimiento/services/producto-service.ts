@@ -3,6 +3,7 @@ import { HttpClient } from "@angular/common/http";
 import { environment } from "../../../../environments/environment";
 import { Pagina } from "../../../core/models/pagina-response";
 import { AjusteStock, MovimientoInventario, Producto, ProductoRequest } from "../models/producto.model";
+/** Servicio HTTP de Productos (CU_23): paginación, catálogo, CRUD, baja lógica, movimientos y ajuste de stock. */
 @Injectable({ providedIn: "root" })
 export class ProductoService {
   private http = inject(HttpClient);

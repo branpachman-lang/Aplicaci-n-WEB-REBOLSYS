@@ -1,3 +1,4 @@
+<!-- === MODAL REUTILIZABLE: CREAR Y LISTAR CATEGORÍAS DE PRODUCTO (CU_23) === -->
 <div class="modal-backdrop" (click)="!guardando()&&cerrar.emit()">
   <section
     class="modal"
@@ -23,6 +24,7 @@
       Organiza los productos del hospedaje. Puedes agregar varias categorías
       desde aquí.
     </p>
+    <!-- Formulario de registro de nueva categoría -->
     <form (ngSubmit)="guardar()">
       <label class="field"
         >Nombre de la categoría<input
@@ -55,6 +57,7 @@
         </button>
       </div>
     </form>
+    <!-- Listado de categorías existentes -->
     <h3>Categorías registradas</h3>
     @if(cargando()){
     <p class="muted">Consultando categorías…</p>

@@ -1,3 +1,4 @@
+<!-- === 1. ENCABEZADO DEL FORMULARIO DE HABITACIÓN (CREAR / EDITAR) === -->
 <section class="panel form-page">
   @if (cargando()) {
     <div class="loading-state">Cargando formulario…</div>
@@ -14,20 +15,18 @@
       {{
         modoEdicion()
           ? "Editar habitación " + formNumero()
-          : "Registrar
-    habitación"
+          : "Registrar habitación"
       }}
     </h2>
     <p class="muted">
       {{
         modoEdicion()
-          ? "Actualiza los parámetros físicos y capacidad. No es
-    posible cambiar el estado si está ocupada."
-          : "Completa la configuración
-    física. Al elegir el tipo se preconfiguran las capacidades."
+          ? "Actualiza los parámetros físicos y capacidad. No es posible cambiar el estado si está ocupada."
+          : "Completa la configuración física. Al elegir el tipo se preconfiguran las capacidades."
       }}
     </p>
 
+    <!-- === 2. FORMULARIO DE PARÁMETROS FÍSICOS, TARIFA Y CAPACIDAD === -->
     <form (ngSubmit)="guardarHabitacion()" class="form-grid" novalidate>
       <!-- Número de habitación (máx 10) -->
       <label class="field">
@@ -104,8 +103,7 @@
           {{
             modoEdicion()
               ? "Dejar en blanco conserva la tarifa actual."
-              : "Dejar
-        en blanco usa la tarifa del tipo."
+              : "Dejar en blanco usa la tarifa del tipo."
           }}
           Cero indica tarifa pendiente.
         </small>
@@ -215,6 +213,8 @@
         </small>
       </label>
 
+      <!-- === 3. CARGA Y VISTA PREVIA DE IMAGEN REFERENCIAL (JPEG/PNG <= 5 MB) === -->
+      <!-- Vista previa usa [imagenProtegida]: si es blob: local la muestra directo; si es ruta del servidor la descarga con JWT -->
       <div class="field span-2">
         <label for="hab-imagen">Imagen referencial de la habitación (opcional)</label>
         @if (vistaImagen(); as img) {
@@ -235,7 +235,7 @@
           <small class="occupied-warning" role="alert">{{ imagenError() }}</small>
         }
       </div>
-      <!-- Conflictos o errores del servidor -->
+      <!-- === 4. ERRORES DEL SERVIDOR Y BOTONES DE ACCIÓN === -->
       @if (formError()) {
         <div class="span-2 error-box" role="alert">{{ formError() }}</div>
       }
@@ -258,8 +258,7 @@
             formOcupado()
               ? "Guardando…"
               : modoEdicion()
-                ? "Actualizar
-        habitación"
+                ? "Actualizar habitación"
                 : "Registrar habitación"
           }}
         </button>

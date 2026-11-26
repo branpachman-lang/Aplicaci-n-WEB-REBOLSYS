@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
 import { Categoria } from '../models/categoria.model';
+/** Servicio HTTP de Categorías de Producto (CU_23): listar y crear categorías. */
 @Injectable({ providedIn: 'root' })
 export class CategoriaService {
   private http = inject(HttpClient);

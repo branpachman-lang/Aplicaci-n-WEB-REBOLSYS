@@ -14,6 +14,7 @@ import {
   OcupacionHabitacion,
 } from '../models/habitacion.model';
 
+/** Servicio HTTP de Habitaciones (CU_21): consulta paginada, CRUD y cambio de estado (PATCH). */
 @Injectable({ providedIn: 'root' })
 export class HabitacionService {
   private readonly http = inject(HttpClient);

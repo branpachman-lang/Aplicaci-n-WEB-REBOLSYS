@@ -3,6 +3,11 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { Icon } from '../../shared/components/icono/icono';
 import { PermisosUi } from '../../core/auth/permisos-ui';
 
+/**
+ * Contenedor con pestañas de navegación para Configuraciones y Mantenimiento de la información:
+ * - Sistema (CU_18–20, solo Gerente)
+ * - Habitaciones (CU_21), Productos (CU_23) y Mobiliario (CU_22), filtrados por permisos.
+ */
 @Component({
   selector: 'app-mantenimiento',
   imports: [RouterLink, RouterLinkActive, RouterOutlet, Icon],

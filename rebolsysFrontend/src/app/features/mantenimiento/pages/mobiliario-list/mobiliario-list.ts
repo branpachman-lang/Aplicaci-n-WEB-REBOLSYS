@@ -33,7 +33,14 @@ import { MobiliarioService } from '../../services/mobiliario-service';
   templateUrl: './mobiliario-list.html',
   styleUrl: './mobiliario-list.css',
 })
+/**
+ * CU_22 - Administrar Mobiliario (Listado y operaciones de inventario):
+ * - Consulta paginada por tipo, condición, estado y ubicación (almacén o habitación).
+ * - Muestra imagen referencial protegida (con fallback si falla la carga).
+ * - Gestiona asignación/traslado/retiro, conservación, baja lógica en 2 etapas e historial.
+ */
 export class MobiliarioList implements OnInit {
+  // === 1. INYECCIÓN DE DEPENDENCIAS, LISTADO, FILTROS E IMÁGENES ===
   private readonly mobiliarioService = inject(MobiliarioService);
   private readonly habitacionesService = inject(HabitacionService);
   private readonly tiposService = inject(TipoItemService);
@@ -42,8 +49,10 @@ export class MobiliarioList implements OnInit {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   habitaciones = signal<HabitacionConfiguracion[]>([]);
+  /** IDs de artículos cuya imagen protegida falló para mostrar el ícono de respaldo. */
   fallidas = signal<Set<number>>(new Set());
 
+  /** Registra un error de carga de imagen para activar el respaldo visual en la fila/tarjeta. */
   marcarImagenFallida(id: number): void {
     this.fallidas.update((set) => {
       const next = new Set(set);
@@ -77,6 +86,7 @@ export class MobiliarioList implements OnInit {
 
   tamanio = signal(10);
 
+  // === 2. ESTADO DE MODALES (ASIGNACIÓN, CONSERVACIÓN, BAJA Y DETALLE/HISTORIAL) ===
   modalAsignacion = signal(false);
 
   itemParaAsignar = signal<Item | null>(null);
@@ -146,6 +156,7 @@ export class MobiliarioList implements OnInit {
   errorHistorial = signal('');
   private readonly alertaErrorHistorial = notificarCambios(this.errorHistorial, 'error');
 
+  // === 3. CARGA DE CATÁLOGOS, FILTROS Y PAGINACIÓN ===
   ngOnInit(): void {
     this.cargarCatalogosYDatos();
   }
@@ -250,6 +261,7 @@ export class MobiliarioList implements OnInit {
     boton.focus({ preventScroll: true });
   }
 
+  // === 4. MODAL DE ASIGNACIÓN / TRASLADO / RETIRO (IDEMPOTENTE CON claveOperacion) ===
   abrirAsignacion(item: Item, tipo: 'asignar' | 'trasladar' | 'retirar'): void {
     this.itemParaAsignar.set(item);
     this.tipoOperacionAsignacion.set(tipo);
@@ -344,6 +356,7 @@ export class MobiliarioList implements OnInit {
       });
   }
 
+  // === 5. MODAL DE ESTADO DE CONSERVACIÓN (BUENO / DAÑADO / FALTANTE) ===
   abrirConservacion(item: Item): void {
     this.itemParaConservar.set(item);
     this.consEstadoActualItem = item.estadoActualItem || 'BUENO';
@@ -416,6 +429,7 @@ export class MobiliarioList implements OnInit {
       });
   }
 
+  // === 6. MODAL DE BAJA LÓGICA EN 2 ETAPAS (RETIRO DE HABITACIÓN + DESACTIVACIÓN) ===
   abrirBaja(item: Item): void {
     this.itemParaBaja.set(item);
     this.bajaCondicionFinal =
@@ -544,6 +558,7 @@ export class MobiliarioList implements OnInit {
     });
   }
 
+  // === 7. MODAL DE DETALLE E HISTORIAL DE MOVIMIENTOS ===
   abrirDetalle(item: Item): void {
     this.itemDetalle.set(item);
     this.historial.set([]);
@@ -578,6 +593,7 @@ export class MobiliarioList implements OnInit {
     if (item) this.abrirEditar(item);
   }
 
+  // === 8. UTILIDADES VISUALES (TEXTOS / BADGES) Y NAVEGACIÓN A FORMULARIOS ===
   textoCondicion(condicion: EstadoConservacion | null | undefined): string {
     switch (condicion) {
       case 'BUENO':

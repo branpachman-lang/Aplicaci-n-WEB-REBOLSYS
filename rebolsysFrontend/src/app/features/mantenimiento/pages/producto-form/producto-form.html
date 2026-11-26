@@ -1,3 +1,4 @@
+<!-- === 1. BARRA SUPERIOR DE NAVEGACIÓN Y ACCESO A CATEGORÍAS (CU_23) === -->
 <div class="editor-toolbar">
   <a class="button back-link" routerLink="/configuraciones/productos"
     ><app-icon name="arrow" />Regresar a productos</a
@@ -13,6 +14,7 @@
 @if (cargando()) {
 <div class="loading-state panel">Cargando producto…</div>
 } @else {
+<!-- === 2. FORMULARIO REACTIVO DE DATOS, PRECIO Y STOCK === -->
 <form class="product-editor panel" [formGroup]="form" (ngSubmit)="guardar()">
   <div class="editor-fields">
     <p class="eyebrow">CATÁLOGO DE LA TIENDITA</p>
@@ -72,12 +74,14 @@
       <div class="stock-note">
         <app-icon name="info" />
         <p>
-          {{id()?'Para reponer, descontar o corregir existencias utiliza
-          «Ajustar existencias» en el listado.':'Las existencias iniciales se
-          guardan con el producto y registran su entrada de inventario
-          automáticamente.'}} Las ventas descuentan stock automáticamente.
+          {{
+            id()
+              ? 'Para reponer, descontar o corregir existencias utiliza «Ajustar existencias» en el listado.'
+              : 'Las existencias iniciales se guardan con el producto y registran su entrada de inventario automáticamente.'
+          }} Las ventas descuentan stock automáticamente.
         </p>
       </div>
+      <!-- === 3. IMAGEN DEL PRODUCTO (RUTA MANUAL O SUBIDA JPEG/PNG <= 5 MB) === -->
       <label class="field span-2"
         >Ruta de imagen (opcional)<input
           formControlName="imagenRuta"
@@ -108,11 +112,11 @@
         type="submit"
         [disabled]="guardando()||confirmacionPendiente()"
       >
-        <app-icon name="check" />{{ guardando() ? 'Guardando…' : 'Guardar
-        producto' }}
+        <app-icon name="check" />{{ guardando() ? 'Guardando…' : 'Guardar producto' }}
       </button>
     </div>
   </div>
+  <!-- === 4. PANEL LATERAL DE VISTA PREVIA EN VIVO (blob: / [imagenProtegida] / fallback) === -->
   <aside class="product-preview">
     <p class="eyebrow">VISTA PREVIA</p>
     <img
