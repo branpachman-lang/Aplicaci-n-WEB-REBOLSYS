@@ -83,3 +83,4 @@ proxy.qa.json
 *.log
 *.bak
 *.zip
+/public/runtime-config.js

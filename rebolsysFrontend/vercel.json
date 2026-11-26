@@ -23,7 +23,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://api.rebolsys.example/api/:path*"
+      "destination": "https://palace-partners-spent-heather.trycloudflare.com/api/:path*"
     },
     {
       "source": "/(.*)",
