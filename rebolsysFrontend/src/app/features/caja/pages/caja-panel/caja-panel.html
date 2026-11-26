@@ -123,8 +123,8 @@
             <textarea name="concepto" rows="3" [(ngModel)]="concepto" maxlength="1000" required></textarea>
           </label>
           <div class="field span-2">
-            <span>Adjuntar comprobante <span class="optional">Opcional</span></span>
-            <input #adjunto type="file" accept="image/jpeg,image/png" hidden (change)="adjuntar($event)" />
+            <label for="caja-adjunto">Adjuntar comprobante <span class="optional">Opcional</span></label>
+            <input #adjunto id="caja-adjunto" type="file" accept="image/jpeg,image/png" hidden (change)="adjuntar($event)" />
             <div class="caja-adjunto">
               <button class="button small" type="button" aria-label="Elegir archivo para el comprobante"
                 aria-describedby="caja-adjunto-ayuda" (click)="adjunto.click()">Elegir archivo</button>
@@ -172,14 +172,14 @@
               @let dif = diferencia(a);
               <tr role="row">
                 <th scope="row" role="rowheader">{{ a.formaPago }}</th>
-                <td role="cell"><span class="arqueo-etiqueta" aria-hidden="true">Esperado</span>{{ a.montoCalculado | currency:'PEN':'S/ ' }}</td>
-                <td role="cell"><span class="arqueo-etiqueta" aria-hidden="true">Declarado</span>
+                <td><span class="arqueo-etiqueta" aria-hidden="true">Esperado</span>{{ a.montoCalculado | currency:'PEN':'S/ ' }}</td>
+                <td><span class="arqueo-etiqueta" aria-hidden="true">Declarado</span>
                   @if (paso === 'conteo') {
                   <input type="number" min="0" max="99999999.99" step="0.01" inputmode="decimal" [attr.aria-label]="'Monto declarado en ' + a.formaPago"
                     [ngModel]="valor" (ngModelChange)="declarar(a.idFormaPago, $event)" [disabled]="ocupado()" required />
                   @if (valor != null && !importeValido(valor, 99999999.99)) { <small class="salida">Ingresa un importe válido con hasta dos decimales.</small> }
                 } @else { {{ valor | currency:'PEN':'S/ ' }} }</td>
-                <td role="cell" [class.salida]="dif !== null && dif < 0">
+                <td [class.salida]="dif !== null && dif < 0">
                   <span class="arqueo-etiqueta" aria-hidden="true">Diferencia</span>
                   @if (dif === null) { — } @else {
                     {{ dif > 0 ? '+' : '' }}{{ dif | currency:'PEN':'S/ ' }}

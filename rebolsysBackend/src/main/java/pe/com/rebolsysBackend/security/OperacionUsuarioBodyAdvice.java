@@ -18,6 +18,7 @@ import tools.jackson.databind.node.ObjectNode;
 import pe.com.rebolsysBackend.dto.limpieza.LimpiezaDTO.Borrador;
 import pe.com.rebolsysBackend.dto.limpieza.LimpiezaDTO.TicketDetalle;
 import pe.com.rebolsysBackend.dto.accesos.SeguridadDTO.*;
+import pe.com.rebolsysBackend.dto.reservas.ReservaSalidaDTO;
 import pe.com.rebolsysBackend.security.CredencialesService.Temporal;
 import static pe.com.rebolsysBackend.service.impl.comun.ReglasPropuesta.exigir;
 
@@ -40,8 +41,16 @@ public class OperacionUsuarioBodyAdvice extends RequestBodyAdviceAdapter impleme
     var actual=sesion.actual();
     var enviado=datos.get("idUsuario");exigir(enviado==null||enviado.isNull()||enviado.asLong()==actual.idUsuario(),"La operación debe corresponder al usuario de la sesión actual");
     datos.put("idUsuario",actual.idUsuario());
-    boolean usaTurno=java.util.Arrays.stream(p.getParameterType().getDeclaredFields()).anyMatch(f->f.getName().equals("idTurno"));
-    if(usaTurno && !p.getParameterType().getSimpleName().equals("ReservaSalidaDTO")){exigir(actual.idTurno()!=null,"El usuario actual necesita un único turno de caja abierto");var turno=datos.get("idTurno");exigir(turno==null||turno.isNull()||turno.asLong()==actual.idTurno(),"El turno debe pertenecer a la sesión actual");datos.put("idTurno",actual.idTurno());}
+    Class<?> tipoSolicitud = p.getParameterType();
+    boolean usaTurno = java.util.Arrays.stream(tipoSolicitud.getDeclaredFields())
+        .anyMatch(campo -> campo.getName().equals("idTurno"));
+    if (usaTurno && tipoSolicitud != ReservaSalidaDTO.class) {
+      exigir(actual.idTurno() != null, "El usuario actual necesita un único turno de caja abierto");
+      var turno = datos.get("idTurno");
+      exigir(turno == null || turno.isNull() || turno.asLong() == actual.idTurno(),
+          "El turno debe pertenecer a la sesión actual");
+      datos.put("idTurno", actual.idTurno());
+    }
     byte[] json=mapper.writeValueAsBytes(datos);var headers=new HttpHeaders();headers.putAll(entrada.getHeaders());headers.setContentLength(json.length);
     return new HttpInputMessage(){public InputStream getBody(){return new ByteArrayInputStream(json);}public HttpHeaders getHeaders(){return headers;}};
   }
