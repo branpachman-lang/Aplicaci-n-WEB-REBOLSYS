@@ -56,6 +56,10 @@ export class CajaApi {
 
   actual() { return this.http.get<TurnoCaja | null>(this.base + '/actual'); }
 
+  abrir(montoBase: number) {
+    return this.http.post<TurnoCaja>(this.base + '/turnos', { montoBase });
+  }
+
   turno(id: number) { return this.http.get<TurnoCaja>(`${this.base}/turnos/${id}`); }
 
   movimientos(id: number, pagina: number) {

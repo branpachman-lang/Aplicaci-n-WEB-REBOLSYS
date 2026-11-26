@@ -34,6 +34,7 @@ public class GastoServiceImpl implements GastoService {
   private final TipoMovimientoCajaRepository tipos;
   private final ReglasPropuesta reglas;
   private final UsuarioRepository usuarios;
+  private final CajaService caja;
 
   @Override
   @Transactional
@@ -67,6 +68,7 @@ public class GastoServiceImpl implements GastoService {
     exigir(
         (limpiar(r.evidenciaRuta()) == null) == (r.evidenciaSha256() == null),
         "Indica la ruta y la huella de la evidencia juntas");
+    caja.validarGastoEnEfectivo(turno, r.monto());
     var f = new FlujoCaja();
     f.setTurnoCaja(turno);
     f.setTipoMovimientoCaja(tipo);

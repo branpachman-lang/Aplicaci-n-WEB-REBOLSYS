@@ -42,6 +42,11 @@ export class CajaPanel {
     return !!turno?.revision && turno.arqueos.every(a => this.importeValido(this.declaraciones()[a.idFormaPago], 99999999.99));
   });
   readonly hayDiferencias = computed(() => this.turno()?.arqueos.some(a => (this.diferencia(a) ?? 0) !== 0) ?? false);
+  readonly puedeAbrir = computed(() => {
+    const sesion = this.sesion.actual();
+    return !!(sesion?.gerente || sesion?.roles?.includes('RECEPCIONISTA'));
+  });
+  montoBase: number | null = null;
   tipoId: number | null = null;
   concepto = '';
   monto: number | null = null;
@@ -65,6 +70,31 @@ export class CajaPanel {
       error: error => {
         this.errorCarga.set(true);
         this.avisos.mostrar(mensajeError(error), true);
+      },
+    });
+  }
+
+  abrirTurno() {
+    const monto = this.montoBase;
+    if (!this.puedeAbrir() || this.turno()?.abierto || this.ocupado() || this.cargando() || this.errorCarga()) return;
+    if (!this.importeValido(monto, 99999999.99)) {
+      this.avisos.mostrar('Ingresa el efectivo inicial con hasta dos decimales. Si no hay efectivo, declara S/ 0.00.', true);
+      return;
+    }
+    this.ocupado.set(true);
+    this.api.abrir(monto!).pipe(takeUntilDestroyed(this.destroy),
+      finalize(() => this.ocupado.set(false))).subscribe({
+      next: turno => {
+        this.turno.set(turno);
+        this.historial.set(null);
+        this.montoBase = null;
+        this.cargar(0, turno.idTurno);
+        this.sesion.refrescar().pipe(takeUntilDestroyed(this.destroy)).subscribe({ error: () => {} });
+        this.avisos.mostrar('Turno abierto con el fondo declarado.');
+      },
+      error: error => {
+        this.avisos.mostrar(mensajeError(error), true);
+        this.cargar();
       },
     });
   }

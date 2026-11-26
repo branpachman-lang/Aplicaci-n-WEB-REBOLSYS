@@ -52,6 +52,7 @@ class GastoServiceImplTest {
   @Mock TipoMovimientoCajaRepository tipos;
   @Mock ReglasPropuesta reglas;
   @Mock UsuarioRepository usuarios;
+  @Mock CajaService caja;
   @InjectMocks GastoServiceImpl servicio;
 
   @Test

@@ -18,6 +18,8 @@ public final class CajaDTO {
       BigDecimal montoBase, boolean abierto, List<Tipo> tipos, BigDecimal ingresosManuales,
       BigDecimal gastosManuales, List<Arqueo> arqueos, String revision, String bloqueoCierre) {}
 
+  public record Abrir(@NotNull @PositiveOrZero @Digits(integer = 8, fraction = 2) BigDecimal montoBase) {}
+
   public record Movimiento(Long idFlujo, String tipo, int signo, String concepto, BigDecimal monto,
       LocalDateTime fechaHora, String documentoRespaldo, String evidencia) {}
 

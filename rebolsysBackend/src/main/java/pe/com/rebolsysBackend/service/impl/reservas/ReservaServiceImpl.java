@@ -110,8 +110,9 @@ public class ReservaServiceImpl implements ReservaService {
             exigir(!s.fechaIngreso().isBefore(ahora()), "La fecha de ingreso de una nueva reserva no puede estar en el pasado");
             validarTitular(titular, s.fechaIngreso().toLocalDate());
             var h = bloqueadas.get(s.idHabitacion());
-            exigir(h.getEstadoHabitacion() == EstadoHabitacion.DISPONIBLE, "La habitación no está disponible físicamente");
-            exigir(detalles.superpuestas(h.getIdHabitacion(), s.fechaIngreso(), s.fechaSalida(), null) == 0, "La habitación ya tiene una reserva en ese periodo o una estancia en curso");
+            exigir(h.getEstadoHabitacion() != EstadoHabitacion.MANTENIMIENTO,
+                    "La habitación está en mantenimiento y no puede reservarse");
+            exigir(detalles.superpuestas(h.getIdHabitacion(), s.fechaIngreso(), s.fechaSalida(), null) == 0, "La habitación ya tiene una reserva en ese periodo");
             validarOcupantes(s, h);
             for (var o : s.ocupantes())
                 exigir(enSolicitud.add(o.idCliente()), "El ocupante aparece en más de una habitación de la solicitud");

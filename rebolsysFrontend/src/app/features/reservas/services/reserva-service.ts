@@ -131,6 +131,16 @@ export class ReservaService {
   cancelarEstadia(idDetalleReserva: number) {
     return this.cambiarEstadoEstadia(idDetalleReserva, 'cancelacion');
   }
+  guardarOcupantes(idDetalleReserva: number, ocupantes: {
+    idCliente: number;
+    idClienteResponsable: number | null;
+    parentescoResponsable: 'PADRE' | 'MADRE' | 'TUTOR' | null;
+    ocupaPlazaCama: boolean;
+  }[]) {
+    return this.sesion.cargar().pipe(concatMap(s => this.http.put<DetalleReserva>(
+      `${this.base}/detalles/${idDetalleReserva}/ocupantes`, { idUsuario: s.idUsuario, ocupantes },
+    )));
+  }
   private cambiarEstadoEstadia(idDetalleReserva: number, accion: 'ingreso' | 'salida' | 'cancelacion') {
     return this.sesion.cargar().pipe(concatMap(s => this.http.post<DetalleReserva>(
       `${this.base}/detalles/${idDetalleReserva}/${accion}`, { idUsuario: s.idUsuario },

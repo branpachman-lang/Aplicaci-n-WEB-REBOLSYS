@@ -3,6 +3,19 @@
   <button class="button" type="button" [disabled]="cargando() || ocupado()" (click)="cargar()">Actualizar</button>
 </div>
 
+@if (!turno()?.abierto && !cargando() && !errorCarga() && puedeAbrir()) {
+  <form class="panel caja-resumen" (ngSubmit)="abrirTurno()">
+    <h3>Abrir caja</h3>
+    <label class="field">Efectivo inicial (S/)
+      <input type="number" name="montoBase" min="0" max="99999999.99" step="0.01"
+        required [(ngModel)]="montoBase" [disabled]="ocupado()" />
+    </label>
+    <button class="button primary" type="submit" [disabled]="ocupado() || montoBase === null">
+      {{ ocupado() ? 'Abriendo…' : 'Confirmar apertura' }}
+    </button>
+  </form>
+}
+
 @if (turno(); as t) {
   <section class="panel caja-resumen" aria-labelledby="caja-turno">
     <div class="panel-toolbar">
@@ -77,8 +90,8 @@
   <p class="loading-state" role="status">Cargando caja…</p>
 } @else if (errorCarga()) {
   <p class="panel nota-caja">No se pudo cargar la caja. Usa Actualizar para volver a consultar.</p>
-} @else {
-  <p class="panel nota-caja">Tu sesión no tiene un turno de caja disponible. Inicia sesión como gerente o recepcionista para abrir tu turno.</p>
+} @else if (!puedeAbrir()) {
+  <p class="panel nota-caja">Tu sesión no tiene un turno de caja disponible.</p>
 }
 
 @if (editorMovimiento(); as signo) {

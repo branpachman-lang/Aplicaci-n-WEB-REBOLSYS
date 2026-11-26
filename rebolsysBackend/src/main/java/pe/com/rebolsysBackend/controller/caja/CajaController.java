@@ -28,6 +28,12 @@ public class CajaController {
   @Operation(summary = "Consultar el turno propio abierto o el último turno cerrado")
   public Contexto actual() { return caja.actual(); }
 
+  @PostMapping("/turnos")
+  @Operation(summary = "Abrir el turno propio con el efectivo inicial contado")
+  public Contexto abrir(@Valid @RequestBody Abrir datos, HttpServletRequest solicitud) {
+    return caja.abrir(datos, solicitud.getRemoteAddr());
+  }
+
   @GetMapping("/turnos/{id}")
   @Operation(summary = "Consultar el arqueo esperado o guardado de un turno propio")
   public Contexto turno(@PathVariable @Positive Long id) { return caja.consultar(id); }
