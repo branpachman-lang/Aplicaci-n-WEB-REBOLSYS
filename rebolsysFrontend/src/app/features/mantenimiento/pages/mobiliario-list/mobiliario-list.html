@@ -257,7 +257,7 @@
                         (click)="abrirAsignacion(item, 'asignar')"
                         title="Asignar a habitación"
                       >
-                        Asignar
+                        <app-icon name="plus" />Asignar
                       </button>
                     }
 
@@ -292,7 +292,7 @@
                             "
                             title="Trasladar a otra habitación"
                           >
-                            Trasladar
+                            <app-icon name="arrow-right" />Trasladar
                           </button>
                           <button
                             type="button"
@@ -303,7 +303,7 @@
                             "
                             title="Retirar a almacén"
                           >
-                            Retirar
+                            <app-icon name="arrow" />Retirar
                           </button>
                         }
                         @if (puedeDarDeBaja) {
@@ -436,9 +436,11 @@
             >
               <option [ngValue]="null">Selecciona habitación destino...</option>
               @for (h of habitaciones(); track h.idHabitacion) {
-                <option [ngValue]="h.idHabitacion">
-                  Habitación {{ h.numeroCuarto }} · {{ h.nombreTipo }}
-                </option>
+                @if (tipoOperacionAsignacion() !== "trasladar" || h.idHabitacion !== itemParaAsignar()?.idHabitacion) {
+                  <option [ngValue]="h.idHabitacion">
+                    Habitación {{ h.numeroCuarto }} · {{ h.nombreTipo }}
+                  </option>
+                }
               }
             </select>
           </div>

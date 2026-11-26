@@ -31,7 +31,8 @@ public final class LimpiezaDTO {
   public record EnviarInforme(@Size(max = 1000) String observaciones,
       @NotNull List<@NotNull @Valid ItemInforme> items) {}
 
-  public record EditarInforme(@NotNull List<@NotNull @Valid ItemInforme> items) {}
+  public record EditarInforme(@Size(max = 1000) String observaciones,
+      @NotNull List<@NotNull @Valid ItemInforme> items) {}
 
   public record DatosTicket(@NotNull TipoAccionMantenimiento tipoAccion,
       @Size(max = 1000) String observacionTecnica,

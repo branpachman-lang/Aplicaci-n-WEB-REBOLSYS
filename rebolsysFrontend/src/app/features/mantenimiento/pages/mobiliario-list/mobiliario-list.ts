@@ -268,7 +268,9 @@ export class MobiliarioList implements OnInit {
     this.asigIdHabitacion =
       tipo === 'retirar'
         ? null
-        : item.idHabitacion || this.habitaciones()[0]?.idHabitacion || null;
+        : tipo === 'trasladar'
+          ? (this.habitaciones().find((h) => h.idHabitacion !== item.idHabitacion)?.idHabitacion ?? null)
+          : item.idHabitacion || this.habitaciones()[0]?.idHabitacion || null;
     this.asigEstadoActualItem = item.estadoActualItem || 'BUENO';
     this.asigObservacion = '';
     this.asigClaveOperacion = generarClaveOperacion();

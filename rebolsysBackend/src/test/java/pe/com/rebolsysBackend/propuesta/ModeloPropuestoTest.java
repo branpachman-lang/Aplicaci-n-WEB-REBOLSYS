@@ -16,7 +16,7 @@ import org.springframework.core.type.filter.AnnotationTypeFilter;
 
 class ModeloPropuestoTest {
   @Test
-  void mapearTablasYColumnasDelEsquemaActual() throws Exception {
+  void mapearTablasYColumnasDelEsquemaFinal() throws Exception {
     var registry =
         new StandardServiceRegistryBuilder()
             .applySetting("hibernate.dialect", "org.hibernate.dialect.OracleDialect")
@@ -32,7 +32,7 @@ class ModeloPropuestoTest {
       var metadata = (MetadataImplementor) sources.buildMetadata();
       metadata.validate();
       var db = Path.of("src/main/resources/db");
-      String sql = Files.readString(db.resolve("schema/DDL_REBOLSYS_ACTUAL.sql")).replace("\"", "");
+      String sql = Files.readString(db.resolve("schema/DDL_REBOLSYS_FINAL.sql")).replace("\"", "");
       var tables =
           Pattern.compile("CREATE TABLE\\s+(\\w+)\\s*\\(([\\s\\S]*?)\\)(?:;|\\]';)", Pattern.CASE_INSENSITIVE)
               .matcher(sql);
@@ -55,7 +55,23 @@ class ModeloPropuestoTest {
               table.getColumns().stream()
                   .map(c -> c.getName().toUpperCase(Locale.ROOT))
                   .collect(Collectors.toSet()));
-      assertThat(esperado).hasSize(46).doesNotContainKey("RESERVA_SALIDA_OPERACION");
+      assertThat(esperado).hasSize(47).doesNotContainKey("RESERVA_SALIDA_OPERACION");
+      // PAGO_YAPE se gestiona vía JdbcTemplate en PagoYapeRegistro sin entidad JPA.
+      assertThat(esperado.remove("PAGO_YAPE"))
+          .containsExactlyInAnyOrder(
+              "CLAVEOPERACION",
+              "IDRESERVA",
+              "IDUSUARIO",
+              "IDTURNO",
+              "IMPORTE",
+              "TELEFONOENMASCARADO",
+              "MODO",
+              "AMBIENTE",
+              "ESTADO",
+              "ORDENPROVEEDOR",
+              "IDPAGO",
+              "MENSAJEPROVEEDOR",
+              "CREADO");
       assertThat(real).isEqualTo(esperado);
     } finally {
       StandardServiceRegistryBuilder.destroy(registry);

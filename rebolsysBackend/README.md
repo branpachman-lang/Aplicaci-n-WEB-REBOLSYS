@@ -85,7 +85,7 @@ La API usa el prefijo `/api/v1`. Algunos recursos representativos:
 ## Requisitos y configuración
 
 - JDK 21.
-- Oracle accesible con un esquema compatible con [`DDL_REBOLSYS_ACTUAL.sql`](src/main/resources/db/schema/DDL_REBOLSYS_ACTUAL.sql).
+- Oracle accesible con un esquema compatible con [`DDL_REBOLSYS_FINAL.sql`](src/main/resources/db/schema/DDL_REBOLSYS_FINAL.sql).
 - Maven Wrapper incluido; no es necesario instalar Maven.
 - Docker Desktop es opcional y se usa para ejecutar Redis localmente.
 - APIsPerú, SMTP y facturación beta son integraciones opcionales.
@@ -123,6 +123,12 @@ docker compose exec -T redis redis-cli ping
 El contenedor escucha internamente en `6379` y publica Redis en `127.0.0.1:6380`. Para detenerlo: `docker compose stop redis`. Si no usarás caché, configura `CACHE_ENABLED=false`. Ante una caída de Redis, las consultas continúan en Oracle; al recuperarse, el proceso descarta la caché afectada antes de reutilizarla.
 
 ## Actualizaciones manuales de datos
+
+En un esquema vacío, ejecuta [`DDL_REBOLSYS_FINAL.sql`](src/main/resources/db/schema/DDL_REBOLSYS_FINAL.sql).
+El DDL crea la estructura. Carga los catálogos y configura un usuario antes de usar la aplicación.
+Si el esquema existente ya tiene V22 y V23, ejecuta [V25](src/main/resources/db/iteration/V25__alinear_ddl_final.sql)
+con **Ejecutar script** (`F5`) en SQL Developer. V25 alinea la estructura y registra el tipo de movimiento
+`DEVOLUCION RESERVA`.
 
 Para configurar y probar cobros con Yape vía Mercado Pago o simulador local, consulta
 [la guía de integración de Yape](API-YAPE.md).

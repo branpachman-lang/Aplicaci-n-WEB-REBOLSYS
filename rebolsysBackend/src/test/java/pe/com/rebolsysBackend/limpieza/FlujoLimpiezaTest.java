@@ -238,6 +238,18 @@ class FlujoLimpiezaTest {
         .content(json.writeValueAsBytes(reporte))).andExpect(status().isOk())
         .andExpect(jsonPath("$.informe.estado").value("POR_APROBAR"))
         .andExpect(jsonPath("$.informe.puedeAprobar").value(false)));
+    mvc.perform(patch(informe).contentType(MediaType.APPLICATION_JSON)
+        .content(json.writeValueAsBytes(Map.of("observaciones", "Observación corregida",
+            "items", List.of(Map.of("idItem", item, "estadoEncontrado", "BUENO"))))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.observaciones").value("Observación corregida"))
+        .andExpect(jsonPath("$.items[0].evidencia").isEmpty());
+    mvc.perform(patch(informe).contentType(MediaType.APPLICATION_JSON)
+        .content(json.writeValueAsBytes(Map.of("observaciones", "Sin observaciones",
+            "items", List.of(Map.of("idItem", item, "estadoEncontrado", "DANADO",
+                "observaciones", "Pata suelta", "evidencia", foto))))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.items[0].evidencia.evidenciaRuta").value(foto.path("evidenciaRuta").asText()));
     assertEstadoPersistido(EstadoHabitacion.EN_LIMPIEZA);
     tx.executeWithoutResult(t -> em.find(Habitacion.class, habitacion).setEstadoHabitacion(EstadoHabitacion.DISPONIBLE));
     mvc.perform(get(cuarto)).andExpect(status().isOk())
