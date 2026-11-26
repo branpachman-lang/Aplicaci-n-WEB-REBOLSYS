@@ -1,26 +1,26 @@
-# REBOLSYS Frontend
+# REBOLSYS · Frontend SPA
 
 Aplicación web Angular para la operación del hospedaje Real Bolognesi. Consume la API de REBOLSYS para gestionar reservas, estadías, ventas, caja, inventario, limpieza y reportes.
 
 | Dato | Valor |
 |---|---|
-| Versión del paquete | `0.0.0` (sin release etiquetado) |
+| Versión del paquete | `0.0.0` |
 | Curso | Lenguaje de Programación II · EP Ingeniería de Sistemas · UPeU · 2026-II |
 | Docente | Benjamin David Reyna Barreto |
 | Integrantes | Yeremin Brian Ccapa Chacca, Esther Mariana Landa Torres, Brandon Erly Pacho Mamani, James Tequen Oncoy y Sebastian Gamarra Tarazona |
 | Backend local | `http://localhost:8080/api/v1` |
-| Demo pública | No definida; revisar la regla de API de Vercel antes de desplegar |
+| API y configuración local | [Backend de REBOLSYS](../rebolsysBackend/README.md) |
 
 ## Contenido
 
 - [Funciones](#funciones)
 - [Capturas](#capturas)
 - [Tecnologías y estructura](#tecnologías-y-estructura)
-- [Rutas y seguridad](#rutas-y-seguridad)
 - [Requisitos y ejecución local](#requisitos-y-ejecución-local)
+- [Rutas y seguridad](#rutas-y-seguridad)
 - [Compilación y despliegue](#compilación-y-despliegue)
-- [Pruebas, rendimiento y calidad](#pruebas-rendimiento-y-calidad)
-- [Versión y responsables](#versión-y-responsables)
+- [Pruebas y calidad](#pruebas-y-calidad)
+- [Versión e historial](#versión-e-historial)
 
 ## Funciones
 
@@ -34,7 +34,7 @@ Aplicación web Angular para la operación del hospedaje Real Bolognesi. Consume
 
 ## Capturas
 
-El repositorio no incluye capturas de las pantallas funcionales. Los recursos de `public/images/` son el logo y el fondo de acceso; se pueden agregar capturas de la aplicación en `docs/capturas/` cuando estén disponibles.
+Capturas pendientes de incorporar: inicio de sesión, panel de habitaciones, registro de reserva y registro de venta.
 
 ## Tecnologías y estructura
 
@@ -53,22 +53,6 @@ El repositorio no incluye capturas de las pantallas funcionales. Los recursos de
 - `public/`: imágenes y otros recursos estáticos.
 - `proxy.conf.json`: proxy local de `/api` hacia `http://localhost:8080`.
 
-## Rutas y seguridad
-
-| Ruta | Módulo | Acceso |
-|---|---|---|
-| `/login` | Inicio de sesión | Pública |
-| `/habitaciones` | Estado y calendario | Sesión y permiso `HABITACIONES:VER` |
-| `/reservas` | Reservas y estadías | Sesión; acciones según permisos |
-| `/ventas` | Ventas | Sesión; acciones según permisos |
-| `/configuraciones` | Habitaciones, mobiliario y productos | Sesión; acciones según permisos |
-| `/reportes` | Reportes | Sesión de gerencia |
-| `/limpieza` | Informes e incidencias | Sesión y permisos de limpieza |
-| `/caja` | Turnos, movimientos y gastos | Sesión y permisos de caja |
-| `/seguridad` | Usuarios, roles y accesos | Sesión activa y permisos de seguridad |
-
-Las rutas privadas usan el guard de sesión. El token se envía a la API para las solicitudes autenticadas; el backend vuelve a validar roles y permisos. No guardes credenciales Oracle, tokens de proveedores ni secretos JWT en el código del frontend.
-
 ## Requisitos y ejecución local
 
 Requisitos: Node.js 24.x, npm 11.17 o compatible, y el backend conectado a Oracle.
@@ -79,6 +63,26 @@ npm start
 ```
 
 Abre `http://localhost:4200`. El proxy envía `/api` al backend local en el puerto `8080`. Para cambiarlo, edita `proxy.conf.json` y reinicia el servidor Angular.
+
+## Rutas y seguridad
+
+La sesión usa signals y conserva el JWT vigente en `sessionStorage`. El interceptor añade `Authorization: Bearer` a las solicitudes dirigidas a la API. Cuando la API devuelve `401` para el token vigente, la aplicación limpia la sesión y redirige a `/login`. El guard valida los permisos declarados por cada pantalla y redirige al cambio de contraseña cuando la cuenta lo requiere. El backend aplica los permisos de cada operación.
+
+| Ruta | Módulo | Acceso |
+|---|---|---|
+| `/login` | Inicio de sesión | Público |
+| `/habitaciones` | Estado y calendario | `HABITACIONES:VER` |
+| `/reservas` | Consulta de reservas y estadías | `RESERVAS:VER` |
+| `/reservas/nueva` | Registro de reserva | `RESERVAS:CREAR` |
+| `/ventas` | Registro y confirmación de venta | `VENTAS:CREAR_Y_CONFIRMAR` |
+| `/ventas/historial` | Historial de ventas | `VENTAS:VER` |
+| `/configuraciones` | Habitaciones, mobiliario y productos | Permisos según la pantalla |
+| `/reportes` | Reportes | Gerencia |
+| `/limpieza` | Informes e incidencias | Al menos un permiso de consulta de limpieza |
+| `/caja` | Turnos, movimientos y gastos | Al menos un permiso de caja o `GASTOS:CREAR` |
+| `/seguridad` | Usuarios, roles y accesos | Sesión activa y al menos un permiso habilitado para empleados, usuarios o roles |
+
+Consulta [las rutas de la aplicación](src/app/app.routes.ts) y la [guía de seguridad](../rebolsysBackend/API-SEGURIDAD.md) para el detalle de los accesos por rol.
 
 ## Compilación y despliegue
 
@@ -94,7 +98,7 @@ La salida queda en `dist/rebolsys-frontend/browser`. El servidor debe entregar `
 
 Entrega este servidor Nginx detrás de la terminación HTTPS del entorno. Para publicar una versión, copia primero los assets con hash y reemplaza `index.html` al final. Conserva los assets de la versión previa durante la transición para que las pestañas abiertas puedan seguir cargando sus módulos y para facilitar una reversión compatible con el backend.
 
-## Pruebas, rendimiento y calidad
+## Pruebas y calidad
 
 Ejecuta las pruebas unitarias y la compilación con:
 
@@ -103,10 +107,20 @@ npm test -- --watch=false
 npm run build
 ```
 
-`package.json` no define un comando E2E. La configuración de análisis estático está en [`sonar-project.properties`](sonar-project.properties) y los informes en [`../docs/calidad/`](../docs/calidad/). El build de Angular establece límites de tamaño inicial de 500 kB para advertencia y 1 MB para error, y límites por hoja de estilos de componente de 6.5 kB para advertencia y 8 kB para error.
+Para generar el reporte LCOV que importa SonarQube:
+
+```powershell
+npm.cmd test -- --watch=false --coverage --coverage-reporters=lcov
+```
+
+El informe SonarQube de la línea base `v1.0-demo` registra **Quality Gate aprobado**, **55,8 % de cobertura** y **0,0 % de líneas duplicadas**. La verificación local del 23 de noviembre documentó **169 pruebas aprobadas** y la compilación correcta. La comparación oficial con `v1.1-final` figura como pendiente en el informe de mejora. [Configuración del escáner](sonar-project.properties) · [Guía de SonarQube](../docs/calidad/README.md) · [Línea base](../docs/calidad/informe-mejora-rebolsys.md) · [Resultados locales](../docs/calidad/resultados-mejora-v1.1.md)
+
+Para comprobar flujos completos con el backend y Oracle en marcha, usa [los casos funcionales de REBOLSYS](../rebolsysBackend/PRUEBAS-BACKEND.md). La automatización E2E con Playwright está pendiente de incorporar.
+
+El build advierte cuando el paquete inicial supera 500 kB y falla al superar 1 MB. Para los estilos de cada componente, los límites son 6,5 kB y 8 kB, respectivamente.
 
 Para revisar errores durante el desarrollo, consulta la consola del navegador y la pestaña Network. Los errores de solicitudes API también se registran en la salida del backend.
 
 ## Versión e historial
 
-Versión declarada en `package.json`: `0.0.0`. No se han definido releases etiquetados. El historial está en Git; entre los cambios recientes figura `feat: mejorar reportes y comprobantes A4`.
+El paquete declara la versión `0.0.0`. `v1.0-demo` identifica la línea base de SonarQube y `v1.1-final`, el análisis de seguimiento indicado en la guía de calidad. El historial de cambios del código está en Git.

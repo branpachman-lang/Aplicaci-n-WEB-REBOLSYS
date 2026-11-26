@@ -1,4 +1,4 @@
-# REBOLSYS Backend
+# REBOLSYS · Backend REST
 
 API REST para la gestión del hospedaje Real Bolognesi. Conecta la aplicación Angular con Oracle y aplica las reglas de reservas, caja, ventas, inventario, seguridad y reportes.
 
@@ -9,20 +9,26 @@ API REST para la gestión del hospedaje Real Bolognesi. Conecta la aplicación A
 | Docente | Benjamin David Reyna Barreto |
 | Integrantes | Yeremin Brian Ccapa Chacca, Esther Mariana Landa Torres, Brandon Erly Pacho Mamani, James Tequen Oncoy y Sebastian Gamarra Tarazona |
 | API local | `http://localhost:8080/api/v1` |
-| Demo pública | No definida |
+| Aplicación web | [Frontend de REBOLSYS](../rebolsysFrontend/README.md) |
 
 ## Contenido
 
 - [Funciones](#funciones)
 - [Arquitectura y tecnologías](#arquitectura-y-tecnologías)
+- [Módulos y endpoints](#módulos-y-endpoints)
 - [Estructura del proyecto](#estructura-del-proyecto)
 - [Requisitos y configuración](#requisitos-y-configuración)
 - [Redis para catálogos](#redis-para-catálogos)
+- [Actualizaciones manuales de datos](#actualizaciones-manuales-de-datos)
 - [Ejecución local](#ejecución-local)
 - [API y seguridad](#api-y-seguridad)
+- [Manejo de errores y logs](#manejo-de-errores-y-logs)
+- [Comprobantes y reportes](#comprobantes-y-reportes)
 - [Despliegue](#despliegue)
+- [Usuarios de prueba](#usuarios-de-prueba)
 - [Pruebas y calidad](#pruebas-y-calidad)
-- [Documentación](#documentación)
+- [Documentación y evidencias](#documentación-y-evidencias)
+- [Versión e historial](#versión-e-historial)
 
 ## Funciones
 
@@ -56,29 +62,32 @@ flowchart LR
 | Oracle JDBC | Acceso a Oracle |
 | Apache PDFBox 3.0.8 · Spring Mail | PDF A4 y envío de comprobantes |
 | Springdoc OpenAPI 3.1.0 | Especificación y Swagger UI en desarrollo |
-| Maven Wrapper | Construcción y pruebas |
+| Maven Wrapper · JUnit | Construcción y pruebas automatizadas |
+| JaCoCo 0.8.14 · SonarQube | Cobertura y análisis estático |
 
-### Módulos y endpoints principales
+## Módulos y endpoints
 
-La API usa el prefijo `/api/v1`. Algunos recursos representativos:
+Las rutas de la tabla usan el prefijo `/api/v1`. El acceso depende del rol y los permisos efectivos. Operaciones como los cobros pueden exigir condiciones adicionales, como un turno abierto.
 
-| Recurso | Endpoints de ejemplo | Función |
+| Módulo | Endpoint | Acceso |
 |---|---|---|
-| Sesión | `POST /sesion/iniciar`, `GET /sesion/actual` | Autenticación y usuario actual |
-| Reservas | `GET/POST /reservas`, `POST /reservas/detalles/{id}/ingreso` | Reservas y estadía |
-| Habitaciones | `GET/POST /habitaciones` | Consulta y mantenimiento |
-| Ventas | `GET/POST /ventas`, `POST /ventas/{id}/confirmacion` | Venta y confirmación |
-| Caja | `/caja/actual`, `/caja/turnos/{id}/cierre` | Turno, movimientos y cierre |
-| Limpieza | `/limpieza/informes`, `/limpieza/tickets` | Informes e incidencias |
-| Reportes | `/reportes/financiero`, `/reportes/incidencias` | Consultas e impresión |
-| Seguridad | `/seguridad/usuarios`, `/seguridad/roles` | Usuarios, roles y accesos |
+| Sesión | `POST /sesion/iniciar` · `GET /sesion/actual` | Inicio público · consulta con JWT |
+| Habitaciones | `GET /habitaciones` | Gerencia, `HABITACIONES:VER` o `RESERVAS:CREAR` |
+| Reservas | `GET /reservas` | Gerencia o `RESERVAS:VER` |
+| Estadía | `POST /reservas/detalles/{id}/ingreso` | Gerencia o `RESERVAS:REGISTRAR_INGRESO` |
+| Ventas | `GET /ventas` · `POST /ventas/{id}/confirmacion` | Gerencia o, respectivamente, `VENTAS:VER` y `VENTAS:CONFIRMAR` |
+| Caja | `POST /caja/turnos/{id}/cierre` | Gerencia o `CAJA:CERRAR` |
+| Limpieza | `GET /limpieza/informes` · `GET /limpieza/tickets` | Gerencia o, respectivamente, `LIMPIEZA:VER_INFORMES` y `LIMPIEZA:VER_TICKETS` |
+| Reportes | `GET /reportes/financiero` · `GET /reportes/incidencias` | Gerencia |
+
+Consulta el [contrato OpenAPI](api/openapi.json) y la [guía de seguridad](API-SEGURIDAD.md) para ver los recursos de usuarios, roles y permisos.
 
 ## Estructura del proyecto
 
-- `src/main/java/.../controller`: controladores REST.
+- `src/main/java/pe/com/rebolsysBackend/controller/` contiene los controladores REST.
 - `service/` y `service/impl/`: contratos y lógica de negocio.
 - `repository/`, `entity/` y `dto/`: persistencia y modelos de entrada/salida.
-- `security/`: autenticación, permisos, sesión y auditoría.
+- `security/`, `config/` y `exception/` contienen la seguridad HTTP, la configuración de la aplicación y el manejo de errores.
 - `src/main/resources/db/schema/`: DDL y datos SQL de referencia.
 - `api/`: OpenAPI y colecciones Postman.
 
@@ -104,6 +113,7 @@ Configura las variables del entorno o el archivo local ignorado `.local/applicat
 | `APISPERU_TOKEN` | Consulta opcional de DNI/RUC |
 | `MAIL_ENABLED`, `MAIL_HOST`, `MAIL_USERNAME`, `MAIL_PASSWORD` | Envío SMTP opcional |
 | `FACTURACION_HABILITADA` y `FACTURACION_APISPERU_*` | Integración electrónica beta opcional |
+| `REBOLSYS_GERENTE_USUARIO`, `REBOLSYS_GERENTE_PASSWORD_TEMPORAL` | Preparación inicial de la cuenta de gerencia según la [guía de seguridad](API-SEGURIDAD.md) |
 
 El esquema de Oracle se administra manualmente: Flyway está deshabilitado y Hibernate usa `ddl-auto=validate`. La aplicación no crea ni actualiza tablas. Verifica el DDL antes de ejecutar y no apliques scripts históricos sobre una base poblada sin revisar sus instrucciones.
 
@@ -162,6 +172,8 @@ Configura la conexión privada a Oracle. Para probar también la caché, inicia 
 
 La API queda en `http://localhost:8080/api/v1`. En desarrollo, Swagger UI está en `http://localhost:8080/swagger-ui.html`; el perfil de producción desactiva la documentación OpenAPI.
 
+Comprueba el arranque con `Invoke-RestMethod http://localhost:8080/api/health`. El campo `status` debe indicar `UP`. Usa `/actuator/health` para revisar la salud de las dependencias.
+
 Para crear el paquete y ejecutar las pruebas automatizadas:
 
 ```powershell
@@ -176,6 +188,34 @@ El código de seguimiento `X-Request-Id` aparece en los logs, los errores JSON y
 
 El inicio de sesión se limita por dirección de origen y por instancia. Una respuesta `429` indica en `Retry-After` cuántos segundos esperar. Detrás de un proxy, limita también en el ingreso por cliente y configura el reenvío de IP solo desde proxies de confianza antes de usar la IP reenviada para los límites del backend.
 
+## Manejo de errores y logs
+
+La API devuelve el estado HTTP y un cuerpo JSON. En los errores de validación, `validationErrors` indica el problema por campo. Ejemplo de una respuesta ante un conflicto de negocio:
+
+```json
+{
+  "timestamp": "2026-11-26T10:30:00",
+  "status": 409,
+  "error": "Conflict",
+  "message": "La operación entra en conflicto con el estado actual del recurso",
+  "path": "/api/v1/ventas/42/confirmacion",
+  "validationErrors": null,
+  "requestId": "ejemplo-42"
+}
+```
+
+| Estado | Cuándo aparece |
+|---|---|
+| `400` | Petición inválida o datos que incumplen las validaciones |
+| `401` | Autenticación ausente, inválida o vencida |
+| `403` | Acceso denegado |
+| `404` | Recurso o ruta inexistente |
+| `409` | Conflicto con una regla de negocio o actualización concurrente |
+| `429` | Límite de solicitudes de inicio de sesión |
+| `500` | Error interno con mensaje genérico |
+
+Busca el valor de `X-Request-Id` en la consola donde se ejecuta Spring Boot o en los logs del servicio. El paquete `pe.com.rebolsysBackend` usa nivel `DEBUG` en desarrollo e `INFO` en producción.
+
 ## Comprobantes y reportes
 
 Boletas y facturas internas se generan en PDF A4; los reportes permiten imprimir en A4 horizontal o ticket de 80 mm desde el diálogo del navegador. La impresión no selecciona una impresora ni imprime sin confirmación.
@@ -188,17 +228,42 @@ Empaqueta con `.\mvnw.cmd package` y despliega el JAR generado en `target/` en u
 
 Antes de aplicar un cambio de esquema, genera un respaldo cifrado de Oracle y comprueba que se restaure en un esquema aislado. Para una reversión, verifica que el JAR anterior pueda arrancar contra el esquema que quedará en uso. Configura las alertas del entorno sobre disponibilidad y latencia de la API, salud de Oracle y degradación de Redis si se usa la caché.
 
-No se incluyen credenciales de demostración en el repositorio. Para probar la aplicación se necesita una base preparada y un usuario habilitado en ese esquema.
+Con el perfil y las variables de producción ya configurados, ejecuta desde el módulo:
+
+```powershell
+java -jar target/rebolsysBackend-0.0.1-SNAPSHOT.jar
+```
+
+## Usuarios de prueba
+
+Usa un esquema de desarrollo preparado según la [guía de datos de prueba](tools/datos-prueba/README.md). La carga contempla personal con estos roles. Los accesos efectivos dependen de los permisos del esquema y de cada usuario.
+
+| Rol | Flujo de ejemplo |
+|---|---|
+| `GERENTE` | Configuración, gestión de cuentas y reportes |
+| `RECEPCIONISTA` | Reservas, estadías, cobros y operación de caja |
+| `LIMPIEZA` | Registro y envío de informes de limpieza |
+| `MANTENIMIENTO` | Revisión de informes y gestión de incidencias |
+
+Prepara las cuentas siguiendo la [guía de seguridad](API-SEGURIDAD.md) y entrega las credenciales por un canal privado.
 
 ## Pruebas y calidad
 
 - `.\mvnw.cmd test`: pruebas unitarias y de integración que no requieren Oracle.
 - Las pruebas de Redis son optativas; activa `RUN_REDIS_TESTS=true` y consulta [`PRUEBAS-BACKEND.md`](PRUEBAS-BACKEND.md) para los comandos y requisitos.
 - Las pruebas de concurrencia contra Oracle también son optativas; revisa [`PRUEBAS-BACKEND.md`](PRUEBAS-BACKEND.md) antes de ejecutarlas.
-- Los logs se escriben en la salida estándar de la aplicación. En desarrollo `pe.com.rebolsysBackend` usa nivel `DEBUG`; producción usa `INFO`. No incluyas tokens, contraseñas ni datos personales en logs o reportes de incidencias.
-- El repositorio no contiene un informe ni configuración de SonarQube; no se publican métricas de calidad sin una ejecución documentada.
 
-## Documentación
+Ejecuta `./mvnw` en Unix o `.\mvnw.cmd` en Windows. En PowerShell, el siguiente comando genera también el reporte JaCoCo en `target/site/jacoco/jacoco.xml`:
+
+```powershell
+.\mvnw.cmd clean verify
+```
+
+En la línea base `v1.0-demo`, el informe de SonarQube registra **Quality Gate aprobado** y **69,2 % de cobertura** para el backend. La verificación local del 23 de noviembre documentó **288 pruebas aprobadas**, **115 omitidas** y **80,8 % de cobertura de líneas en JaCoCo**. El informe de mejora deja pendiente la publicación de las métricas oficiales de `v1.1-final`. [Guía de análisis en IntelliJ](../docs/calidad/README.md) · [Línea base](../docs/calidad/informe-mejora-rebolsys.md) · [Resultados locales](../docs/calidad/resultados-mejora-v1.1.md)
+
+## Documentación y evidencias
+
+- [OpenAPI](api/openapi.json) · [Colecciones de Postman](api/postman/) · [Datos de prueba](tools/datos-prueba/README.md)
 
 - [Reglas de reservas](API-RESERVAS.md) · [Ventas](API-VENTAS.md) · [Caja](API-CAJA.md) · [Gastos](API-GASTOS.md)
 - [Limpieza e incidencias](API-LIMPIEZA.md) · [Seguridad](API-SEGURIDAD.md) · [Sesión y operaciones](API-SESION-OPERACION.md)
@@ -207,4 +272,4 @@ No se incluyen credenciales de demostración en el repositorio. Para probar la a
 
 ## Versión e historial
 
-Versión del artefacto: `0.0.1-SNAPSHOT`. No se han definido releases etiquetados. El historial de cambios está en Git.
+El JAR declara la versión `0.0.1-SNAPSHOT`. `v1.0-demo` identifica la línea base de SonarQube y `v1.1-final`, el análisis de seguimiento indicado en la guía de calidad. El historial de cambios del código está en Git.
