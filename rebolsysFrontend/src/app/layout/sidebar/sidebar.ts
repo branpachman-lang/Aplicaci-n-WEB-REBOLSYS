@@ -3,8 +3,8 @@ import { NavigationEnd, Router, RouterLink, RouterLinkActive } from '@angular/ro
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { filter, finalize } from 'rxjs';
 import { MENU, MenuItem } from '../../core/config/menu';
-import { SesionService } from '../../core/services/sesion-service';
-import { PermisosUi } from '../../core/services/permisos-ui';
+import { SesionService } from '../../core/auth/sesion-service';
+import { PermisosUi } from '../../core/auth/permisos-ui';
 import { Icon } from '../../shared/components/icono/icono';
 
 @Component({

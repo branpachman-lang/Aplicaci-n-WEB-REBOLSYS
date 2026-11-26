@@ -1,5 +1,7 @@
 # Reservas con pago completo al registrar
 
+El [flujo objetivo de cobro y liquidación](API-FLUJO-PAGOS-RESERVAS.md) define el cambio a saldo pendiente y facturación consolidada al check-out.
+
 El registro lo realiza un operador autenticado mediante JWT. El titular puede ser
 una persona natural adulta o una empresa; los ocupantes son personas naturales.
 

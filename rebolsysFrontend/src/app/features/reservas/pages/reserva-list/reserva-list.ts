@@ -1,6 +1,6 @@
 import { notificarCambios } from '../../../../core/services/avisos-formulario';
 import { generarClaveOperacion } from '../../../../core/utils/clave-operacion';
-import { PermisosUi } from "../../../../core/services/permisos-ui";
+import { PermisosUi } from "../../../../core/auth/permisos-ui";
 import { Component, DestroyRef, OnDestroy, inject, signal } from "@angular/core";
 import { CurrencyPipe, DatePipe } from "@angular/common";
 import { FormsModule } from "@angular/forms";

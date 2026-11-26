@@ -1,5 +1,7 @@
 # Venta de productos con pago inmediato
 
+El [flujo objetivo de cobro y liquidación](API-FLUJO-PAGOS-RESERVAS.md) define cómo cargar los consumos de huéspedes a la cuenta de su reserva.
+
 Todas las rutas requieren JWT y el permiso correspondiente. El usuario de la
 operación se obtiene de la sesión autenticada; el turno debe estar abierto y ser suyo.
 

@@ -1,5 +1,5 @@
 import { Huesped } from '../models/reserva.model';
-import { Habitacion } from '../../habitaciones/models/habitacion.model';
+import { Habitacion } from '../../mantenimiento/models/habitacion.model';
 
 export function esMenorDeSiete(
   nacimiento: string | null | undefined,

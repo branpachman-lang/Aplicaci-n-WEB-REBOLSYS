@@ -3,7 +3,7 @@ import { HttpClient } from "@angular/common/http";
 import { environment } from "../../../environments/environment";
 import { Catalogos, CatalogosApi } from "../models/catalogo.model";
 import { map, switchMap } from "rxjs";
-import { SesionService } from "./sesion-service";
+import { SesionService } from "../auth/sesion-service";
 
 @Injectable({ providedIn: "root" })
 export class CatalogoService {

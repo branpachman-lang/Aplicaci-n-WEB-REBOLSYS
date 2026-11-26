@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { environment } from '../../../../environments/environment';
 import { Icon } from '../icono/icono';
 import { NotificacionService } from '../../../core/services/notificacion.service';
-import { PermisosUi } from '../../../core/services/permisos-ui';
+import { PermisosUi } from '../../../core/auth/permisos-ui';
 import { mensajeError } from '../../../core/utils/http-error';
 
 @Component({

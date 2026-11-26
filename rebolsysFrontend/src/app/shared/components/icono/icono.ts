@@ -39,5 +39,7 @@ export class Icon {
     info: 'M12 11v6 M12 7h.01 M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0',
     menu: 'M3 6h18 M3 12h18 M3 18h18',
     'more-horizontal': 'M5 12h.01 M12 12h.01 M19 12h.01',
+    archive: 'M3 4h18v4H3z M5 8v12h14V8 M10 12h4',
+    trash: 'M3 6h18 M8 6V4h8v2 M6 6l1 14h10l1-14 M10 11v6 M14 11v6',
   };
 }

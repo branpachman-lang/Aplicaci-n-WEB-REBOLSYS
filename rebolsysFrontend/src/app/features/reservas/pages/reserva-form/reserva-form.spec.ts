@@ -5,7 +5,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { of } from "rxjs";
 import { CatalogoService } from "../../../../core/services/catalogo-service";
 import { NotificacionService } from "../../../../core/services/notificacion.service";
-import { HabitacionService } from "../../../habitaciones/services/habitacion-service";
+import { HabitacionService } from "../../../mantenimiento/services/habitacion-service";
 import { ReservaForm } from "./reserva-form";
 import { ReservaService } from "../../services/reserva-service";
 import { ClienteService } from "../../../clientes/services/cliente-service";

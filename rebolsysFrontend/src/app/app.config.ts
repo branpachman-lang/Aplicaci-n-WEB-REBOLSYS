@@ -1,7 +1,7 @@
 import { ApplicationConfig, LOCALE_ID } from '@angular/core';
 import { provideHttpClient,withInterceptors } from '@angular/common/http';
-import { sesionInterceptor } from './core/services/sesion-interceptor';
-import { proteccionSesionInterceptor } from './core/services/proteccion-sesion-interceptor';
+import { sesionInterceptor } from './core/interceptors/sesion-interceptor';
+import { proteccionSesionInterceptor } from './core/interceptors/proteccion-sesion-interceptor';
 import {
   provideRouter,
   withComponentInputBinding,

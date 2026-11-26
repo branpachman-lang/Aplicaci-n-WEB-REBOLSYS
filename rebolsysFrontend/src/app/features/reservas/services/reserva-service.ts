@@ -18,7 +18,7 @@ import { ClienteDatos } from "../../clientes/models/cliente.model";
 import { ClienteService } from "../../clientes/services/cliente-service";
 import { Registro } from "../models/reserva.model";
 import { claveDocumento, errorIdentidadesReserva } from "../utils/identidad-reserva";
-import { SesionService } from '../../../core/services/sesion-service';
+import { SesionService } from '../../../core/auth/sesion-service';
 import { pendienteOperacion } from "../../../core/services/pendiente-operacion";
 import {
   CobroReserva,

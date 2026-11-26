@@ -3,7 +3,7 @@ import { ImpresionService } from '../../../../core/services/impresion-service';
 import { ComprobanteDialog } from '../../../reservas/components/comprobante-dialog/comprobante-dialog';
 import { CatalogoService } from '../../../../core/services/catalogo-service';
 import { Catalogos } from '../../../../core/models/catalogo.model';
-import { PermisosUi } from '../../../../core/services/permisos-ui';
+import { PermisosUi } from '../../../../core/auth/permisos-ui';
 import { notificarCambios } from '../../../../core/services/avisos-formulario';
 import { Component, OnInit, inject, input, signal } from "@angular/core";
 import { CurrencyPipe, DatePipe } from "@angular/common";
