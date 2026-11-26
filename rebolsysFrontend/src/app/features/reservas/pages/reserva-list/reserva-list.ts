@@ -8,6 +8,7 @@ import { RouterLink,Router,ActivatedRoute } from "@angular/router";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { forkJoin, Subscription } from 'rxjs';
 import { DialogFocus } from "../../../../shared/directives/dialog-focus";
+import { Tooltip } from '../../../../shared/directives/tooltip';
 import { NotificacionService } from "../../../../core/services/notificacion.service";
 import { ClienteService } from "../../../clientes/services/cliente-service";
 import { CatalogoService } from "../../../../core/services/catalogo-service";
@@ -60,6 +61,7 @@ const MENSAJES_ESTADIA: Record<AccionEstadia, string> = {
     Icon,
     PagoModal,
     DialogFocus,
+    Tooltip,
     ComprobanteDialog,
     PagoYape,
   ],

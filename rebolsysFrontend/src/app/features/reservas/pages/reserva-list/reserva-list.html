@@ -59,6 +59,7 @@
       ><button
         class="icon-button"
         aria-label="Actualizar reservas"
+        appTooltip="Volver a cargar el listado con los filtros actuales."
         [disabled]="cargando()"
         (click)="cargar()"
       >
@@ -297,7 +298,8 @@
           }
         }
         @if (h.estadoDetalle === 'CONFIRMADA' && acceso.permite('RESERVAS:EDITAR_OCUPANTES')) {
-          <button class="button small" type="button" (click)="abrirEditorOcupantes(h)">
+          <button class="button small" type="button" (click)="abrirEditorOcupantes(h)"
+            appTooltip="Los cambios de huéspedes se aplican solo a esta habitación.">
             <app-icon name="users" /> {{ h.ocupantes.length ? 'Editar huéspedes' : 'Completar huéspedes' }}
           </button>
         }
@@ -335,11 +337,13 @@
           @if (ingresoPermitido || salidaPermitida || cancelacionPermitida) {
             <div class="row-actions acciones-estadia">
               @if (ingresoPermitido) {
-                <button class="button small primary" type="button" [disabled]="procesandoEstadia()" (click)="pedirAccionEstadia(h, 'ingreso')">Registrar ingreso</button>
+                <button class="button small primary" type="button" [disabled]="procesandoEstadia()" (click)="pedirAccionEstadia(h, 'ingreso')"
+                  appTooltip="Para hacer el check-in, completa los huéspedes y verifica que la habitación esté disponible dentro del horario reservado.">Registrar ingreso</button>
               }
               @if (salidaPermitida) {
                 @if (saldoPrincipal(r.cuenta) > 0) {
-                  <button class="button small primary" type="button" [disabled]="ocupado() || procesandoEstadia()" (click)="abrirSalida(r, h)">Cobrar y registrar check-out</button>
+                  <button class="button small primary" type="button" [disabled]="ocupado() || procesandoEstadia()" (click)="abrirSalida(r, h)"
+                    appTooltip="Abre el resumen de cobro para revisar el saldo antes de confirmar la salida.">Cobrar y registrar check-out</button>
                 } @else {
                   <button class="button small primary" type="button" [disabled]="procesandoEstadia()" (click)="pedirAccionEstadia(h, 'salida')">Registrar check-out</button>
                 }
