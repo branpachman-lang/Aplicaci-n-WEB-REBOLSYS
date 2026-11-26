@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { NavigationEnd, Router } from '@angular/router';
 import { of, Subject } from 'rxjs';
-import { SesionService } from '../../core/services/sesion-service';
+import { SesionService } from '../../core/auth/sesion-service';
 import { Header } from './header';
 
 describe('Header', () => {

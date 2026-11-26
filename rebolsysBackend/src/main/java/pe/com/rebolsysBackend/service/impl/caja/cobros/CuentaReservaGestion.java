@@ -5,8 +5,10 @@ import static pe.com.rebolsysBackend.service.impl.comun.ReglasPropuesta.*;
 import jakarta.persistence.EntityManager;
 import java.math.*;
 import java.util.*;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import pe.com.rebolsysBackend.dto.reservas.ResumenCuentaReservaDTO;
 import pe.com.rebolsysBackend.repository.caja.TurnoCajaRepository;
 import pe.com.rebolsysBackend.repository.caja.cobros.PagoRepository;
 import pe.com.rebolsysBackend.repository.comun.comprobantes.ComprobanteDetalleRepository;
@@ -39,7 +41,11 @@ public class CuentaReservaGestion {
   }
 
   public BigDecimal alojamiento(Reserva r) {
-    return detallesReserva.findByReservaIdReservaOrderByIdDetalleReserva(r.getIdReserva()).stream()
+    return alojamiento(detallesReserva.findByReservaIdReservaOrderByIdDetalleReserva(r.getIdReserva()));
+  }
+
+  public BigDecimal alojamiento(List<DetalleReserva> detalles) {
+    return detalles.stream()
         .filter(d -> d.getEstadoDetalle() != EstadoReserva.CANCELADA)
         .map(DetalleReserva::getCostoEstadia)
         .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -50,7 +56,35 @@ public class CuentaReservaGestion {
   }
 
   public String clavePrincipal(Reserva r) {
-    return "CUENTA-R-" + r.getIdReserva();
+    return clavePrincipal(r.getIdReserva());
+  }
+
+  private static String clavePrincipal(Long id) {
+    return "CUENTA-R-" + id;
+  }
+
+  public Map<Long, ResumenCuentaReservaDTO> resumirReservas(Map<Long, BigDecimal> alojamientos) {
+    var ids = alojamientos.keySet();
+    var principales = cuentas.clavesExistentes(ids.stream().map(CuentaReservaGestion::clavePrincipal).toList());
+    var documentos = cuentas.totalesCuentasReserva(ids).stream()
+        .collect(Collectors.groupingBy(ComprobanteRepository.TotalesCuenta::getIdReserva));
+    var resumen = new HashMap<Long, ResumenCuentaReservaDTO>();
+    alojamientos.forEach((id, alojamiento) -> {
+      boolean tienePrincipal = principales.contains(clavePrincipal(id));
+      BigDecimal total = tienePrincipal ? BigDecimal.ZERO : alojamiento;
+      BigDecimal pagado = BigDecimal.ZERO;
+      BigDecimal saldoAlojamiento = tienePrincipal ? null : alojamiento;
+      for (var doc : documentos.getOrDefault(id, List.of())) {
+        total = total.add(doc.getTotal());
+        pagado = pagado.add(doc.getPagado());
+        if (saldoAlojamiento == null && doc.getIdVenta() == null) {
+          saldoAlojamiento = doc.getTotal().subtract(doc.getPagado());
+        }
+      }
+      resumen.put(id, new ResumenCuentaReservaDTO(total, pagado, total.subtract(pagado),
+          saldoAlojamiento == null ? BigDecimal.ZERO : saldoAlojamiento));
+    });
+    return resumen;
   }
 
   public BigDecimal pagado(Comprobante c) {

@@ -24,129 +24,26 @@
         <app-icon name="users" />
       </div>
       <p class="inline-note">Usuario actual: {{catalogos()?.usuarios?.[0]?.nombre}}</p>
-      <div formGroupName="cliente">
-        <div class="identity-switch">
-          <label
-            ><input
-              type="radio"
-              formControlName="empresa"
-              [value]="false"
-              (change)="validarCliente()"
-            />Persona natural</label
-          ><label
-            ><input
-              type="radio"
-              formControlName="empresa"
-              [value]="true"
-              (change)="validarCliente()"
-            />Empresa</label
-          >
+      <app-cliente-buscador
+        [documentos]="catalogos()?.documentos ?? []"
+        [bloqueado]="registroIniciado() || guardando()"
+        (seleccionar)="seleccionarCliente($event)"
+        (registrar)="abrirRegistroCliente($event)"
+      />
+      @if (clienteSeleccionado(); as seleccionado) {
+      <div class="cliente-seleccionado panel">
+        <div>
+          <small>Cliente seleccionado</small>
+          <strong>{{ nombreCliente(seleccionado.datos) }}</strong>
+          <span>{{ seleccionado.datos.numeroDocumento }}</span>
         </div>
-        <div class="form-grid">
-          <label class="field"
-            >Tipo de documento <span class="required">*</span
-            ><select formControlName="idTipoDocumento" [attr.aria-invalid]="!!errorCampo(cliente, 'idTipoDocumento')" aria-describedby="cliente-error-tipo-documento">
-              <option [ngValue]="null">Seleccionar documento</option>
-              @for (d of catalogos()?.documentos; track d.id) {
-              <option [ngValue]="d.id">{{ d.nombre }}</option>
-              }
-            </select>
-            @if (errorCampo(cliente, 'idTipoDocumento'); as mensaje) { <small id="cliente-error-tipo-documento" class="field-error">{{ mensaje }}</small> }
-            </label
-          ><label class="field"
-            >Número de documento <span class="required">*</span>
-            <div class="input-with-button">
-              <input
-                formControlName="numeroDocumento"
-                [maxlength]="limiteDocumento(cliente)"
-                [attr.inputmode]="tipoDocumentoGrupo(cliente) === 'OTRO' ? 'text' : 'numeric'"
-                (input)="ajustarDocumento($event, cliente)"
-                [attr.aria-invalid]="!!errorCampo(cliente, 'numeroDocumento')"
-                aria-describedby="cliente-error-documento"
-                placeholder="Ingresa el documento"
-              /><button
-                type="button"
-                class="icon-button"
-                [disabled]="buscando()"
-                aria-label="Buscar cliente por documento"
-                title="Buscar en el hospedaje o consultar DNI/RUC"
-                (click)="buscarCliente()"
-              >
-                <app-icon name="search" />
-              </button></div>
-            @if (errorCampo(cliente, 'numeroDocumento'); as mensaje) { <small id="cliente-error-documento" class="field-error">{{ mensaje }}</small> }
-          </label>
-          @if (!esEmpresa()) {
-          <label class="field"
-            >Nombres <span class="required">*</span
-            ><input
-              formControlName="nombres"
-              [attr.aria-invalid]="!!errorCampo(cliente, 'nombres')" aria-describedby="cliente-error-nombres"
-              maxlength="100"
-              placeholder="Ej. Lucía Elena" />
-            @if (errorCampo(cliente, 'nombres'); as mensaje) { <small id="cliente-error-nombres" class="field-error">{{ mensaje }}</small> }
-            </label
-          ><label class="field"
-            >Apellidos <span class="required">*</span
-            ><input
-              formControlName="apellidos"
-              [attr.aria-invalid]="!!errorCampo(cliente, 'apellidos')" aria-describedby="cliente-error-apellidos"
-              maxlength="100"
-              placeholder="Ej. Mendoza Ramos" />
-            @if (errorCampo(cliente, 'apellidos'); as mensaje) { <small id="cliente-error-apellidos" class="field-error">{{ mensaje }}</small> }
-            </label
-          ><label class="field"
-            >Fecha de nacimiento <span class="required">*</span
-            ><input type="date" [max]="hoy" formControlName="fechaNacimiento"
-              [attr.aria-invalid]="!!errorCampo(cliente, 'fechaNacimiento')" aria-describedby="cliente-error-nacimiento" />
-            @if (errorCampo(cliente, 'fechaNacimiento'); as mensaje) { <small id="cliente-error-nacimiento" class="field-error">{{ mensaje }}</small> }
-          </label>
-          } @else {
-          <label class="field span-2"
-            >Razón social <span class="required">*</span
-            ><input
-              formControlName="razonSocial"
-              [attr.aria-invalid]="!!errorCampo(cliente, 'razonSocial')" aria-describedby="cliente-error-razon-social"
-              maxlength="250"
-              placeholder="Nombre de la empresa" />
-            @if (errorCampo(cliente, 'razonSocial'); as mensaje) { <small id="cliente-error-razon-social" class="field-error">{{ mensaje }}</small> }
-            </label
-          ><label class="field span-2"
-            >Dirección fiscal <span class="optional">Opcional</span
-            ><input
-              formControlName="direccionFiscal"
-              [attr.aria-invalid]="!!errorCampo(cliente, 'direccionFiscal')" aria-describedby="cliente-error-direccion"
-              maxlength="200"
-              placeholder="Dirección fiscal de la empresa"
-          />
-            @if (errorCampo(cliente, 'direccionFiscal'); as mensaje) { <small id="cliente-error-direccion" class="field-error">{{ mensaje }}</small> }
-          </label>
-          }
-          <label class="field"
-            >Correo electrónico <span class="optional">Opcional</span
-            ><input
-              type="email"
-              formControlName="correo"
-              [attr.aria-invalid]="!!errorCampo(cliente, 'correo')" aria-describedby="cliente-error-correo"
-              maxlength="100"
-              placeholder="nombre@correo.com" />
-            @if (errorCampo(cliente, 'correo'); as mensaje) { <small id="cliente-error-correo" class="field-error">{{ mensaje }}</small> }
-            </label
-          ><label class="field"
-            >Teléfono <span class="optional">Opcional</span
-            ><input
-              type="tel"
-              formControlName="telefono"
-              [attr.aria-invalid]="!!errorCampo(cliente, 'telefono')" aria-describedby="cliente-error-telefono"
-              maxlength="15"
-              placeholder="Ej. 987 654 321"
-          />
-            @if (errorCampo(cliente, 'telefono'); as mensaje) { <small id="cliente-error-telefono" class="field-error">{{ mensaje }}</small> }
-          </label>
-        </div>
+        @if (!seleccionado.datos.empresa && !seleccionado.datos.fechaNacimiento) {
+        <button type="button" class="button" (click)="seleccionarCliente(seleccionado)"
+          [disabled]="registroIniciado() || guardando()">Completar fecha de nacimiento</button>
+        } @else if (cliente.get("fechaNacimiento")?.hasError("titularMenor")) {
+        <p class="field-error">El titular debe tener al menos 18 años. Selecciona otro cliente.</p>
+        }
       </div>
-      @if (clienteMensaje()) {
-      <p class="inline-note"><app-icon name="info" />{{ clienteMensaje() }}</p>
       }
     </section>
     <section class="room-form-section">
@@ -371,7 +268,7 @@
     <button
       class="button primary full"
       type="submit"
-      [disabled]="guardando() || comprobando() || registroIniciado()"
+      [disabled]="!clienteSeleccionado() || guardando() || comprobando() || registroIniciado()"
     >
       <app-icon name="check" />{{ guardando() ? "Guardando…" : "Agregar reserva"
       }}</button
@@ -381,6 +278,160 @@
     >
   </aside>
 </form>
+} @if (clienteModal(); as modo) {
+<div class="modal-backdrop" (click)="cerrarClienteModal()">
+  <section appDialog (dialogEscape)="cerrarClienteModal()" class="modal wide-modal" role="dialog"
+    aria-modal="true" aria-labelledby="cliente-modal-titulo" (click)="$event.stopPropagation()">
+    <header class="modal-header">
+      <h2 id="cliente-modal-titulo">{{ modo === "registro" ? "Registrar cliente" : "Completar datos del cliente" }}</h2>
+      <button type="button" class="icon-button" aria-label="Cerrar registro de cliente"
+        [disabled]="guardandoCliente()" (click)="cerrarClienteModal()"><app-icon name="close" /></button>
+    </header>
+    <form [formGroup]="cliente" (ngSubmit)="guardarClienteModal()" novalidate>
+      <fieldset class="cliente-modal-campos" [disabled]="guardandoCliente()">
+        @if (modo === "registro") {
+        <div class="identity-switch">
+          <label
+            ><input
+              type="radio"
+              formControlName="empresa"
+              [value]="false"
+              (change)="cambiarTipoCliente()"
+            />Persona natural</label
+          ><label
+            ><input
+              type="radio"
+              formControlName="empresa"
+              [value]="true"
+              (change)="cambiarTipoCliente()"
+            />Empresa</label
+          >
+        </div>
+        <div class="form-grid">
+          <label class="field"
+            >Tipo de documento <span class="required">*</span
+            ><select formControlName="idTipoDocumento" [attr.aria-invalid]="!!errorCampo(cliente, 'idTipoDocumento')" aria-describedby="cliente-error-tipo-documento">
+              <option [ngValue]="null">Seleccionar documento</option>
+              @for (d of documentosCliente(); track d.id) {
+              <option [ngValue]="d.id">{{ d.nombre }}</option>
+              }
+            </select>
+            @if (errorCampo(cliente, 'idTipoDocumento'); as mensaje) { <small id="cliente-error-tipo-documento" class="field-error">{{ mensaje }}</small> }
+            </label
+          ><label class="field"
+            >Número de documento <span class="required">*</span>
+            <div class="input-with-button">
+              <input
+                formControlName="numeroDocumento"
+                [maxlength]="limiteDocumento(cliente)"
+                [attr.inputmode]="tipoDocumentoGrupo(cliente) === 'OTRO' ? 'text' : 'numeric'"
+                (input)="ajustarDocumento($event, cliente)"
+                [attr.aria-invalid]="!!errorCampo(cliente, 'numeroDocumento')"
+                aria-describedby="cliente-error-documento"
+                placeholder="Ingresa el documento"
+              /><button
+                type="button"
+                class="icon-button"
+                [disabled]="buscando()"
+                aria-label="Buscar cliente por documento"
+                title="Buscar en el hospedaje o consultar DNI/RUC"
+                (click)="buscarCliente()"
+              >
+                <app-icon name="search" />
+              </button></div>
+            @if (errorCampo(cliente, 'numeroDocumento'); as mensaje) { <small id="cliente-error-documento" class="field-error">{{ mensaje }}</small> }
+          </label>
+          @if (!esEmpresa()) {
+          <label class="field"
+            >Nombres <span class="required">*</span
+            ><input
+              formControlName="nombres"
+              [attr.aria-invalid]="!!errorCampo(cliente, 'nombres')" aria-describedby="cliente-error-nombres"
+              maxlength="100"
+              placeholder="Ej. Lucía Elena" />
+            @if (errorCampo(cliente, 'nombres'); as mensaje) { <small id="cliente-error-nombres" class="field-error">{{ mensaje }}</small> }
+            </label
+          ><label class="field"
+            >Apellidos <span class="required">*</span
+            ><input
+              formControlName="apellidos"
+              [attr.aria-invalid]="!!errorCampo(cliente, 'apellidos')" aria-describedby="cliente-error-apellidos"
+              maxlength="100"
+              placeholder="Ej. Mendoza Ramos" />
+            @if (errorCampo(cliente, 'apellidos'); as mensaje) { <small id="cliente-error-apellidos" class="field-error">{{ mensaje }}</small> }
+            </label
+          ><label class="field"
+            >Fecha de nacimiento <span class="required">*</span
+            ><input type="date" [max]="fechaMaximaTitular()" formControlName="fechaNacimiento"
+              [attr.aria-invalid]="!!errorCampo(cliente, 'fechaNacimiento')" aria-describedby="cliente-error-nacimiento" />
+            @if (errorCampo(cliente, 'fechaNacimiento'); as mensaje) { <small id="cliente-error-nacimiento" class="field-error">{{ mensaje }}</small> }
+          </label>
+          } @else {
+          <label class="field span-2"
+            >Razón social <span class="required">*</span
+            ><input
+              formControlName="razonSocial"
+              [attr.aria-invalid]="!!errorCampo(cliente, 'razonSocial')" aria-describedby="cliente-error-razon-social"
+              maxlength="250"
+              placeholder="Nombre de la empresa" />
+            @if (errorCampo(cliente, 'razonSocial'); as mensaje) { <small id="cliente-error-razon-social" class="field-error">{{ mensaje }}</small> }
+            </label
+          ><label class="field span-2"
+            >Dirección fiscal <span class="optional">Opcional</span
+            ><input
+              formControlName="direccionFiscal"
+              [attr.aria-invalid]="!!errorCampo(cliente, 'direccionFiscal')" aria-describedby="cliente-error-direccion"
+              maxlength="200"
+              placeholder="Dirección fiscal de la empresa"
+          />
+            @if (errorCampo(cliente, 'direccionFiscal'); as mensaje) { <small id="cliente-error-direccion" class="field-error">{{ mensaje }}</small> }
+          </label>
+          }
+          <label class="field"
+            >Correo electrónico <span class="optional">Opcional</span
+            ><input
+              type="email"
+              formControlName="correo"
+              [attr.aria-invalid]="!!errorCampo(cliente, 'correo')" aria-describedby="cliente-error-correo"
+              maxlength="100"
+              placeholder="nombre@correo.com" />
+            @if (errorCampo(cliente, 'correo'); as mensaje) { <small id="cliente-error-correo" class="field-error">{{ mensaje }}</small> }
+            </label
+          ><label class="field"
+            >Teléfono <span class="optional">Opcional</span
+            ><input
+              type="tel"
+              formControlName="telefono"
+              [attr.aria-invalid]="!!errorCampo(cliente, 'telefono')" aria-describedby="cliente-error-telefono"
+              maxlength="15"
+              placeholder="Ej. 987 654 321"
+          />
+            @if (errorCampo(cliente, 'telefono'); as mensaje) { <small id="cliente-error-telefono" class="field-error">{{ mensaje }}</small> }
+          </label>
+        </div>
+        } @else {
+          <p>{{ nombreCliente(clienteSeleccionado()!.datos) }}</p>
+          <label class="field">
+            Fecha de nacimiento <span class="required">*</span>
+            <input type="date" [max]="fechaMaximaTitular()" formControlName="fechaNacimiento"
+              [attr.aria-invalid]="!!errorCampo(cliente, 'fechaNacimiento')" aria-describedby="cliente-error-nacimiento" />
+            @if (errorCampo(cliente, "fechaNacimiento"); as mensaje) {
+            <small id="cliente-error-nacimiento" class="field-error">{{ mensaje }}</small>
+            }
+          </label>
+        }
+        @if (clienteMensaje()) { <p class="inline-note" role="status">{{ clienteMensaje() }}</p> }
+        @if (clienteError()) { <p class="field-error" role="alert">{{ clienteError() }}</p> }
+      </fieldset>
+      <div class="modal-actions">
+        <button type="button" class="button" [disabled]="guardandoCliente()" (click)="cerrarClienteModal()">Cancelar</button>
+        <button type="submit" class="button primary" [disabled]="guardandoCliente() || buscando()">
+          {{ guardandoCliente() ? "Guardando…" : (modo === "registro" ? "Registrar y seleccionar" : "Guardar y seleccionar") }}
+        </button>
+      </div>
+    </form>
+  </section>
+</div>
 } @if (pagoAbierto()) {
 <app-pago-modal
   [total]="total()"
@@ -424,7 +475,7 @@
     <button
       type="button"
       class="button small"
-      [disabled]="esEmpresa()"
+      [disabled]="!clienteSeleccionado() || esEmpresa() || cliente.invalid"
       (click)="usarCliente()"
     >
       Usar los datos del cliente

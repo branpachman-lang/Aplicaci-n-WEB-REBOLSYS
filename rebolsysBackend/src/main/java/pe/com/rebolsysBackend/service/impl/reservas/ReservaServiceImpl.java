@@ -6,8 +6,10 @@ import java.time.*;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +25,7 @@ import pe.com.rebolsysBackend.dto.reservas.ReservaOcupantesGuardarDTO;
 import pe.com.rebolsysBackend.dto.reservas.ReservaRegistroRequestDTO;
 import pe.com.rebolsysBackend.dto.reservas.ReservaRespuestaDTO;
 import pe.com.rebolsysBackend.dto.reservas.ReservaSalidaDTO;
+import pe.com.rebolsysBackend.dto.reservas.ResumenCuentaReservaDTO;
 import pe.com.rebolsysBackend.repository.caja.cobros.PagoRepository;
 import pe.com.rebolsysBackend.repository.mantenimiento.HabitacionRepository;
 import pe.com.rebolsysBackend.repository.mantenimiento.PerfilRepository;
@@ -61,6 +64,9 @@ public class ReservaServiceImpl implements ReservaService {
     private final CuentaCobroService cobros;
     private final PagoRepository pagos;
     private final SalidaReservaGestion salida;
+
+    @Value("${app.reservas.tolerancia-ingreso:2h}")
+    private Duration toleranciaIngreso;
 
     @Override
     @Transactional
@@ -239,37 +245,40 @@ public class ReservaServiceImpl implements ReservaService {
 
     @Override
     @Transactional(readOnly = true)
-    public PaginaResponseDTO<ReservaRespuestaDTO> listar(int pagina, int tamanio) {
+    public PaginaResponseDTO<ReservaRespuestaDTO> listar(int pagina, int tamanio, boolean incluirCuenta) {
         var p = reservas.findAll(PageRequest.of(pagina, tamanio, Sort.by("idReserva").descending()));
-        var listaReservas = p.getContent();
-        if (listaReservas.isEmpty()) {
-            return new PaginaResponseDTO<>(List.of(), pagina, tamanio, p.getTotalElements(), p.getTotalPages(), p.isLast());
-        }
-        var reservaIds = listaReservas.stream().map(Reserva::getIdReserva).toList();
-        var detallesPorReserva = detalles.findConHabitacionPorReservas(reservaIds).stream()
-            .collect(java.util.stream.Collectors.groupingBy(d -> d.getReserva().getIdReserva()));
-        var detalleIds = detallesPorReserva.values().stream()
-            .flatMap(List::stream).map(DetalleReserva::getIdDetalleReserva).toList();
-        var ocupantesPorDetalle = detalleIds.isEmpty()
-            ? Map.<Long, List<ReservaOcupante>>of()
-            : ocupantes.findConHuespedPorDetalles(detalleIds).stream()
-                .collect(java.util.stream.Collectors.groupingBy(o -> o.getDetalleReserva().getIdDetalleReserva()));
-        var perfilIds = new HashSet<Long>();
-        listaReservas.forEach(r -> perfilIds.add(r.getCliente().getIdPerfil()));
-        ocupantesPorDetalle.values().stream().flatMap(List::stream)
-            .forEach(o -> perfilIds.add(o.getHuesped().getPerfil().getIdPerfil()));
-        var nombres = nombresPorPerfil(perfilIds);
-        var contenido = listaReservas.stream()
-            .map(r -> respuesta(r, detallesPorReserva.getOrDefault(r.getIdReserva(), List.of()),
-                ocupantesPorDetalle, nombres))
-            .toList();
         return new PaginaResponseDTO<>(
-                contenido,
+                respuestas(p.getContent(), incluirCuenta),
                 pagina,
                 tamanio,
                 p.getTotalElements(),
                 p.getTotalPages(),
                 p.isLast());
+    }
+
+    private List<ReservaRespuestaDTO> respuestas(List<Reserva> pagina, boolean incluirCuenta) {
+        if (pagina.isEmpty()) return List.of();
+        var ids = pagina.stream().map(Reserva::getIdReserva).toList();
+        var detallesPorReserva = detalles.detallesDeReservas(ids).stream()
+                .collect(Collectors.groupingBy(d -> d.getReserva().getIdReserva()));
+        var ocupantesPorDetalle = ocupantes.ocupantesDeReservas(ids).stream()
+                .collect(Collectors.groupingBy(o -> o.getDetalleReserva().getIdDetalleReserva()));
+        var nombres = reservas.nombresDeReservas(ids).stream().collect(Collectors.toMap(
+                ReservaRepository.NombrePerfil::getIdPerfil, ReservaRepository.NombrePerfil::getNombre));
+        Map<Long, ResumenCuentaReservaDTO> resumenes = incluirCuenta
+                ? cuenta.resumirReservas(ids.stream().collect(Collectors.toMap(id -> id,
+                        id -> cuenta.alojamiento(detallesPorReserva.getOrDefault(id, List.of())))))
+                : Map.of();
+        return pagina.stream().map(r -> {
+            var id = r.getIdReserva();
+            var habitaciones = detallesPorReserva.getOrDefault(id, List.of()).stream().map(d -> {
+                var huespedes = ocupantesPorDetalle.getOrDefault(d.getIdDetalleReserva(), List.of()).stream()
+                        .map(o -> respuestaOcupante(o, nombres.get(o.getHuesped().getPerfil().getIdPerfil())))
+                        .toList();
+                return respuestaDetalle(d, huespedes);
+            }).toList();
+            return respuesta(r, nombres.get(r.getCliente().getIdPerfil()), habitaciones, resumenes.get(id));
+        }).toList();
     }
 
     @Override
@@ -437,67 +446,37 @@ public class ReservaServiceImpl implements ReservaService {
         return respuestaDetalle(d);
     }
 
-    private Map<Long, String> nombresPorPerfil(Collection<Long> ids) {
-        if (ids.isEmpty()) return Map.of();
-        Map<Long, String> resultado = new HashMap<>();
-        naturales.findAllById(ids).forEach(n -> resultado.put(n.getIdPerfil(), n.getNombres() + " " + n.getApellidos()));
-        juridicas.findAllById(ids).forEach(j -> resultado.put(j.getIdPerfil(), j.getRazonSocial()));
-        return resultado;
-    }
-
-    private ReservaRespuestaDTO respuesta(
-            Reserva r,
-            List<DetalleReserva> detallesReserva,
-            Map<Long, List<ReservaOcupante>> ocupantesPorDetalle,
-            Map<Long, String> nombres) {
-        return new ReservaRespuestaDTO(
-                r.getIdReserva(),
-                r.getCliente().getIdPerfil(),
-                r.getUsuario().getIdUsuario(),
-                nombres.getOrDefault(r.getCliente().getIdPerfil(), personas.nombre(r.getCliente())),
-                r.getFechaRegistro(),
-                r.getClaveRegistro(),
-                detallesReserva.stream()
-                    .map(d -> respuestaDetalle(d, ocupantesPorDetalle.getOrDefault(d.getIdDetalleReserva(), List.of()), nombres))
-                    .toList());
-    }
-
-    private ReservaDetalleRespuestaDTO respuestaDetalle(
-            DetalleReserva d, List<ReservaOcupante> ocupantesDetalle, Map<Long, String> nombres) {
-        return new ReservaDetalleRespuestaDTO(
-                d.getIdDetalleReserva(),
-                d.getHabitacion().getIdHabitacion(),
-                d.getHabitacion().getNumeroCuarto(),
-                d.getFechaIngreso(),
-                d.getFechaSalida(),
-                d.getFechaIngresoReal(),
-                d.getFechaSalidaReal(),
-                d.getCostoEstadia(),
-                d.getEstadoDetalle(),
-                ocupantesDetalle.stream()
-                    .map(o -> new ReservaOcupanteRespuestaDTO(
-                        o.getIdReservaOcupante(),
-                        o.getHuesped().getPerfil().getIdPerfil(),
-                        nombres.getOrDefault(o.getHuesped().getPerfil().getIdPerfil(),
-                            personas.nombre(o.getHuesped().getPerfil())),
-                        o.getIdOcupanteResponsable(),
-                        o.getParentescoResponsable(),
-                        o.getOcupaPlazaCama() == 1))
-                    .toList());
-    }
-
     private ReservaRespuestaDTO respuesta(Reserva r) {
+        return respuesta(r, personas.nombre(r.getCliente()),
+                r.getDetalles().stream().map(this::respuestaDetalle).toList(), null);
+    }
+
+    private ReservaRespuestaDTO respuesta(Reserva r, String titular,
+            List<ReservaDetalleRespuestaDTO> habitaciones, ResumenCuentaReservaDTO resumen) {
         return new ReservaRespuestaDTO(
                 r.getIdReserva(),
                 r.getCliente().getIdPerfil(),
                 r.getUsuario().getIdUsuario(),
-                personas.nombre(r.getCliente()),
+                titular,
                 r.getFechaRegistro(),
                 r.getClaveRegistro(),
-                r.getDetalles().stream().map(this::respuestaDetalle).toList());
+                habitaciones,
+                resumen);
     }
 
     private ReservaDetalleRespuestaDTO respuestaDetalle(DetalleReserva d) {
+        var huespedes = ocupantes.findByDetalleReservaIdDetalleReservaOrderByIdReservaOcupante(d.getIdDetalleReserva())
+                .stream().map(o -> respuestaOcupante(o, personas.nombre(o.getHuesped().getPerfil()))).toList();
+        return respuestaDetalle(d, huespedes);
+    }
+
+    private ReservaOcupanteRespuestaDTO respuestaOcupante(ReservaOcupante o, String nombre) {
+        return new ReservaOcupanteRespuestaDTO(o.getIdReservaOcupante(), o.getHuesped().getPerfil().getIdPerfil(),
+                nombre, o.getIdOcupanteResponsable(), o.getParentescoResponsable(), o.getOcupaPlazaCama() == 1);
+    }
+
+    private ReservaDetalleRespuestaDTO respuestaDetalle(DetalleReserva d, List<ReservaOcupanteRespuestaDTO> huespedes) {
+        var momentoConsulta = ahora();
         return new ReservaDetalleRespuestaDTO(
                 d.getIdDetalleReserva(),
                 d.getHabitacion().getIdHabitacion(),
@@ -508,18 +487,13 @@ public class ReservaServiceImpl implements ReservaService {
                 d.getFechaSalidaReal(),
                 d.getCostoEstadia(),
                 d.getEstadoDetalle(),
-                ocupantes
-                        .findByDetalleReservaIdDetalleReservaOrderByIdReservaOcupante(d.getIdDetalleReserva())
-                        .stream()
-                        .map(
-                                o ->
-                                        new ReservaOcupanteRespuestaDTO(
-                                                o.getIdReservaOcupante(),
-                                                o.getHuesped().getPerfil().getIdPerfil(),
-                                                personas.nombre(o.getHuesped().getPerfil()),
-                                                o.getIdOcupanteResponsable(),
-                                                o.getParentescoResponsable(),
-                                                o.getOcupaPlazaCama() == 1))
-                        .toList());
+                d.getEstadoDetalle() == EstadoReserva.CONFIRMADA
+                        && d.getFechaIngresoReal() == null
+                        && !momentoConsulta.isBefore(d.getFechaIngreso().plus(toleranciaIngreso)),
+                d.getEstadoDetalle() == EstadoReserva.EN_CURSO
+                        && d.getFechaIngresoReal() != null
+                        && d.getFechaSalidaReal() == null
+                        && !momentoConsulta.isBefore(d.getFechaSalida()),
+                huespedes);
     }
 }

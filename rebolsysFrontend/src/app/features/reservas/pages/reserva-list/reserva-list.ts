@@ -1,12 +1,12 @@
 import { notificarCambios } from '../../../../core/services/avisos-formulario';
 import { generarClaveOperacion } from '../../../../core/utils/clave-operacion';
-import { PermisosUi } from "../../../../core/services/permisos-ui";
+import { PermisosUi } from "../../../../core/auth/permisos-ui";
 import { Component, DestroyRef, OnDestroy, inject, signal } from "@angular/core";
 import { CurrencyPipe, DatePipe } from "@angular/common";
 import { FormsModule } from "@angular/forms";
 import { RouterLink,Router,ActivatedRoute } from "@angular/router";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
-import { filter, forkJoin, interval } from 'rxjs';
+import { forkJoin, Subscription } from 'rxjs';
 import { DialogFocus } from "../../../../shared/directives/dialog-focus";
 import { NotificacionService } from "../../../../core/services/notificacion.service";
 import { CatalogoService } from "../../../../core/services/catalogo-service";
@@ -19,6 +19,7 @@ import { ComprobanteDialog } from '../../components/comprobante-dialog/comproban
 import { PagoYape } from '../../components/pago-yape/pago-yape';
 import {
   ReservaService,
+  ReservaFila,
   ReservaResumen,
   PagoPendiente,
   SalidaPendiente,
@@ -29,8 +30,24 @@ import {
   CuentaReserva,
   DetalleReserva,
   PagoReserva,
+  ReservaApi,
+  ResumenCuentaReserva,
   estadoReserva,
 } from "../../models/reserva-api.model";
+
+type AccionEstadia = 'ingreso' | 'salida' | 'cancelacion';
+
+const PERMISOS_ESTADIA: Record<AccionEstadia, string> = {
+  ingreso: 'RESERVAS:REGISTRAR_INGRESO',
+  salida: 'RESERVAS:REGISTRAR_SALIDA',
+  cancelacion: 'RESERVAS:CANCELAR',
+};
+
+const MENSAJES_ESTADIA: Record<AccionEstadia, string> = {
+  ingreso: 'Se registró el ingreso',
+  salida: 'Se registró la salida',
+  cancelacion: 'Se canceló la estancia',
+};
 
 @Component({
   selector: "app-reservas",
@@ -57,7 +74,7 @@ export class ReservaList implements OnDestroy {
   private readonly ruta=inject(ActivatedRoute);
   private readonly router=inject(Router);
   private comprobanteInicial=Number(this.ruta.snapshot.queryParamMap.get('comprobante'));
-  respuesta = signal<Pagina<ReservaResumen> | null>(null);
+  respuesta = signal<Pagina<ReservaFila> | null>(null);
   catalogos = signal<Catalogos | null>(null);
   cargando = signal(true);
   error = signal("");
@@ -72,18 +89,34 @@ export class ReservaList implements OnDestroy {
   eliminarPagoId = signal<number | null>(null);
   revisionYape = signal(0);
   detalle = signal<ReservaResumen | null>(null);
-  comprobante = signal<ReservaResumen|null>(null);
-  abrirComprobante(r:ReservaResumen){this.detalle.set(null);this.comprobante.set(r);}
+  accionEstadia = signal<{ id: number; accion: AccionEstadia } | null>(null);
+  procesandoEstadia = signal(false);
+  errorEstadia = signal('');
+  comprobante = signal<ReservaApi | null>(null);
+  abrirComprobante(r: ReservaApi) {
+    if (this.comprobante()) return;
+    this.detalle.set(null);
+    this.comprobante.set(r);
+    if (this.catalogos()) return;
+    this.catalogoService.listar().pipe(takeUntilDestroyed(this.destroy)).subscribe({
+      next: (catalogos) => this.catalogos.set(catalogos),
+      error: (e) => {
+        this.comprobante.set(null);
+        this.avisos.mostrar(mensajeError(e), true);
+      },
+    });
+  }
   ocupado = signal(false);
   modalError = signal("");
   pagoFijado = signal(false);
   private clavePago = "";
   private solicitudPago: ConfirmacionPago | null = null;
   private searchTimer?: ReturnType<typeof setTimeout>;
-  private requestId = 0;
+  private carga?: Subscription;
   private detalleId = 0;
-  private actualizando = false;
   estadoReserva = estadoReserva;
+  readonly ingresoPendiente = (detalle: DetalleReserva) => detalle.ingresoVencido === true;
+  readonly salidaPendiente = (detalle: DetalleReserva) => detalle.salidaPendiente === true;
   pagosPendientes = this.servicio.pagosPendientes;
   registroPendiente = this.servicio.registroPendiente;
   salidasPendientes() {
@@ -92,14 +125,7 @@ export class ReservaList implements OnDestroy {
 
   constructor() {
     this.leerParametrosIniciales();
-    this.cargar(true, false);
-    interval(30000)
-      .pipe(
-        filter(() => !this.actualizando && !this.ocupado() && !this.detalle()
-          && !this.pagando() && !this.comprobante()),
-        takeUntilDestroyed(this.destroy),
-      )
-      .subscribe(() => this.cargar(false, false));
+    this.cargar(false);
   }
   ngOnDestroy() {
     clearTimeout(this.searchTimer);
@@ -126,45 +152,30 @@ export class ReservaList implements OnDestroy {
       replaceUrl: true,
     });
   }
-  cargar(mostrarCarga = true, sincronizar = true) {
+  cargar(sincronizar = true) {
     if (sincronizar) this.sincronizarUrl();
-    const id = ++this.requestId;
-    this.actualizando = true;
-    if (mostrarCarga) {
-      this.error.set('');
-      this.cargando.set(true);
-    }
-    forkJoin({
-      pagina: this.servicio.listar(
-        this.pagina,
-        this.tamanio,
-        this.busqueda,
-        this.estado,
-      ),
-      catalogos: this.catalogoService.listar(),
-    })
+    this.carga?.unsubscribe();
+    this.error.set('');
+    this.cargando.set(true);
+    this.carga = this.servicio.listar(this.pagina, this.tamanio, this.busqueda, this.estado)
       .pipe(takeUntilDestroyed(this.destroy))
       .subscribe({
-        next: ({ pagina, catalogos }) => {
-          if (id !== this.requestId) return;
+        next: (pagina) => {
           this.respuesta.set(pagina);
-          this.catalogos.set(catalogos);
-          this.actualizando = false;
           this.error.set('');
           this.cargando.set(false);
           if(Number.isInteger(this.comprobanteInicial)&&this.comprobanteInicial>0){
             const reservaId=this.comprobanteInicial;this.comprobanteInicial=0;
             void this.router.navigate([],{relativeTo:this.ruta,queryParams:{comprobante:null},queryParamsHandling:'merge',replaceUrl:true});
-            forkJoin({reserva:this.servicio.obtener(reservaId),cuenta:this.servicio.cuenta(reservaId)})
-              .pipe(takeUntilDestroyed(this.destroy)).subscribe({next:({reserva,cuenta})=>this.abrirComprobante({...reserva,cuenta}),error:e=>this.avisos.mostrar(mensajeError(e),true)});
+            this.servicio.obtener(reservaId).pipe(takeUntilDestroyed(this.destroy)).subscribe({
+              next: (reserva) => this.abrirComprobante(reserva),
+              error: (e) => this.avisos.mostrar(mensajeError(e), true),
+            });
           }
         },
         error: (e) => {
-          if (id === this.requestId) {
-            this.actualizando = false;
-            if (mostrarCarga) this.error.set(mensajeError(e));
-            this.cargando.set(false);
-          }
+          this.error.set(mensajeError(e));
+          this.cargando.set(false);
         },
       });
   }
@@ -175,7 +186,7 @@ export class ReservaList implements OnDestroy {
       this.cargar();
     }, 300);
   }
-  numeroHuespedes(r: ReservaResumen) {
+  numeroHuespedes(r: ReservaApi) {
     return r.detalles.reduce((n, h) => n + h.ocupantes.length, 0);
   }
   estadoTexto(s: string) {
@@ -190,7 +201,7 @@ export class ReservaList implements OnDestroy {
       )[s] || s
     );
   }
-  estadoCobro(cuenta: CuentaReserva) {
+  estadoCobro(cuenta: ResumenCuentaReserva) {
     return cuenta.saldoPendiente === 0
       ? "PAGADO"
       : cuenta.totalPagado > 0
@@ -246,7 +257,7 @@ export class ReservaList implements OnDestroy {
           this.revisionYape.update((n) => n + 1);
           this.detalle.set({ ...r, cuenta });
           this.avisos.mostrar("Pago eliminado del detalle. Saldo actualizado.");
-          this.cargar(false, false);
+          this.cargar(false);
         },
         error: (e) => {
           this.ocupado.set(false);
@@ -261,10 +272,12 @@ export class ReservaList implements OnDestroy {
       "Responsable registrado"
     );
   }
-  verDetalle(r: ReservaResumen) {
+  verDetalle(r: ReservaApi) {
     this.cancelarDetalle.set(null);
     this.eliminarPagoId.set(null);
     const id = ++this.detalleId;
+    this.accionEstadia.set(null);
+    this.errorEstadia.set('');
     forkJoin({ reserva: this.servicio.obtener(r.idReserva), cuenta: this.servicio.cuenta(r.idReserva) })
       .pipe(takeUntilDestroyed(this.destroy))
       .subscribe({
@@ -274,7 +287,48 @@ export class ReservaList implements OnDestroy {
         error: (e) => this.avisos.mostrar(mensajeError(e), true),
       });
   }
-  abrirPago(r: ReservaResumen) {
+  puedeGestionarEstadia(h: DetalleReserva, accion: AccionEstadia) {
+    if (!this.acceso.permite(PERMISOS_ESTADIA[accion])) return false;
+    if (accion === 'salida') return h.estadoDetalle === 'EN_CURSO';
+    return h.estadoDetalle === 'CONFIRMADA';
+  }
+  pedirAccionEstadia(h: DetalleReserva, accion: AccionEstadia) {
+    if (this.procesandoEstadia() || !this.puedeGestionarEstadia(h, accion)) return;
+    this.errorEstadia.set('');
+    this.accionEstadia.set({ id: h.idDetalleReserva, accion });
+  }
+  gestionarEstadia(r: ReservaResumen, h: DetalleReserva) {
+    const confirmacion = this.accionEstadia();
+    if (this.procesandoEstadia() || confirmacion?.id !== h.idDetalleReserva
+      || !this.puedeGestionarEstadia(h, confirmacion.accion)) return;
+    const { accion } = confirmacion;
+    const id = h.idDetalleReserva;
+    this.procesandoEstadia.set(true);
+    this.errorEstadia.set('');
+    const operacion = accion === 'ingreso' ? this.servicio.ingresar(id)
+      : accion === 'salida' ? this.servicio.registrarSalida(id)
+      : this.servicio.cancelarEstadia(id);
+    operacion.pipe(takeUntilDestroyed(this.destroy)).subscribe({
+      next: (actualizada) => {
+        this.procesandoEstadia.set(false);
+        this.accionEstadia.set(null);
+        this.avisos.mostrar(`${MENSAJES_ESTADIA[accion]} de la habitación ${h.numeroCuarto}.`);
+        const detalle = this.detalle();
+        if (detalle?.idReserva === r.idReserva) {
+          this.detalle.set({ ...detalle, detalles: detalle.detalles.map(item =>
+            item.idDetalleReserva === id ? actualizada : item,
+          ) });
+          if (accion === 'cancelacion' || accion === 'salida') this.verDetalle(r);
+        }
+        this.cargar();
+      },
+      error: (e) => {
+        this.procesandoEstadia.set(false);
+        this.errorEstadia.set(mensajeError(e));
+      },
+    });
+  }
+  abrirPago(r: ReservaApi) {
     this.salidaParaCobrar.set(null);
     const pendiente = this.pagosPendientes().find(
       (p) => p.idReserva === r.idReserva,
@@ -410,11 +464,10 @@ export class ReservaList implements OnDestroy {
         this.avisos.mostrar('Check-out registrado.');
         this.cargar();
         if (this.acceso.permite('RESERVAS:EMITIR_COMPROBANTE')) {
-          forkJoin({ reserva: this.servicio.obtener(salida.idReserva),
-            cuenta: this.servicio.cuenta(salida.idReserva) })
+          this.servicio.obtener(salida.idReserva)
             .pipe(takeUntilDestroyed(this.destroy)).subscribe({
-              next: ({ reserva, cuenta }) => {
-                if (estadoReserva(reserva) === 'FINALIZADA') this.abrirComprobante({ ...reserva, cuenta });
+              next: (reserva) => {
+                if (estadoReserva(reserva) === 'FINALIZADA') this.abrirComprobante(reserva);
               },
               error: e => this.avisos.mostrar(mensajeError(e), true),
             });

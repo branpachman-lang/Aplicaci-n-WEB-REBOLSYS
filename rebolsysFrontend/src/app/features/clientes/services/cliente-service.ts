@@ -17,6 +17,18 @@ export class ClienteService {
     });
   }
 
+  buscarTitulares(empresa: boolean, nombre: string, tipo: number | null, numero: string) {
+    const params: Record<string, string | number | boolean> = { empresa };
+    if (nombre) params['nombre'] = nombre;
+    if (numero) params['numeroDocumento'] = numero;
+    if (numero && tipo !== null) params['tipoDocumento'] = tipo;
+    return this.http.get<Cliente[]>(`${this.base}/recepcion/clientes/titulares`, { params });
+  }
+
+  registrarTitular(persona: ClienteDatos) {
+    return this.http.post<ClienteDetalle>(`${this.base}/recepcion/clientes/titulares`, persona);
+  }
+
   registrar(persona: ClienteDatos) {
     return this.http.post<ClienteDetalle>(`${this.base}/clientes`, { persona });
   }

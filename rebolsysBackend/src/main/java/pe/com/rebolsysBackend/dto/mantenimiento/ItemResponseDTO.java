@@ -12,4 +12,17 @@ public record ItemResponseDTO(
     Long idHabitacion,
     EstadoConservacion estadoActualItem,
     String nombreTipo,
-    String numeroCuarto) {}
+    String numeroCuarto,
+    String imagenRuta) {
+  public ItemResponseDTO(
+      Long idItem,
+      String nombreItem,
+      Long idTipoItem,
+      EstadoItem estadoItem,
+      Long idHabitacion,
+      EstadoConservacion estadoActualItem,
+      String nombreTipo,
+      String numeroCuarto) {
+    this(idItem, nombreItem, idTipoItem, estadoItem, idHabitacion, estadoActualItem, nombreTipo, numeroCuarto, null);
+  }
+}

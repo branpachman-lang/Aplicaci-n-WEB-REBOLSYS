@@ -2,7 +2,7 @@ import { HttpClient, HttpResponse } from '@angular/common/http';
 import { Directive, DestroyRef, HostListener, inject, input } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NotificacionService } from '../../core/services/notificacion.service';
-import { esUrlApi } from '../../core/services/token-service';
+import { esUrlApi } from '../../core/auth/token-service';
 import { mensajeError } from '../../core/utils/http-error';
 
 @Directive({ selector: 'a[archivoProtegido]' })

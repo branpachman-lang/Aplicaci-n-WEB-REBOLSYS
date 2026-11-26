@@ -1,5 +1,5 @@
 import { computed, signal } from "@angular/core";
-import { SesionService } from "./sesion-service";
+import { SesionService } from "../auth/sesion-service";
 
 export function pendienteOperacion<T>(sesion: SesionService, nombre: string, defecto: T) {
   const memoria = signal<{ clave: string; valor: T } | null>(null);

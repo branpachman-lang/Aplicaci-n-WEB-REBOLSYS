@@ -2525,6 +2525,16 @@
               "format": "int32",
               "default": 10
             }
+          },
+          {
+            "name": "incluirCuenta",
+            "in": "query",
+            "description": "Incluir importes resumidos de la cuenta por reserva",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
           }
         ],
         "responses": {
@@ -4867,6 +4877,108 @@
         ]
       }
     },
+    "/api/v1/recepcion/clientes/titulares": {
+      "get": {
+        "tags": [
+          "cliente-controller"
+        ],
+        "operationId": "buscarTitulares",
+        "description": "Busca clientes por nombre completo, razón social o número de documento. Se debe proporcionar al menos uno de estos criterios.",
+        "parameters": [
+          {
+            "name": "empresa",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "tipoDocumento",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "exclusiveMinimum": true,
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "numeroDocumento",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 50
+            }
+          },
+          {
+            "name": "nombre",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 250
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ClienteResumenResponseDTO"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "cliente-controller"
+        ],
+        "operationId": "registrarTitular",
+        "description": "Registra un titular o devuelve el cliente existente para el tipo y número de documento. Las personas naturales deben tener al menos 18 años.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClienteRegistroRequestDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClienteDetalleDTO"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/recepcion/clientes": {
       "get": {
         "tags": [
@@ -7185,6 +7297,14 @@
               "CANCELADA"
             ]
           },
+          "ingresoVencido": {
+            "type": "boolean",
+            "description": "La estancia sigue confirmada y superó la tolerancia de ingreso sin check-in."
+          },
+          "salidaPendiente": {
+            "type": "boolean",
+            "description": "La estancia sigue en curso y llegó la hora programada sin confirmación de salida."
+          },
           "ocupantes": {
             "type": "array",
             "items": {
@@ -8554,7 +8674,19 @@
             "items": {
               "$ref": "#/components/schemas/ReservaDetalleRespuestaDTO"
             }
+          },
+          "cuenta": {
+            "$ref": "#/components/schemas/ResumenCuentaReservaDTO"
           }
+        }
+      },
+      "ResumenCuentaReservaDTO": {
+        "type": "object",
+        "properties": {
+          "totalCargos": { "type": "number" },
+          "totalPagado": { "type": "number" },
+          "saldoPendiente": { "type": "number" },
+          "saldoAlojamiento": { "type": "number" }
         }
       },
       "ReservaPagoRegistroDTO": {

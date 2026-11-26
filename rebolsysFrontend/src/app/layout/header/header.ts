@@ -3,7 +3,7 @@ import { NavigationEnd, Router } from "@angular/router";
 import { toSignal } from "@angular/core/rxjs-interop";
 import { filter, map } from "rxjs";
 import { Icon } from "../../shared/components/icono/icono";
-import { SesionService } from "../../core/services/sesion-service";
+import { SesionService } from "../../core/auth/sesion-service";
 
 @Component({
   selector: "app-header",

@@ -1,6 +1,6 @@
 import { Component, input, output, computed } from "@angular/core";
 import { CurrencyPipe } from "@angular/common";
-import { Producto } from "../../../productos/models/producto.model";
+import { Producto } from "../../../mantenimiento/models/producto.model";
 import { Icon } from "../../../../shared/components/icono/icono";
 @Component({
   selector: "app-venta-carrito",

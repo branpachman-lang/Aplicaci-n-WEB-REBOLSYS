@@ -21,13 +21,22 @@ una persona natural adulta o una empresa; los ocupantes son personas naturales.
    habitación POR_LIMPIAR. Las cuentas históricas separadas se liquidan antes.
 8. El comprobante interno de la cuenta principal se emite al registrar la última
    salida o después. La interfaz de recepción ofrece emitirlo tras ese check-out.
+9. Al llegar la hora programada en Lima, el detalle de una estancia EN_CURSO
+   sin salida registrada devuelve `salidaPendiente: true`. La habitación sigue
+   ocupada hasta que recepción registra la salida y se guarda su hora real.
+
+GET es de solo lectura. El filtro **Salidas pendientes** muestra las reservas
+con al menos una habitación por revisar. La lista Angular se actualiza cada
+30 segundos mientras no hay un diálogo u operación activa.
 
 El saldo debe ser cero en cada cuenta: un sobrepago en alojamiento no compensa una
 deuda de consumos para autorizar el checkout. Al registrar una nueva reserva,
 el ingreso previsto debe estar en el futuro y la salida debe ser posterior.
 
-El cierre automático está deshabilitado por defecto. Quita
-`CHECKOUT_AUTOMATICO_HABILITADO=true` si la instalación lo activaba expresamente.
+El cierre automático está desactivado por defecto en `application.yaml`.
+Quita `CHECKOUT_AUTOMATICO_HABILITADO=true` si la instalación lo activaba expresamente;
+cuando se activa usa `CHECKOUT_AUTOMATICO_INTERVALO` (60000 ms) y
+`CHECKOUT_AUTOMATICO_ESPERA_INICIAL` (10000 ms).
 El check-out guarda la clave de reintento y su resultado en `DETALLE_RESERVA`.
 Para actualizar una base existente, aplica [V22](src/main/resources/db/iteration/V22__idempotencia_salida_en_detalle_reserva.sql).
 

@@ -114,6 +114,71 @@ class CobroInmediatoIntegracionTest {
         .setParameter("v", valor).getSingleResult();
   }
 
+  @Test
+  void registraYBuscaTitularesSinDuplicarElDocumento() throws Exception {
+    Long pasaporte = tx.execute(s -> {
+      var tipo = new TipoDocumento();
+      tipo.setNombreDocumento("PASAPORTE TITULAR");
+      tipo.setCodigoSunat("7");
+      em.persist(tipo);
+      return tipo.getIdTipoDocumento();
+    });
+    var mayor = ReglasPropuesta.ahora().toLocalDate().minusYears(18);
+    String ruta = "/api/v1/recepcion/clientes/titulares";
+    var persona = new ClienteRegistroRequestDTO(pasaporte, "ax091", false, "Alejandra", "Quispe Flores",
+        mayor, null, null, null, null);
+    var respuesta = mvc.perform(post(ruta).contentType(MediaType.APPLICATION_JSON)
+        .content(json.writeValueAsBytes(persona))).andExpect(status().isOk()).andReturn();
+    long id = json.readTree(respuesta.getResponse().getContentAsByteArray()).get("idCliente").asLong();
+    var duplicado = new ClienteRegistroRequestDTO(pasaporte, "AX091", false, "Nombre", "Alternativo",
+        mayor, null, null, null, null);
+    mvc.perform(post(ruta).contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsBytes(duplicado)))
+        .andExpect(status().isOk()).andExpect(jsonPath("$.idCliente").value(id))
+        .andExpect(jsonPath("$.persona.nombres").value("Alejandra"));
+    mvc.perform(get(ruta).param("empresa", "false").param("nombre", "ALEJANDRA QUISPE FLORES"))
+        .andExpect(status().isOk()).andExpect(jsonPath("$[0].idCliente").value(id));
+    mvc.perform(get(ruta).param("empresa", "false").param("tipoDocumento", pasaporte.toString())
+        .param("numeroDocumento", "ax091"))
+        .andExpect(status().isOk()).andExpect(jsonPath("$[0].idCliente").value(id));
+    mvc.perform(get(ruta).param("empresa", "true").param("numeroDocumento", "ax091"))
+        .andExpect(status().isOk()).andExpect(jsonPath("$").isEmpty());
+    var menor = new ClienteRegistroRequestDTO(pasaporte, "AX092", false, "Ana", "Prueba",
+        mayor.plusMonths(1), null, null, null, null);
+    assertThatThrownBy(() -> clientes.registrarTitular(menor)).hasMessageContaining("18 años");
+    var empresaConPasaporte = new ClienteRegistroRequestDTO(pasaporte, "AX093", true, null, null,
+        null, "Empresa de prueba", null, null, null);
+    assertThatThrownBy(() -> clientes.registrarTitular(empresaConPasaporte)).hasMessageContaining("RUC");
+  }
+
+  @Test
+  void marcaElIngresoVencidoSinCambiarElEstadoDeLaEstancia() {
+    var creada = reservas.registrar(reserva(UUID.randomUUID().toString(), "80.00"));
+    var detalle = creada.detalles().getFirst();
+    assertThat(detalle.ingresoVencido()).isFalse();
+    tx.executeWithoutResult(s -> em.find(DetalleReserva.class, detalle.idDetalleReserva())
+        .setFechaIngreso(ReglasPropuesta.ahora().minusHours(3)));
+    var pendiente = reservas.obtener(creada.idReserva()).detalles().getFirst();
+    assertThat(pendiente.ingresoVencido()).isTrue();
+    assertThat(pendiente.estadoDetalle()).isEqualTo(EstadoReserva.CONFIRMADA);
+    var ingresada = reservas.cambiarEstado(detalle.idDetalleReserva(), "ingreso", new OperacionUsuarioDTO(usuario));
+    assertThat(ingresada.ingresoVencido()).isFalse();
+  }
+
+  @Test
+  void rechazaLaMismaReferenciaEnOtraCuentaSinRegistrarUnSegundoCobro() {
+    var solicitud = reserva(UUID.randomUUID().toString(), "80.00");
+    String referencia = "AB004812";
+    var original = new ReservaRegistroRequestDTO(solicitud.claveRegistro(), solicitud.idCliente(),
+        solicitud.idUsuario(), solicitud.detalles(), new CobroInmediatoDTO(forma, new BigDecimal("80.00"), referencia));
+    var registrada = reservas.registrar(original);
+    assertThat(reservas.registrar(original).idReserva()).isEqualTo(registrada.idReserva());
+    var otro = venta(UUID.randomUUID().toString(), null, new CobroInmediatoDTO(forma, new BigDecimal("7.00"), " ab004812 "));
+    assertThatThrownBy(() -> ventas.registrarConfirmada(otro))
+        .hasMessageContaining("ya está registrada en la reserva R" + registrada.idReserva());
+    sinVenta(otro.claveRegistro());
+    tx.executeWithoutResult(s -> assertThat(cantidad("Pago", "numeroOperacion", referencia)).isEqualTo(1));
+  }
+
   private CobroInmediatoDTO cobro(String monto) { return new CobroInmediatoDTO(forma, new BigDecimal(monto), null); }
   private ReservaRegistroRequestDTO reserva(String clave, String monto) {
     var ahora = ReglasPropuesta.ahora();
@@ -440,12 +505,22 @@ class CobroInmediatoIntegracionTest {
   }
 
   @Test void apiPermiteReservaSinCobroYExponeElNuevoContrato() throws Exception {
-    var r = reserva(UUID.randomUUID().toString(), "80.00");
-    var cuerpo = (tools.jackson.databind.node.ObjectNode) json.valueToTree(r);
-    cuerpo.remove("cobro");
+    var ahora = ReglasPropuesta.ahora();
+    var sinCobroReq = new ReservaRegistroRequestDTO(UUID.randomUUID().toString(), cliente, usuario,
+        List.of(new ReservaDetalleRegistroDTO(habitacion, ahora.plusDays(3), ahora.plusDays(4),
+            new BigDecimal("80.00"), List.of(new ReservaOcupanteRegistroDTO(cliente, null, null, true)))),
+        null);
     mvc.perform(post("/api/v1/reservas").contentType(MediaType.APPLICATION_JSON)
-        .content(json.writeValueAsBytes(cuerpo))).andExpect(status().isCreated())
+        .content(json.writeValueAsBytes(sinCobroReq))).andExpect(status().isCreated())
         .andExpect(jsonPath("$.detalles[0].estadoDetalle").value("CONFIRMADA"));
+    var r = reserva(UUID.randomUUID().toString(), "80.00");
+    reservas.registrar(r);
+    mvc.perform(get("/api/v1/reservas").param("incluirCuenta", "true")).andExpect(status().isOk())
+        .andExpect(jsonPath("$.contenido[0].cuenta.saldoAlojamiento").value(0))
+        .andExpect(jsonPath("$.contenido[0].cuenta.totalPagado").value(80))
+        .andExpect(jsonPath("$.contenido[0].detalles[0].ocupantes[0].nombre").isNotEmpty());
+    mvc.perform(get("/api/v1/reservas")).andExpect(status().isOk())
+        .andExpect(jsonPath("$.contenido[0].cuenta").doesNotExist());
     mvc.perform(get("/v3/api-docs")).andExpect(status().isOk())
         .andExpect(jsonPath("$.components.schemas.CobroInmediatoDTO.required").isArray())
         .andExpect(jsonPath("$.paths['/api/v1/reservas/detalles/{id}/salida'].post.requestBody.content['application/json'].schema['$ref']")
@@ -493,6 +568,8 @@ class CobroInmediatoIntegracionTest {
     });
     Long estancia = reservas.obtener(id).detalles().getFirst().idDetalleReserva();
     assertThat(cuentasReserva.cuenta(id).saldoPendiente()).isEqualByComparingTo("80");
+    assertThat(reservas.listar(0, 1, true).contenido().getFirst().cuenta().saldoAlojamiento())
+        .isEqualByComparingTo("80");
     cuentasReserva.pagar(id, new ReservaPagoRegistroDTO(UUID.randomUUID().toString(), usuario, turno,
         forma, new BigDecimal("40.00"), null, null));
     ventas.registrarConfirmada(venta(UUID.randomUUID().toString(), estancia, cobro("7.00")));
@@ -500,6 +577,12 @@ class CobroInmediatoIntegracionTest {
     assertThat(cuenta.totalCargos()).isEqualByComparingTo("87");
     assertThat(cuenta.totalPagado()).isEqualByComparingTo("47");
     assertThat(cuenta.saldoPendiente()).isEqualByComparingTo("40");
+    var fila = reservas.listar(0, 1, true).contenido().getFirst();
+    assertThat(fila.detalles()).isEqualTo(reservas.obtener(id).detalles());
+    assertThat(fila.cuenta().totalCargos()).isEqualByComparingTo(cuenta.totalCargos());
+    assertThat(fila.cuenta().totalPagado()).isEqualByComparingTo(cuenta.totalPagado());
+    assertThat(fila.cuenta().saldoPendiente()).isEqualByComparingTo(cuenta.saldoPendiente());
+    assertThat(fila.cuenta().saldoAlojamiento()).isEqualByComparingTo("40");
     assertThatThrownBy(() -> reservas.cambiarEstado(estancia, "salida", new OperacionUsuarioDTO(usuario)))
         .hasMessageContaining("Liquida el saldo");
   }
@@ -547,6 +630,21 @@ class CobroInmediatoIntegracionTest {
       assertThat(d.getEstadoDetalle()).isEqualTo(estado);
       assertThat(d.getHabitacion().getEstadoHabitacion()).isEqualTo(habitacionEsperada);
     });
+  }
+
+  @Test
+  void unaSalidaVencidaSigueOcupadaHastaQueRecepcionLaConfirma() {
+    Long id = estanciaVencida(ReglasPropuesta.ahora().minusMinutes(1));
+    Long idReserva = tx.execute(s -> em.find(DetalleReserva.class, id).getReserva().getIdReserva());
+    var pendiente = reservas.obtener(idReserva).detalles().getFirst();
+    assertThat(pendiente.salidaPendiente()).isTrue();
+    assertThat(pendiente.fechaSalidaReal()).isNull();
+    comprobarEstancia(id, EstadoReserva.EN_CURSO, EstadoHabitacion.OCUPADO);
+
+    var salida = reservas.cambiarEstado(id, "salida", new OperacionUsuarioDTO(usuario));
+    assertThat(salida.salidaPendiente()).isFalse();
+    assertThat(salida.fechaSalidaReal()).isAfter(pendiente.fechaSalida());
+    comprobarEstancia(id, EstadoReserva.FINALIZADA, EstadoHabitacion.POR_LIMPIAR);
   }
 
   @Test void checkoutVencidoFinalizaAlLlegarLaHoraSinDuplicarAuditoriaNiPagos() {

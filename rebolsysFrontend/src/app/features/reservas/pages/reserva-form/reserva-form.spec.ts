@@ -5,7 +5,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { of } from "rxjs";
 import { CatalogoService } from "../../../../core/services/catalogo-service";
 import { NotificacionService } from "../../../../core/services/notificacion.service";
-import { HabitacionService } from "../../../habitaciones/services/habitacion-service";
+import { HabitacionService } from "../../../mantenimiento/services/habitacion-service";
 import { ReservaForm } from "./reserva-form";
 import { ReservaService } from "../../services/reserva-service";
 import { ClienteService } from "../../../clientes/services/cliente-service";
@@ -65,6 +65,19 @@ describe("Formulario de reserva", () => {
 
     f.detectChanges();
     return f;
+  }
+  const empresaRegistrada = {
+    idCliente: 1,
+    datos: {
+      idTipoDocumento: 3, numeroDocumento: '20123456789', empresa: true,
+      razonSocial: 'Empresa de prueba', nombres: null, apellidos: null,
+      fechaNacimiento: null, direccionFiscal: null, telefono: null, correo: null,
+    },
+  };
+  function abrirRegistro(f: Awaited<ReturnType<typeof fixture>>) {
+    const boton = f.nativeElement.querySelector('app-cliente-buscador .acciones .primary') as HTMLButtonElement;
+    boton.click();
+    f.detectChanges();
   }
   it("al editar al adulto carga sus menores y permite corregirlos, retirarlos o añadirlos", async () => {
     const c = (await fixture()).componentInstance;
@@ -165,8 +178,8 @@ describe("Formulario de reserva", () => {
     const pagar=vi.fn();
     const c=(await fixture({prepararRegistro:()=>of(api),crear,pagar,cuenta:()=>of(cuenta)})).componentInstance;
     vi.spyOn(TestBed.inject(Router),'navigate').mockResolvedValue(true);
-    c.cliente.patchValue({empresa:true,idTipoDocumento:3,numeroDocumento:'20123456789',razonSocial:'Empresa prueba'});
-    c.validarCliente();c.habitaciones.at(0).patchValue({idHabitacion:2});c.revisar();
+    c.seleccionarCliente(empresaRegistrada);
+    c.habitaciones.at(0).patchValue({idHabitacion:2});c.revisar();
     const cobro={idUsuario:1,idTurno:1,idFormaPago:1,numeroOperacion:null};
     const pago={forma:'EFECTIVO' as const,recibido:50,monto:40,cobro};
     c.confirmar(pago);expect(c.reservaRegistrada()).toBe(null);expect(c.pagoFijado()).toBe(true);
@@ -208,13 +221,7 @@ describe("Formulario de reserva", () => {
     ayer.setDate(ayer.getDate() - 1);
     const manana = new Date();
     manana.setDate(manana.getDate() + 1);
-    c.cliente.patchValue({
-      idTipoDocumento: 3,
-      numeroDocumento: "20123456789",
-      empresa: true,
-      razonSocial: "Empresa de prueba",
-    });
-    c.validarCliente();
+    c.seleccionarCliente(empresaRegistrada);
     c.habitaciones.at(0).patchValue({
       idHabitacion: 2,
       fechaIngreso: `${fechaLocal(ayer)}T14:00`,
@@ -364,13 +371,7 @@ describe("Formulario de reserva", () => {
     ingreso.setDate(ingreso.getDate() + 1);
     const salida = new Date(ingreso);
     salida.setDate(salida.getDate() + 1);
-    c.cliente.patchValue({
-      idTipoDocumento: 3,
-      numeroDocumento: "20123456789",
-      empresa: true,
-      razonSocial: "Empresa de Prueba",
-    });
-    c.validarCliente();
+    c.seleccionarCliente(empresaRegistrada);
     c.habitaciones.at(0).patchValue({
       idHabitacion: 2,
       fechaIngreso: `${fechaLocal(ingreso)}T14:00`,
@@ -395,21 +396,21 @@ describe("Formulario de reserva", () => {
   it('muestra los errores debajo de cada campo al guardar y los retira al corregir', async () => {
     const f = await fixture();
     const raiz = f.nativeElement as HTMLElement;
+    abrirRegistro(f);
     expect(raiz.querySelector('.field-error')).toBeNull();
-    raiz.querySelector('form.reservation-form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    raiz.querySelector('[aria-labelledby="cliente-modal-titulo"] form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     f.detectChanges();
     for (const [campo, texto] of [
       ['numeroDocumento', 'El número de documento es obligatorio'], ['nombres', 'Ingresa los nombres'],
       ['apellidos', 'Ingresa los apellidos'], ['fechaNacimiento', 'La fecha de nacimiento del titular es obligatoria'],
     ]) {
-      const input = raiz.querySelector(`[formGroupName="cliente"] [formControlName="${campo}"]`)!;
+      const input = raiz.querySelector(`[aria-labelledby="cliente-modal-titulo"] [formControlName="${campo}"]`)!;
       const mensaje = raiz.querySelector('#' + input.getAttribute('aria-describedby'))!;
       expect(input.getAttribute('aria-invalid')).toBe('true');
       expect(mensaje.textContent).toContain(texto);
       expect(input.closest('.field')!.contains(mensaje)).toBe(true);
     }
-    expect(raiz.querySelector('#habitacion-error-numero-0')?.textContent).toContain('Selecciona una habitación');
-    const nombres = raiz.querySelector('[formGroupName="cliente"] [formControlName="nombres"]') as HTMLInputElement;
+    const nombres = raiz.querySelector('[aria-labelledby="cliente-modal-titulo"] [formControlName="nombres"]') as HTMLInputElement;
     nombres.value = 'Lucía Elena';
     nombres.dispatchEvent(new Event('input', { bubbles: true }));
     f.detectChanges();
@@ -422,7 +423,8 @@ describe("Formulario de reserva", () => {
     const f = await fixture();
     const c = f.componentInstance;
     const raiz = f.nativeElement as HTMLElement;
-    const documento = raiz.querySelector('[formGroupName="cliente"] [formControlName="numeroDocumento"]') as HTMLInputElement;
+    abrirRegistro(f);
+    const documento = raiz.querySelector('[aria-labelledby="cliente-modal-titulo"] [formControlName="numeroDocumento"]') as HTMLInputElement;
     documento.value = '1234567';
     documento.dispatchEvent(new Event('input', { bubbles: true }));
     documento.dispatchEvent(new Event('blur'));
@@ -445,7 +447,8 @@ describe("Formulario de reserva", () => {
     const f = await fixture();
     const c = f.componentInstance;
     const raiz = f.nativeElement as HTMLElement;
-    const documento = raiz.querySelector('[formGroupName="cliente"] [formControlName="numeroDocumento"]') as HTMLInputElement;
+    abrirRegistro(f);
+    const documento = raiz.querySelector('[aria-labelledby="cliente-modal-titulo"] [formControlName="numeroDocumento"]') as HTMLInputElement;
     const pegar = (valor: string) => { documento.value = valor; documento.dispatchEvent(new Event('input', { bubbles: true })); f.detectChanges(); };
     expect(documento.maxLength).toBe(8);
     pegar('12a34567890');
@@ -469,6 +472,63 @@ describe("Formulario de reserva", () => {
       expect(documento.maxLength).toBe(50);
       expect(c.cliente.get('numeroDocumento')!.value).toBe('AB1234567890');
     }
+  });
+
+  it('busca por razón social, informa si no existen coincidencias y selecciona un resultado', async () => {
+    const f = await fixture();
+    const buscar = vi.spyOn(TestBed.inject(ClienteService), 'buscarTitulares')
+      .mockReturnValueOnce(of([])).mockReturnValueOnce(of([empresaRegistrada]));
+    const panel = f.nativeElement.querySelector('app-cliente-buscador') as HTMLElement;
+    const tipo = panel.querySelectorAll<HTMLInputElement>('input[type=radio]')[1];
+    tipo.click();
+    f.detectChanges();
+    expect(Array.from(panel.querySelectorAll('select option')).map((o) => o.textContent?.trim()))
+      .toEqual(['Seleccionar documento', 'RUC']);
+    const nombre = panel.querySelector<HTMLInputElement>('input[formControlName=nombre]')!;
+    nombre.value = 'Empresa de prueba';
+    nombre.dispatchEvent(new Event('input', { bubbles: true }));
+    const boton = panel.querySelector<HTMLButtonElement>('.acciones button')!;
+    boton.click();
+    f.detectChanges();
+    expect(buscar).toHaveBeenCalledWith(true, 'Empresa de prueba', 3, '');
+    expect(panel.querySelector('[role=status]')?.textContent).toContain('No encontramos clientes');
+    boton.click();
+    f.detectChanges();
+    panel.querySelector<HTMLButtonElement>('.resultados button')!.click();
+    expect(f.componentInstance.clienteSeleccionado()?.idCliente).toBe(1);
+  });
+
+  it('registra y selecciona a quien cumple 18 años hoy y limita el calendario del modal', async () => {
+    const f = await fixture();
+    const c = f.componentInstance;
+    abrirRegistro(f);
+    const modal = f.nativeElement.querySelector('[aria-labelledby="cliente-modal-titulo"]') as HTMLElement;
+    const tipos = modal.querySelectorAll<HTMLInputElement>('input[type=radio]');
+    tipos[1].click();
+    f.detectChanges();
+    expect(Array.from(modal.querySelectorAll('select option')).map((o) => o.textContent?.trim()))
+      .toEqual(['Seleccionar documento', 'RUC']);
+    expect(modal.querySelector('input[type=date]')).toBeNull();
+    tipos[0].click();
+    f.detectChanges();
+    expect(Array.from(modal.querySelectorAll('select option')).map((o) => o.textContent?.trim()))
+      .toEqual(['Seleccionar documento', 'DNI', 'Carnet de extranjería', 'Pasaporte']);
+    const max = modal.querySelector<HTMLInputElement>('input[type=date]')!.max;
+    expect(max).toBe(c.fechaMaximaTitular());
+    expect(c.fechaMaximaTitular('2026-11-25')).toBe('2008-11-25');
+    expect(c.fechaMaximaTitular('2026-02-28')).toBe('2008-02-29');
+    const persona = {
+      idTipoDocumento: 1, empresa: false, numeroDocumento: '12345678',
+      nombres: 'Ana', apellidos: 'Rojas', fechaNacimiento: max,
+      razonSocial: null, direccionFiscal: null, telefono: null, correo: null,
+    };
+    const registrar = vi.spyOn(TestBed.inject(ClienteService), 'registrarTitular')
+      .mockReturnValue(of({ idCliente: 14, persona, restriccionesMedicas: null }));
+    c.cliente.patchValue(persona);
+    modal.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    expect(registrar).toHaveBeenCalledWith(persona);
+    expect(c.clienteSeleccionado()?.idCliente).toBe(14);
+    expect(c.clienteModal()).toBeNull();
   });
 
   it('también presenta mensajes bajo los campos del huésped y de sus menores', async () => {

@@ -15,8 +15,12 @@ export interface DetalleReserva {
   numeroCuarto: string;
   fechaIngreso: string;
   fechaSalida: string;
+  fechaIngresoReal?: string | null;
+  fechaSalidaReal?: string | null;
   costoEstadia: number;
   estadoDetalle: "CONFIRMADA" | "EN_CURSO" | "FINALIZADA" | "CANCELADA";
+  ingresoVencido?: boolean;
+  salidaPendiente?: boolean;
   ocupantes: OcupanteReserva[];
 }
 
@@ -50,6 +54,13 @@ export interface CuentaReserva {
   saldoPendiente: number;
   admiteConsumosConsolidados: boolean;
   cuentas: CuentaDocumento[];
+}
+
+export interface ResumenCuentaReserva {
+  totalCargos: number;
+  totalPagado: number;
+  saldoPendiente: number;
+  saldoAlojamiento: number;
 }
 
 export interface CuentaDocumento {

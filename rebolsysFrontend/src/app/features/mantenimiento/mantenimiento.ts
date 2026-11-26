@@ -1,7 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { Icon } from '../../shared/components/icono/icono';
-import { PermisosUi } from '../../core/services/permisos-ui';
+import { PermisosUi } from '../../core/auth/permisos-ui';
 
 @Component({
   selector: 'app-mantenimiento',

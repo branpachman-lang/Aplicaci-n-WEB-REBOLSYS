@@ -1,6 +1,6 @@
 package pe.com.rebolsysBackend.dto.reservas;
 
-import jakarta.validation.constraints.*;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import java.time.*;
 import java.util.*;
 
@@ -11,4 +11,5 @@ public record ReservaRespuestaDTO(
     String titular,
     LocalDateTime fechaRegistro,
     String claveRegistro,
-    List<ReservaDetalleRespuestaDTO> detalles) {}
+    List<ReservaDetalleRespuestaDTO> detalles,
+    @JsonInclude(JsonInclude.Include.NON_NULL) ResumenCuentaReservaDTO cuenta) {}

@@ -2,8 +2,8 @@ import { TestBed } from "@angular/core/testing";
 import { signal } from '@angular/core';
 import { Router, provideRouter } from "@angular/router";
 import { Subject, of, throwError } from 'rxjs';
-import { SesionService } from "../../core/services/sesion-service";
-import { PermisosUi } from "../../core/services/permisos-ui";
+import { SesionService } from "../../core/auth/sesion-service";
+import { PermisosUi } from "../../core/auth/permisos-ui";
 import { Sidebar } from "./sidebar";
 
 describe("Navegación por módulos", () => {

@@ -20,7 +20,7 @@ import static pe.com.rebolsysBackend.service.impl.comun.ReglasPropuesta.*;
 
 import java.math.*;
 import java.util.*;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,7 +29,6 @@ import pe.com.rebolsysBackend.enums.*;
 import pe.com.rebolsysBackend.exception.*;
 
 @Service
-@RequiredArgsConstructor
 public class ItemServiceImpl implements ItemService {
   private final jakarta.persistence.EntityManager entityManager;
   private final ItemRepository items;
@@ -38,6 +37,38 @@ public class ItemServiceImpl implements ItemService {
   private final MovimientoInventarioRepository movimientos;
   private final ReglasPropuesta reglas;
   private final InformeRevisionRepository informes;
+  private final CatalogoImagenService imagenes;
+
+  @Autowired
+  public ItemServiceImpl(
+      jakarta.persistence.EntityManager entityManager,
+      ItemRepository items,
+      TipoItemRepository tipos,
+      HabitacionRepository habitaciones,
+      MovimientoInventarioRepository movimientos,
+      ReglasPropuesta reglas,
+      InformeRevisionRepository informes,
+      CatalogoImagenService imagenes) {
+    this.entityManager = entityManager;
+    this.items = items;
+    this.tipos = tipos;
+    this.habitaciones = habitaciones;
+    this.movimientos = movimientos;
+    this.reglas = reglas;
+    this.informes = informes;
+    this.imagenes = imagenes;
+  }
+
+  public ItemServiceImpl(
+      jakarta.persistence.EntityManager entityManager,
+      ItemRepository items,
+      TipoItemRepository tipos,
+      HabitacionRepository habitaciones,
+      MovimientoInventarioRepository movimientos,
+      ReglasPropuesta reglas,
+      InformeRevisionRepository informes) {
+    this(entityManager, items, tipos, habitaciones, movimientos, reglas, informes, null);
+  }
 
   @Override
   @Transactional
@@ -92,7 +123,7 @@ public class ItemServiceImpl implements ItemService {
       throw new RecursoNoEncontradoException("La habitación no existe");
     var page = items.buscarConfiguracion(patronBusqueda(f.buscar()), f.idTipoItem(), f.estado(),
         f.idHabitacion(), f.sinAsignar(), f.estadoConservacion(),
-        PageRequest.of(f.pagina(), f.tamanio(), Sort.by("nombreItem", "idItem")));
+        PageRequest.of(f.pagina(), f.tamanio(), Sort.by(Sort.Direction.DESC, "idItem")));
     return new PaginaResponseDTO<>(page.map(this::respuesta).getContent(), f.pagina(), f.tamanio(),
         page.getTotalElements(), page.getTotalPages(), page.isLast());
   }
@@ -311,8 +342,11 @@ public class ItemServiceImpl implements ItemService {
 
   private ItemResponseDTO respuesta(Item i) {
     var h = i.getHabitacion();
-    return new ItemResponseDTO(i.getIdItem(), i.getNombreItem(), i.getTipoItem().getIdTipoItem(),
-        i.getEstadoItem(), idHabitacion(h), i.getCondicionItem(), i.getTipoItem().getNombreItem(),
-        h == null ? null : h.getNumeroCuarto());
+    var tipo = i.getTipoItem();
+    String imagen = imagenes == null ? null
+        : imagenes.resolverMobiliario(i.getIdItem(), tipo.getNombreItem());
+    return new ItemResponseDTO(i.getIdItem(), i.getNombreItem(), tipo.getIdTipoItem(),
+        i.getEstadoItem(), idHabitacion(h), i.getCondicionItem(), tipo.getNombreItem(),
+        h == null ? null : h.getNumeroCuarto(), imagen);
   }
 }

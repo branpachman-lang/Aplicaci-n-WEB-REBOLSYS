@@ -1,0 +1,50 @@
+<fieldset class="buscador" [disabled]="bloqueado()" [formGroup]="form">
+  <legend class="sr-only">Buscar cliente</legend>
+  <div class="tipo-cliente" role="group" aria-label="Tipo de cliente">
+    <label><input type="radio" name="tipo-busqueda-cliente" [checked]="!empresa()"
+      (change)="cambiarTipo(false)" /> Persona natural</label>
+    <label><input type="radio" name="tipo-busqueda-cliente" [checked]="empresa()"
+      (change)="cambiarTipo(true)" /> Persona jurídica (empresa)</label>
+  </div>
+  <div class="form-grid" (keydown.enter)="$event.preventDefault(); buscar()">
+    <label class="field">
+      {{ empresa() ? 'Razón social' : 'Nombres y apellidos' }}
+      <input formControlName="nombre" maxlength="250"
+        [placeholder]="empresa() ? 'Razón social completa' : 'Nombre completo del cliente'" />
+    </label>
+    <label class="field">
+      Tipo de documento
+      <select formControlName="tipo">
+        <option [ngValue]="null">Seleccionar documento</option>
+        @for (documento of opciones(); track documento.id) {
+          <option [ngValue]="documento.id">{{ documento.nombre }}</option>
+        }
+      </select>
+    </label>
+    <label class="field">
+      Número de documento
+      <input formControlName="numero" maxlength="50" placeholder="Número de identificación" />
+    </label>
+  </div>
+  <div class="acciones">
+    <button class="button" type="button" (click)="buscar()" [disabled]="buscando()">
+      {{ buscando() ? 'Buscando…' : 'Buscar cliente' }}
+    </button>
+    <button class="button primary" type="button" (click)="abrirRegistro()">Registrar cliente</button>
+  </div>
+  <p class="inline-note" role="status" [hidden]="!mensaje()">{{ mensaje() }}</p>
+  @if (resultados().length) {
+    <ul class="resultados" aria-label="Clientes encontrados">
+      @for (cliente of resultados(); track cliente.idCliente) {
+        <li>
+          <div>
+            <strong>{{ nombreCliente(cliente.datos) }}</strong>
+            <small>{{ etiquetaDocumento(cliente.datos.idTipoDocumento) }} · {{ cliente.datos.numeroDocumento }}</small>
+          </div>
+          <button class="button small" type="button" (click)="seleccionar.emit(cliente)"
+            [attr.aria-label]="'Seleccionar ' + nombreCliente(cliente.datos)">Seleccionar</button>
+        </li>
+      }
+    </ul>
+  }
+</fieldset>

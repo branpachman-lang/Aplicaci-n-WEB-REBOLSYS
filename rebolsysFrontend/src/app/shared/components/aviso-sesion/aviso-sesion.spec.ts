@@ -1,8 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { of } from 'rxjs';
-import { SesionService } from '../../../core/services/sesion-service';
-import { TokenService } from '../../../core/services/token-service';
+import { SesionService } from '../../../core/auth/sesion-service';
+import { TokenService } from '../../../core/auth/token-service';
 import { AvisoSesion } from './aviso-sesion';
 
 const jwtEn = (segundos: number) =>

@@ -66,12 +66,15 @@ logging:
     console: "%d{HH:mm:ss.SSS} [%X{requestId:-sin-id}] %-5level %logger{36} - %msg%n"
 
 app:
+  catalogo:
+    directorio-imagenes: ${APP_CATALOGO_IMAGENES_DIR:.local/imagenes-catalogo}
   cache:
     habilitada: ${CACHE_ENABLED:true}
     prefijo: ${CACHE_PREFIX:rebolsys:dev:v1:}
     ttl-catalogos: 10m
     ttl-referencias: 30m
   reservas:
+    tolerancia-ingreso: ${RESERVAS_TOLERANCIA_INGRESO:2h}
     checkout-automatico:
       habilitado: ${CHECKOUT_AUTOMATICO_HABILITADO:false}
       intervalo: ${CHECKOUT_AUTOMATICO_INTERVALO:60000}

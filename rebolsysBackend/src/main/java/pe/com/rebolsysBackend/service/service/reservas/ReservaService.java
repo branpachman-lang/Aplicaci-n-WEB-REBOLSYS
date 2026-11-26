@@ -14,7 +14,11 @@ public interface ReservaService {
 
   ReservaRespuestaDTO obtener(Long id);
 
-  PaginaResponseDTO<ReservaRespuestaDTO> listar(int pagina, int tamanio);
+  default PaginaResponseDTO<ReservaRespuestaDTO> listar(int pagina, int tamanio) {
+    return listar(pagina, tamanio, false);
+  }
+
+  PaginaResponseDTO<ReservaRespuestaDTO> listar(int pagina, int tamanio, boolean incluirCuenta);
 
   ReservaDetalleRespuestaDTO cambiarEstado(Long id, String accion, OperacionUsuarioDTO r);
 

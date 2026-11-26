@@ -74,8 +74,25 @@ public class CuentaCobroServiceImpl implements CuentaCobroService {
     var turno = gestion.turno(request.idTurno(), request.idUsuario());
     exigir(c.getEstadoComprobante() != EstadoComprobante.ANULADO, "La cuenta está anulada");
     exigir(request.monto().compareTo(gestion.saldo(c)) <= 0, "El pago supera el saldo pendiente de esta cuenta");
-    var forma = formas.findById(request.idFormaPago())
+    String numeroOperacion = limpiar(request.numeroOperacion());
+    // Serializa los registros con referencia del mismo medio, incluso entre cuentas y turnos distintos.
+    var forma = (numeroOperacion == null ? formas.findById(request.idFormaPago()) : formas.bloquear(request.idFormaPago()))
         .orElseThrow(() -> new RecursoNoEncontradoException("La forma de pago no existe"));
+    if (numeroOperacion != null) {
+      var duplicado = pagos.findFirstByFormaPagoIdFormaPagoAndNumeroOperacionIgnoreCaseOrderByIdPago(
+          forma.getIdFormaPago(), numeroOperacion);
+      if (duplicado.isPresent()) {
+        var pago = duplicado.get();
+        var cuentaOriginal = pago.getComprobante();
+        String origen = cuentaOriginal.getReserva() != null
+            ? "la reserva R" + cuentaOriginal.getReserva().getIdReserva()
+            : "la venta V" + cuentaOriginal.getVenta().getIdVenta();
+        String fecha = pago.getFechaPago().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
+        throw new ReglaNegocioException(
+            "La operación " + pago.getNumeroOperacion() + " ya está registrada en " + origen
+                + " por S/ " + pago.getMonto().toPlainString() + " (" + fecha + "). Revisa el cobro existente.");
+      }
+    }
     Long reserva = c.getReserva() == null ? null : c.getReserva().getIdReserva();
     String codigo = reserva == null ? "COBRO_VENTA" : "COBRO_RESERVA";
     var tipo = movimientos.findByNombreMovimiento(codigo)
@@ -87,7 +104,7 @@ public class CuentaCobroServiceImpl implements CuentaCobroService {
     p.setTurnoCaja(turno);
     p.setFormaPago(forma);
     p.setMonto(request.monto());
-    p.setNumeroOperacion(limpiar(request.numeroOperacion()));
+    p.setNumeroOperacion(numeroOperacion);
     p.setClaveIdempotencia(request.claveOperacion());
     p.setVerificado(1);
     p.setFechaPago(ahora());
