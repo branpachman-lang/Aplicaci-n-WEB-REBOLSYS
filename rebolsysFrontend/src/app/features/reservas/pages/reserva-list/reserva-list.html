@@ -278,6 +278,9 @@
           <small>Salida registrada · {{ h.fechaSalidaReal | date:'dd/MM/yyyy HH:mm' }}</small>
         }
         <small>{{h.costoEstadia | currency:'PEN':'S/ '}}</small>
+        @if (h.montoDevuelto; as monto) {
+          <small>Devolución en caja · {{ monto | currency:'PEN':'S/ ' }}</small>
+        }
         @if (h.ingresoVencido) {
           <p class="inline-note">Pendiente de revisión por falta de ingreso.</p>
         }
@@ -297,11 +300,21 @@
           }
         }
         @let gestion = accionEstadia();
-        @if (gestion?.id === h.idDetalleReserva && gestion) {
+        @if (estanciaEditando() === h.idDetalleReserva) {
+          @if (catalogos(); as datos) {
+            <app-huespedes-estadia [estancia]="h" [documentos]="datos.documentos"
+              (guardados)="actualizarHuespedes($event)" (cerrar)="estanciaEditando.set(null)" />
+          } @else {
+            <p role="status">Cargando documentos…</p>
+          }
+        } @else if (gestion?.id === h.idDetalleReserva && gestion) {
           @switch (gestion.accion) {
             @case ('ingreso') { <p>Confirma que los huéspedes de la habitación {{ h.numeroCuarto }} ya llegaron.</p> }
             @case ('salida') { <p>Confirma que los huéspedes dejaron la habitación {{ h.numeroCuarto }}. La habitación quedará por limpiar.</p> }
-            @case ('cancelacion') { <p>¿Cancelar la estancia de la habitación {{ h.numeroCuarto }}?</p> }
+            @case ('cancelacion') {
+              <p>¿Cancelar la estancia de la habitación {{ h.numeroCuarto }}?</p>
+              <p class="inline-note">Si hay un importe pagado para esta estancia, se registrará su devolución como egreso en tu turno de caja.</p>
+            }
           }
           @if (gestion.accion === 'salida' && r.cuenta.saldoPendiente > 0) {
             <p class="inline-note">Saldo pendiente de la reserva · {{ r.cuenta.saldoPendiente | currency:'PEN':'S/ ' }}. Liquídalo antes de registrar la salida.</p>
@@ -327,10 +340,16 @@
           @let ingresoPermitido = puedeGestionarEstadia(h, 'ingreso');
           @let salidaPermitida = puedeGestionarEstadia(h, 'salida');
           @let cancelacionPermitida = puedeGestionarEstadia(h, 'cancelacion');
-          @if (ingresoPermitido || salidaPermitida || cancelacionPermitida) {
+          @let editarPermitido = puedeEditarHuespedes(h);
+          @if (ingresoPermitido || salidaPermitida || cancelacionPermitida || editarPermitido) {
             <div class="row-actions acciones-estadia">
+              @if (editarPermitido) {
+                <button class="button subtle small" type="button" [disabled]="procesandoEstadia() || estanciaEditando() !== null"
+                  (click)="editarHuespedes(h)"><app-icon name="edit" /> Editar huéspedes</button>
+              }
               @if (ingresoPermitido) {
-                <button class="button small primary" type="button" [disabled]="procesandoEstadia()" (click)="pedirAccionEstadia(h, 'ingreso')">Registrar ingreso</button>
+                <button class="button small primary" type="button" [disabled]="procesandoEstadia() || estanciaEditando() !== null"
+                  (click)="pedirAccionEstadia(h, 'ingreso')"><app-icon name="check" /> Registrar ingreso</button>
               }
               @if (salidaPermitida) {
                 @if (saldoPrincipal(r.cuenta) > 0) {
@@ -340,7 +359,8 @@
                 }
               }
               @if (cancelacionPermitida) {
-                <button class="button small" type="button" [disabled]="procesandoEstadia()" (click)="pedirAccionEstadia(h, 'cancelacion')">Cancelar estancia</button>
+                <button class="button danger-outline small" type="button" [disabled]="procesandoEstadia() || estanciaEditando() !== null"
+                  (click)="pedirAccionEstadia(h, 'cancelacion')"><app-icon name="close" /> Cancelar estancia</button>
               }
             </div>
           }

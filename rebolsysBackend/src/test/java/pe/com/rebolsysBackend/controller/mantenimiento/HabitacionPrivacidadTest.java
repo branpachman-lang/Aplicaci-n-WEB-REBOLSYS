@@ -32,7 +32,7 @@ class HabitacionPrivacidadTest {
     var reserva = new HabitacionReservaResponseDTO("RES-12", "Lucía Rojas Medina",
         desde.atTime(14, 0), hasta.atTime(12, 0), "EN_CURSO");
     habitacion = new HabitacionEstadoResponseDTO(10L, "201", "Matrimonial", 2, 2, 0,
-        new BigDecimal("80.00"), EstadoHabitacion.OCUPADO, true, false, List.of(reserva));
+        new BigDecimal("80.00"), EstadoHabitacion.OCUPADO, true, false, List.of(reserva), reserva.salida());
     var servicio = mock(HabitacionService.class);
     when(servicio.estado(desde, hasta)).thenReturn(List.of(habitacion));
     controller = new HabitacionController(servicio);

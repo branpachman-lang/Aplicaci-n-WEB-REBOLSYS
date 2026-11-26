@@ -22,6 +22,9 @@ import tools.jackson.databind.json.JsonMapper;
 class OperacionUsuarioBodyAdviceTest {
   SesionOperacionService sesion;MockMvc mvc;
   @RestController static class Operaciones {
+    @PostMapping("/api/v1/reservas/detalles/1/ingreso")
+    public pe.com.rebolsysBackend.dto.comun.OperacionUsuarioDTO ingreso(
+        @Valid @RequestBody pe.com.rebolsysBackend.dto.comun.OperacionUsuarioDTO r) { return r; }
     @PostMapping("/api/v1/ventas/confirmadas") public VentaRequestDTO venta(@Valid @RequestBody VentaRequestDTO r){return r;}
     @PostMapping("/api/v1/ventas/1/pagos") public PagoCuentaDTO pago(@Valid @RequestBody PagoCuentaDTO r){return r;}
     @PostMapping("/api/v1/productos") public ProductoRequestDTO producto(@Valid @RequestBody ProductoRequestDTO r){return r;}
@@ -34,6 +37,14 @@ class OperacionUsuarioBodyAdviceTest {
   @Test void completarUsuarioAntesDeValidarUnaVenta()throws Exception{
     mvc.perform(post("/api/v1/ventas/confirmadas").contentType(MediaType.APPLICATION_JSON).content("{\"claveRegistro\":\"sesion-venta\",\"modalidadCobro\":\"SEPARADA\",\"detalles\":[{\"idProducto\":1,\"cantidad\":2}]}"))
       .andExpect(status().isOk()).andExpect(jsonPath("$.idUsuario").value(130)).andExpect(jsonPath("$.modalidadCobro").value("SEPARADA"));
+  }
+  @Test void reservaConJsonInvalidoDevuelve400AntesDeResolverActor() throws Exception {
+    for (String cuerpo : new String[]{"{", "[]"}) {
+      mvc.perform(post("/api/v1/reservas/detalles/1/ingreso").contentType(MediaType.APPLICATION_JSON).content(cuerpo))
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.message").value("La solicitud no tiene un formato válido"));
+    }
+    verifyNoInteractions(sesion);
   }
   @Test void confirmacionConCobroUsaActorAutenticadoYValidaDatosAnidados() throws Exception {
     mvc.perform(post("/api/v1/ventas/1/confirmacion").contentType(MediaType.APPLICATION_JSON)

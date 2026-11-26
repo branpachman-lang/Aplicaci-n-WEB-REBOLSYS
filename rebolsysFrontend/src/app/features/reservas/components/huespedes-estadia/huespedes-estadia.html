@@ -1,0 +1,69 @@
+<fieldset [disabled]="ocupado()">
+  <legend>Huéspedes de la habitación {{ estancia().numeroCuarto }}</legend>
+  @for (huesped of huespedes; track huesped.idCliente) {
+    <div class="detail-line">
+      <strong>{{ huesped.nombre }}</strong>
+      <div class="form-grid">
+        <label class="field">Responsable del menor
+          <select [(ngModel)]="huesped.idClienteResponsable">
+            <option [ngValue]="null">Sin responsable</option>
+            @for (opcion of huespedes; track opcion.idCliente) {
+              @if (opcion.idCliente !== huesped.idCliente) {
+                <option [ngValue]="opcion.idCliente">{{ opcion.nombre }}</option>
+              }
+            }
+          </select>
+        </label>
+        @if (huesped.idClienteResponsable !== null) {
+          <label class="field">Parentesco
+            <select [(ngModel)]="huesped.parentescoResponsable">
+              <option [ngValue]="null">Selecciona el parentesco</option>
+              <option value="PADRE">Padre</option>
+              <option value="MADRE">Madre</option>
+              <option value="TUTOR">Tutor</option>
+            </select>
+          </label>
+        }
+        <label><input type="checkbox" [(ngModel)]="huesped.ocupaPlazaCama" /> Ocupa plaza de cama</label>
+      </div>
+      <button class="button danger-outline small" type="button" (click)="quitar(huesped.idCliente)">
+        <app-icon name="close" /> Quitar huésped
+      </button>
+    </div>
+  }
+  <div class="form-grid">
+    <label class="field">Tipo de documento
+      <select [(ngModel)]="tipoDocumento" (ngModelChange)="cambiarDocumento()">
+        <option [ngValue]="null">Seleccionar documento</option>
+        @for (documento of documentos(); track documento.id) {
+          @if (documento.codigoSunat !== '6') {
+            <option [ngValue]="documento.id">{{ documento.nombre }}</option>
+          }
+        }
+      </select>
+    </label>
+    <label class="field">Número de documento
+      <input [(ngModel)]="numeroDocumento" (ngModelChange)="cambiarDocumento()" maxlength="50" />
+    </label>
+    <button class="button subtle small" type="button" [disabled]="!tipoDocumento || !numeroDocumento.trim()" (click)="buscar()">
+      Buscar y agregar huésped
+    </button>
+  </div>
+  @if (nuevo()) {
+    <div class="form-grid">
+      <label class="field">Nombres <input [(ngModel)]="nombres" [readOnly]="idClienteSinNacimiento !== null" maxlength="120" /></label>
+      <label class="field">Apellidos <input [(ngModel)]="apellidos" [readOnly]="idClienteSinNacimiento !== null" maxlength="120" /></label>
+      <label class="field">Fecha de nacimiento <input type="date" [(ngModel)]="nacimiento" /></label>
+      <button class="button subtle small" type="button" [disabled]="!nombres.trim() || !apellidos.trim() || !nacimiento" (click)="registrar()">
+        {{ idClienteSinNacimiento === null ? 'Registrar y agregar' : 'Completar y agregar' }}
+      </button>
+    </div>
+  }
+  @if (error()) { <p class="field-error" role="alert">{{ error() }}</p> }
+  <div class="row-actions">
+    <button class="button subtle small" type="button" (click)="cerrar.emit()"><app-icon name="close" /> Volver</button>
+    <button class="button primary small" type="button" [disabled]="nuevo()" (click)="guardar()">
+      <app-icon name="check" /> Guardar huéspedes
+    </button>
+  </div>
+</fieldset>

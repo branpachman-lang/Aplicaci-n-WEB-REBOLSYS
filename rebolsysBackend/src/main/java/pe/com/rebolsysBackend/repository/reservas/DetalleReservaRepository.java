@@ -24,6 +24,27 @@ public interface DetalleReservaRepository extends JpaRepository<DetalleReserva, 
 
   List<DetalleReserva> findByReservaIdReservaOrderByIdDetalleReserva(Long id);
 
+  interface SalidaActiva {
+    Long getIdHabitacion();
+    LocalDateTime getSalida();
+  }
+
+  @Query("""
+      select max(d.fechaSalida) from DetalleReserva d
+      where d.habitacion.idHabitacion = :id
+        and d.estadoDetalle in (pe.com.rebolsysBackend.enums.EstadoReserva.CONFIRMADA,
+          pe.com.rebolsysBackend.enums.EstadoReserva.EN_CURSO)
+      """)
+  Optional<LocalDateTime> ultimaSalidaActiva(Long id);
+
+  @Query("""
+      select d.habitacion.idHabitacion as idHabitacion, max(d.fechaSalida) as salida
+      from DetalleReserva d where d.estadoDetalle in (pe.com.rebolsysBackend.enums.EstadoReserva.CONFIRMADA,
+        pe.com.rebolsysBackend.enums.EstadoReserva.EN_CURSO)
+      group by d.habitacion.idHabitacion
+      """)
+  List<SalidaActiva> ultimasSalidasActivas();
+
   @Query("""
       select d from DetalleReserva d join fetch d.habitacion
       where d.reserva.idReserva in :ids order by d.idDetalleReserva

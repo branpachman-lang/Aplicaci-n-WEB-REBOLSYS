@@ -211,7 +211,7 @@ public class CajaService {
   }
 
   private boolean tipoManual(TipoMovimientoCaja tipo) {
-    return tipo.getSigno() == -1 || (tipo.getSigno() == 1 && INGRESO_MANUAL.equals(tipo.getNombreMovimiento()));
+    return (tipo.getSigno() == -1 && !TipoMovimientoCaja.DEVOLUCION_RESERVA.equals(tipo.getNombreMovimiento())) || (tipo.getSigno() == 1 && INGRESO_MANUAL.equals(tipo.getNombreMovimiento()));
   }
 
   private Movimiento movimiento(FlujoCaja flujo) {

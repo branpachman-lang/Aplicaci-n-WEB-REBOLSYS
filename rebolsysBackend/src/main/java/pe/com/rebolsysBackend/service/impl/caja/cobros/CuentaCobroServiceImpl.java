@@ -201,6 +201,6 @@ public class CuentaCobroServiceImpl implements CuentaCobroService {
         c.getEstadoComprobante(), c.getSerie(), c.getNumeroComprobante(),
         c.getCliente() == null ? null : c.getCliente().getIdPerfil(), c.getReceptorNombre(),
         c.getReceptorNumeroDoc(), c.getFechaEmision(), c.getTotalPagar(), impuesto.subtotal(), impuesto.igv(), pagado,
-        c.getTotalPagar().subtract(pagado), ls, ps, estadias);
+        c.getTotalPagar().subtract(gestion.cargosCancelados(c)).subtract(pagado), ls, ps, estadias);
   }
 }

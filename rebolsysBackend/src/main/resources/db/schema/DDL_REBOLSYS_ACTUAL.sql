@@ -425,6 +425,7 @@ CREATE TABLE "DETALLE_RESERVA" (
     fechaIngresoReal TIMESTAMP,
     fechaSalidaReal TIMESTAMP,
     costoEstadia NUMBER(12,2) NOT NULL,
+    montoDevuelto NUMBER(12,2) CONSTRAINT dr_monto_devuelto_ck CHECK (montoDevuelto > 0),
     claveSalida VARCHAR2(64),
     firmaSalida VARCHAR2(64),
     idUsuarioSalida NUMBER,

@@ -80,10 +80,7 @@
                 @for (r of rooms(); track r.idHabitacion) {
                 <option
                   [ngValue]="r.idHabitacion"
-                  [disabled]="
-                          r.estado !== 'DISPONIBLE' ||
-                          r.ocupadaActualmente || r.precio <= 0 || yaElegida(r.idHabitacion, i)
-                        "
+                  [disabled]="r.precio <= 0 || yaElegida(r.idHabitacion, i)"
                 >
                   {{ r.numero }} · {{ r.tipo }} · {{ r.precio > 0 ? (r.precio | currency : "PEN"
                   : "S/ " : "1.0-2") + ' / noche' : 'Tarifa pendiente' }}{{ r.estado !== "DISPONIBLE" ? " ·
@@ -91,6 +88,9 @@
                 </option>
                 }
               </select>
+              @if (roomFor(i)?.ultimaSalidaActiva; as salidaActiva) {
+                <small>Ingreso desde {{ salidaActiva | date:'dd/MM/yyyy HH:mm' }}</small>
+              }
               @if (errorCampo(line, 'idHabitacion'); as mensaje) { <small [id]="'habitacion-error-numero-' + i" class="field-error">{{ mensaje }}</small> }
               </label
             >

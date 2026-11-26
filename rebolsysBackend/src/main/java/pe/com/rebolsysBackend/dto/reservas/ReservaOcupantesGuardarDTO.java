@@ -6,4 +6,4 @@ import java.util.List;
 
 public record ReservaOcupantesGuardarDTO(
     @NotNull @Positive Long idUsuario,
-    @NotEmpty @Size(max = 99) List<@NotNull @Valid ReservaOcupanteRegistroDTO> ocupantes) {}
+    @NotNull @Size(max = 99) List<@NotNull @Valid ReservaOcupanteRegistroDTO> ocupantes) {}

@@ -2931,6 +2931,8 @@
         "tags": [
           "Reservas"
         ],
+        "summary": "Cancelar una estancia sin check-in",
+        "description": "Si hay un importe pagado, registra la devolución en el turno abierto del operador. Repetir la cancelación recupera el resultado.",
         "operationId": "cancelarEstancia",
         "parameters": [
           {
@@ -7288,6 +7290,10 @@
           "costoEstadia": {
             "type": "number"
           },
+          "montoDevuelto": {
+            "type": "number",
+            "description": "Monto registrado como egreso de devolución en caja"
+          },
           "estadoDetalle": {
             "type": "string",
             "enum": [
@@ -10377,6 +10383,11 @@
           },
           "disponible": {
             "type": "boolean"
+          },
+          "ultimaSalidaActiva": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Salida programada más tardía entre las estancias confirmadas y en curso"
           },
           "reservas": {
             "type": "array",

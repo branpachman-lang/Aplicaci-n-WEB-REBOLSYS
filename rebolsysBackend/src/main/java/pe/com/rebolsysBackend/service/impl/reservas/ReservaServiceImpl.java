@@ -110,8 +110,8 @@ public class ReservaServiceImpl implements ReservaService {
             exigir(!s.fechaIngreso().isBefore(ahora()), "La fecha de ingreso de una nueva reserva no puede estar en el pasado");
             validarTitular(titular, s.fechaIngreso().toLocalDate());
             var h = bloqueadas.get(s.idHabitacion());
-            exigir(h.getEstadoHabitacion() == EstadoHabitacion.DISPONIBLE, "La habitación no está disponible físicamente");
-            exigir(detalles.superpuestas(h.getIdHabitacion(), s.fechaIngreso(), s.fechaSalida(), null) == 0, "La habitación ya tiene una reserva en ese periodo o una estancia en curso");
+            exigir(detalles.ultimaSalidaActiva(h.getIdHabitacion()).filter(s.fechaIngreso()::isBefore).isEmpty(),
+                    "La habitación ya tiene una reserva activa con salida posterior al ingreso solicitado");
             validarOcupantes(s, h);
             for (var o : s.ocupantes())
                 exigir(enSolicitud.add(o.idCliente()), "El ocupante aparece en más de una habitación de la solicitud");
@@ -170,10 +170,10 @@ public class ReservaServiceImpl implements ReservaService {
     }
 
     private void validarOcupantes(ReservaDetalleRegistroDTO d, Habitacion h) {
-        validarOcupantes(d, h, null);
+        validarOcupantes(d, h, null, false);
     }
 
-    private void validarOcupantes(ReservaDetalleRegistroDTO d, Habitacion h, Long excluir) {
+    private void validarOcupantes(ReservaDetalleRegistroDTO d, Habitacion h, Long excluir, boolean ingresoReal) {
         Map<Long, Integer> edades = new HashMap<>();
         for (var o : d.ocupantes()) {
             exigir(
@@ -182,7 +182,7 @@ public class ReservaServiceImpl implements ReservaService {
             edades.put(o.idCliente(), edad(cliente(o.idCliente()), d.fechaIngreso().toLocalDate()));
             exigir(
                     ocupantes.superposicionesCliente(
-                            o.idCliente(), d.fechaIngreso(), d.fechaSalida(), excluir)
+                            o.idCliente(), d.fechaIngreso(), d.fechaSalida(), excluir, ingresoReal)
                             == 0,
                     "El ocupante ya está registrado en otra estancia durante ese periodo");
         }
@@ -267,7 +267,7 @@ public class ReservaServiceImpl implements ReservaService {
                 ReservaRepository.NombrePerfil::getIdPerfil, ReservaRepository.NombrePerfil::getNombre));
         Map<Long, ResumenCuentaReservaDTO> resumenes = incluirCuenta
                 ? cuenta.resumirReservas(ids.stream().collect(Collectors.toMap(id -> id,
-                        id -> cuenta.alojamiento(detallesPorReserva.getOrDefault(id, List.of())))))
+                        id -> detallesPorReserva.getOrDefault(id, List.of()))))
                 : Map.of();
         return pagina.stream().map(r -> {
             var id = r.getIdReserva();
@@ -309,7 +309,7 @@ public class ReservaServiceImpl implements ReservaService {
                         new ReservaDetalleRegistroDTO(
                                 h.getIdHabitacion(), ahora, d.getFechaSalida(), d.getCostoEstadia(), lista),
                         h,
-                        id);
+                        id, true);
                 exigir(
                         !ahora.isBefore(d.getFechaIngreso()) && ahora.isBefore(d.getFechaSalida()),
                         "El ingreso debe estar dentro del periodo reservado");
@@ -330,9 +330,9 @@ public class ReservaServiceImpl implements ReservaService {
             case "cancelacion" -> {
                 if (d.getEstadoDetalle() == EstadoReserva.CANCELADA) return respuestaDetalle(d);
                 exigir(
-                        d.getEstadoDetalle() == EstadoReserva.CONFIRMADA,
+                        d.getEstadoDetalle() == EstadoReserva.CONFIRMADA && d.getFechaIngresoReal() == null,
                         "Solo puede cancelarse una estancia sin ingreso");
-                cuenta.cancelarDetalle(d);
+                cuenta.cancelarDetalle(d, r.idUsuario());
                 d.setEstadoDetalle(EstadoReserva.CANCELADA);
             }
             default -> throw new ReglaNegocioException("La acción solicitada no es válida");
@@ -411,17 +411,10 @@ public class ReservaServiceImpl implements ReservaService {
     public ReservaDetalleRespuestaDTO guardarOcupantes(Long id, ReservaOcupantesGuardarDTO r) {
         reglas.validar(r);
         reglas.usuario(r.idUsuario());
-        var previo =
-                detalles
-                        .findById(id)
-                        .orElseThrow(() -> new RecursoNoEncontradoException("La estancia no existe"));
-        reservas.bloquear(previo.getReserva().getIdReserva()).orElseThrow();
-        var h = habitaciones.bloquear(previo.getHabitacion().getIdHabitacion()).orElseThrow();
-        entityManager.refresh(h);
-        var d = detalles.bloquear(id).orElseThrow();
-        entityManager.refresh(d);
+        var d = bloquearDetalle(id);
+        var h = d.getHabitacion();
         exigir(
-                d.getEstadoDetalle() == EstadoReserva.CONFIRMADA,
+                d.getEstadoDetalle() == EstadoReserva.CONFIRMADA && d.getFechaIngresoReal() == null,
                 "Los ocupantes solo se pueden completar o corregir antes del ingreso");
         for (var clienteId :
                 r.ocupantes().stream()
@@ -439,7 +432,7 @@ public class ReservaServiceImpl implements ReservaService {
                         d.getCostoEstadia(),
                         r.ocupantes()),
                 h,
-                id);
+                id, false);
         ocupantes.eliminarDeDetalle(id);
         ocupantes.flush();
         guardarOcupantes(d, r.ocupantes());
@@ -486,6 +479,7 @@ public class ReservaServiceImpl implements ReservaService {
                 d.getFechaIngresoReal(),
                 d.getFechaSalidaReal(),
                 d.getCostoEstadia(),
+                d.getMontoDevuelto(),
                 d.getEstadoDetalle(),
                 d.getEstadoDetalle() == EstadoReserva.CONFIRMADA
                         && d.getFechaIngresoReal() == null

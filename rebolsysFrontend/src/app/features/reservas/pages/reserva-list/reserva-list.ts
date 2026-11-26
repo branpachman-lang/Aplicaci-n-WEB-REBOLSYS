@@ -17,6 +17,7 @@ import { Icon } from "../../../../shared/components/icono/icono";
 import { PagoModal } from "../../../../shared/components/pago-modal/pago-modal";
 import { ComprobanteDialog } from '../../components/comprobante-dialog/comprobante-dialog';
 import { PagoYape } from '../../components/pago-yape/pago-yape';
+import { HuespedesEstadia } from '../../components/huespedes-estadia/huespedes-estadia';
 import {
   ReservaService,
   ReservaFila,
@@ -61,6 +62,7 @@ const MENSAJES_ESTADIA: Record<AccionEstadia, string> = {
     DialogFocus,
     ComprobanteDialog,
     PagoYape,
+    HuespedesEstadia,
   ],
   templateUrl: "./reserva-list.html",
   styleUrl: "./reserva-list.css",
@@ -92,6 +94,7 @@ export class ReservaList implements OnDestroy {
   accionEstadia = signal<{ id: number; accion: AccionEstadia } | null>(null);
   procesandoEstadia = signal(false);
   errorEstadia = signal('');
+  estanciaEditando = signal<number | null>(null);
   comprobante = signal<ReservaApi | null>(null);
   abrirComprobante(r: ReservaApi) {
     if (this.comprobante()) return;
@@ -239,6 +242,7 @@ export class ReservaList implements OnDestroy {
     return (
       this.acceso.puedeCobrarReserva() &&
       cuenta.estado === "BORRADOR" &&
+      (cuenta.idVenta !== null || !r.detalles.some(d => (d.montoDevuelto ?? 0) > 0)) &&
       sinFinalizadas &&
       (estado === "CONFIRMADA" || estado === "EN_CURSO") &&
       turnoAbierto
@@ -275,6 +279,7 @@ export class ReservaList implements OnDestroy {
   verDetalle(r: ReservaApi) {
     this.cancelarDetalle.set(null);
     this.eliminarPagoId.set(null);
+    this.estanciaEditando.set(null);
     const id = ++this.detalleId;
     this.accionEstadia.set(null);
     this.errorEstadia.set('');
@@ -290,10 +295,36 @@ export class ReservaList implements OnDestroy {
   puedeGestionarEstadia(h: DetalleReserva, accion: AccionEstadia) {
     if (!this.acceso.permite(PERMISOS_ESTADIA[accion])) return false;
     if (accion === 'salida') return h.estadoDetalle === 'EN_CURSO';
-    return h.estadoDetalle === 'CONFIRMADA';
+    return h.estadoDetalle === 'CONFIRMADA' && !h.fechaIngresoReal;
+  }
+  puedeEditarHuespedes(h: DetalleReserva) {
+    return this.acceso.permite('RESERVAS:EDITAR_OCUPANTES')
+      && h.estadoDetalle === 'CONFIRMADA' && !h.fechaIngresoReal;
+  }
+  editarHuespedes(h: DetalleReserva) {
+    if (!this.puedeEditarHuespedes(h) || this.procesandoEstadia()) return;
+    this.accionEstadia.set(null);
+    this.estanciaEditando.set(h.idDetalleReserva);
+    if (this.catalogos()) return;
+    this.catalogoService.listar().pipe(takeUntilDestroyed(this.destroy)).subscribe({
+      next: catalogos => this.catalogos.set(catalogos),
+      error: e => {
+        this.estanciaEditando.set(null);
+        this.avisos.mostrar(mensajeError(e), true);
+      },
+    });
+  }
+  actualizarHuespedes(actualizada: DetalleReserva) {
+    this.detalle.update(reserva => reserva && ({
+      ...reserva,
+      detalles: reserva.detalles.map(h => h.idDetalleReserva === actualizada.idDetalleReserva ? actualizada : h),
+    }));
+    this.estanciaEditando.set(null);
+    this.avisos.mostrar('Se guardaron los huéspedes de la habitación.');
+    this.cargar();
   }
   pedirAccionEstadia(h: DetalleReserva, accion: AccionEstadia) {
-    if (this.procesandoEstadia() || !this.puedeGestionarEstadia(h, accion)) return;
+    if (this.procesandoEstadia() || this.estanciaEditando() !== null || !this.puedeGestionarEstadia(h, accion)) return;
     this.errorEstadia.set('');
     this.accionEstadia.set({ id: h.idDetalleReserva, accion });
   }

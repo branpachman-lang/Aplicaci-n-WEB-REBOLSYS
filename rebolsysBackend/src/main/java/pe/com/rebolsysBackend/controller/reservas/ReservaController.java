@@ -68,7 +68,8 @@ public class ReservaController {
 
   @PreAuthorize("hasRole('GERENTE') or hasAuthority('RESERVAS:CANCELAR')")
   @PostMapping("/detalles/{id}/cancelacion")
-  @Operation(operationId = "cancelarEstancia")
+  @Operation(operationId = "cancelarEstancia", summary = "Cancelar una estancia sin check-in",
+      description = "Si hay un importe pagado, registra la devolución en el turno abierto del operador. Repetir la cancelación recupera el resultado.")
   public ReservaDetalleRespuestaDTO cancelar(@PathVariable Long id, @Valid @RequestBody OperacionUsuarioDTO r) {
     return reservaservice.cambiarEstado(id, "cancelacion", r);
   }
