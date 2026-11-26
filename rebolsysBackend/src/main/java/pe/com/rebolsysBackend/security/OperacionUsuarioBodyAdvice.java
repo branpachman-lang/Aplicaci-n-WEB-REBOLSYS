@@ -24,7 +24,7 @@ import static pe.com.rebolsysBackend.service.impl.comun.ReglasPropuesta.exigir;
 public class OperacionUsuarioBodyAdvice extends RequestBodyAdviceAdapter implements ResponseBodyAdvice<Object> {
   private final SesionOperacionService sesion;
   private final ObjectMapper mapper;
-  private static final Set<String> ACTOR=Set.of("AjusteStockDTO","ComprobanteCuentaDTO","EmisionElectronicaRequestDTO","GastoRequestDTO","ItemAsignacionDTO","ItemConservacionDTO","OperacionUsuarioDTO","PagoCuentaDTO","ProductoRequestDTO","ReservaComprobanteRegistroDTO","ReservaOcupantesGuardarDTO","ReservaPagoRegistroDTO","ReservaRegistroRequestDTO","VentaEditarDTO","VentaRequestDTO","VentaConfirmacionDTO");
+  private static final Set<String> ACTOR=Set.of("AjusteStockDTO","ComprobanteCuentaDTO","EmisionElectronicaRequestDTO","GastoRequestDTO","ItemAsignacionDTO","ItemConservacionDTO","OperacionUsuarioDTO","PagoCuentaDTO","ProductoRequestDTO","ReservaComprobanteRegistroDTO","ReservaOcupantesGuardarDTO","ReservaPagoRegistroDTO","ReservaRegistroRequestDTO","ReservaSalidaDTO","VentaEditarDTO","VentaRequestDTO","VentaConfirmacionDTO");
   @Override public boolean supports(MethodParameter p,Type t,Class<? extends HttpMessageConverter<?>> c){return ACTOR.contains(p.getParameterType().getSimpleName());}
   @Override public HttpInputMessage beforeBodyRead(HttpInputMessage entrada,MethodParameter p,Type t,Class<? extends HttpMessageConverter<?>> c)throws IOException{
     var nodo=mapper.readTree(entrada.getBody());if(!(nodo instanceof ObjectNode datos))return entrada;
@@ -32,7 +32,7 @@ public class OperacionUsuarioBodyAdvice extends RequestBodyAdviceAdapter impleme
     var enviado=datos.get("idUsuario");exigir(enviado==null||enviado.isNull()||enviado.asLong()==actual.idUsuario(),"La operación debe corresponder al usuario de la sesión actual");
     datos.put("idUsuario",actual.idUsuario());
     boolean usaTurno=java.util.Arrays.stream(p.getParameterType().getDeclaredFields()).anyMatch(f->f.getName().equals("idTurno"));
-    if(usaTurno){exigir(actual.idTurno()!=null,"El usuario actual necesita un único turno de caja abierto");var turno=datos.get("idTurno");exigir(turno==null||turno.isNull()||turno.asLong()==actual.idTurno(),"El turno debe pertenecer a la sesión actual");datos.put("idTurno",actual.idTurno());}
+    if(usaTurno && !p.getParameterType().getSimpleName().equals("ReservaSalidaDTO")){exigir(actual.idTurno()!=null,"El usuario actual necesita un único turno de caja abierto");var turno=datos.get("idTurno");exigir(turno==null||turno.isNull()||turno.asLong()==actual.idTurno(),"El turno debe pertenecer a la sesión actual");datos.put("idTurno",actual.idTurno());}
     byte[] json=mapper.writeValueAsBytes(datos);var headers=new HttpHeaders();headers.putAll(entrada.getHeaders());headers.setContentLength(json.length);
     return new HttpInputMessage(){public InputStream getBody(){return new ByteArrayInputStream(json);}public HttpHeaders getHeaders(){return headers;}};
   }

@@ -23,6 +23,8 @@ export class PagoModal {
   idUsuario = input<number | null>(null);
   solicitudFijada = input(false);
   puedePosponer = input(true);
+  habilitaCobro = input(true);
+  esSalida = input(false);
   usuarioElegido = signal<number | null>(null);
   turnoElegido = signal<number | null>(null);
   formaElegida = signal<number | null>(null);
@@ -87,7 +89,7 @@ export class PagoModal {
   );
 
   enviar() {
-    if (!this.valido() || this.ocupado()) return;
+    if (!this.habilitaCobro() || !this.valido() || this.ocupado()) return;
     const pago: ConfirmacionPago = {
       forma: "EFECTIVO",
       recibido: this.efectivo() ? this.recibido() : this.monto(),

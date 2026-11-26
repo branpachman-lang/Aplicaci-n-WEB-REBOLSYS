@@ -33,10 +33,11 @@ public class VentaController {
   }
 
   //venta producto
-  @PreAuthorize("hasRole('GERENTE') or hasAuthority('VENTAS:CREAR_Y_CONFIRMAR')")
+  @PreAuthorize("hasRole('GERENTE') or (hasAuthority('VENTAS:CREAR_Y_CONFIRMAR') and "
+      + "(#r.cobro() != null or hasAuthority('RESERVAS:REGISTRAR_CONSUMO')))")
   @PostMapping("/confirmadas")
   @ResponseStatus(HttpStatus.CREATED)
-  @Operation(summary = "Registrar, confirmar y cobrar el total de la venta en una transacción")
+  @Operation(summary = "Confirmar una venta y cobrarla o cargarla a la reserva en una transacción")
   public VentaResponseDTO registrarConfirmada(@Valid @RequestBody VentaRequestDTO r) {
     return servicio.registrarConfirmada(r);
   }

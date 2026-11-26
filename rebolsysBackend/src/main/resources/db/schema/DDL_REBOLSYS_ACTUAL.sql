@@ -709,6 +709,21 @@ CREATE TABLE "PAGO" (
     CONSTRAINT pn_pago_verificado_ck CHECK (verificado IN (0,1))
 );
 
+CREATE TABLE RESERVA_SALIDA_OPERACION (
+    claveOperacion VARCHAR2(64) NOT NULL,
+    idDetalleReserva NUMBER NOT NULL,
+    idUsuario NUMBER NOT NULL,
+    firmaSolicitud VARCHAR2(64) NOT NULL,
+    idPago NUMBER,
+    idComprobante NUMBER,
+    CONSTRAINT rso_pk PRIMARY KEY (claveOperacion),
+    CONSTRAINT rso_detalle_uq UNIQUE (idDetalleReserva),
+    CONSTRAINT rso_detalle_fk FOREIGN KEY (idDetalleReserva) REFERENCES detalle_reserva(idDetalleReserva),
+    CONSTRAINT rso_usuario_fk FOREIGN KEY (idUsuario) REFERENCES usuario(idUsuario),
+    CONSTRAINT rso_pago_fk FOREIGN KEY (idPago) REFERENCES pago(idPago),
+    CONSTRAINT rso_comprobante_fk FOREIGN KEY (idComprobante) REFERENCES comprobante(idComprobante)
+);
+
 -- 44. TICKET_MANTENIMIENTO (conservada)
 CREATE TABLE "TICKET_MANTENIMIENTO" (
     "IDTICKET" NUMBER GENERATED ALWAYS AS IDENTITY MINVALUE 1 MAXVALUE 9999999999999999999999999999 INCREMENT BY 1 START WITH 1 CACHE 20 NOORDER  NOCYCLE  NOKEEP  NOSCALE  NOT NULL ENABLE,

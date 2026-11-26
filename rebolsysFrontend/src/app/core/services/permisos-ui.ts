@@ -15,4 +15,11 @@ export class PermisosUi {
     return !!s && !s.requiereCambio && (s.gerente ||
       permisos.some(permiso => s.permisos?.includes(permiso)));
   }
+
+  puedeCobrarReserva() {
+    const sesion = this.actual();
+    return !!sesion && sesion.modo === 'ACTIVA' && !sesion.requiereCambio &&
+      (sesion.roles?.includes('RECEPCIONISTA') ?? false) &&
+      (sesion.permisos?.includes('RESERVAS:COBRAR') ?? false);
+  }
 }

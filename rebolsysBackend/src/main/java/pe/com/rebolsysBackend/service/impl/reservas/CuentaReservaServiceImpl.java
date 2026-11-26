@@ -107,7 +107,8 @@ public class CuentaReservaServiceImpl implements CuentaReservaService {
         total,
         pagado,
         total.subtract(pagado),
-        false,
+        principal.map(c -> c.getEstadoComprobante() == EstadoComprobante.BORRADOR)
+            .orElseGet(() -> r.getDetalles().stream().anyMatch(d -> d.getEstadoDetalle() == EstadoReserva.EN_CURSO)),
         docs);
   }
 
@@ -178,6 +179,8 @@ public class CuentaReservaServiceImpl implements CuentaReservaService {
     reglas.usuario(request.idUsuario());
     var turno = gestion.turno(request.idTurno(), request.idUsuario());
     var c = cuentaObjetivo(r, request.idVenta(), turno);
+    if (request.idVenta() == null && c.getEstadoComprobante() != EstadoComprobante.EMITIDO)
+      gestion.validarEmisionFinal(r);
     return cobros.documento(cobros.emitir(c, new ComprobanteCuentaDTO(request.idUsuario(),
         request.idTurno(), request.tipo(), request.idClienteReceptor())));
   }
@@ -195,6 +198,7 @@ public class CuentaReservaServiceImpl implements CuentaReservaService {
             .filter(d -> d.getIdDetalleReserva().equals(request.idDetalleReserva()))
             .findFirst();
     exigir(detalle.isPresent(), "La habitación del consumo no pertenece a esta reserva");
+    exigir(request.modalidadCobro() == ModalidadCobro.RESERVA, "El consumo debe quedar asociado a la reserva");
     var v = ventaService.registrarConfirmada(request);
     return consumo(ventas.findById(v.idVenta()).orElseThrow());
   }

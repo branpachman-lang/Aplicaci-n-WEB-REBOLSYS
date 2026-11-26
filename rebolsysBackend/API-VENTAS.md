@@ -1,6 +1,6 @@
-# Venta de productos con pago inmediato
+# Venta de productos y consumos de reserva
 
-El [flujo objetivo de cobro y liquidación](API-FLUJO-PAGOS-RESERVAS.md) define cómo cargar los consumos de huéspedes a la cuenta de su reserva.
+El [flujo de cobro y liquidación](API-FLUJO-PAGOS-RESERVAS.md) define cómo cargar consumos a la cuenta de una reserva.
 
 Todas las rutas requieren JWT y el permiso correspondiente. El usuario de la
 operación se obtiene de la sesión autenticada; el turno debe estar abierto y ser suyo.
@@ -8,14 +8,13 @@ operación se obtiene de la sesión autenticada; el turno debe estar abierto y s
 ## Registro y cobro
 
 1. Consultar GET /api/v1/productos/catalogo y seleccionar productos activos.
-2. Seleccionar comprador externo o una estancia EN_CURSO. Los huéspedes conservan
-   la referencia a su reserva, pero el alojamiento no recibe nuevos cargos.
-3. POST /api/v1/ventas/confirmadas recibe el carrito y cobro. El servidor toma los
-   precios del catálogo y compara precioEsperado cuando se proporciona.
-4. Una única transacción registra venta, líneas, descuento de stock, movimientos,
-   cuenta, pago verificado e ingreso de caja COBRO_VENTA. Un fallo revierte todo.
-5. GET /api/v1/ventas/{id}/cuenta muestra saldo cero después del registro.
-   La emisión de BOLETA/FACTURA y la facturación electrónica mantienen sus rutas.
+2. Seleccionar comprador externo o una estancia EN_CURSO.
+3. POST /api/v1/ventas/confirmadas recibe el carrito y el cobro cuando corresponde.
+   El servidor toma los precios del catálogo y comprueba precioEsperado.
+4. Una transacción registra venta, líneas, descuento de stock y cargos.
+   Un cobro inmediato registra también el pago y el ingreso COBRO_VENTA.
+5. Consultar el saldo en la cuenta de venta si se cobró por separado o en la
+   cuenta de la reserva si el consumo se cargó al hospedaje.
 
 El cobro contiene idFormaPago, monto y numeroOperacion opcional. Su monto debe
 coincidir exactamente con el total: no se permiten abonos ni sobrepagos al confirmar.
@@ -37,8 +36,9 @@ Ejemplo de POST /api/v1/ventas/confirmadas, con identificadores de una base de p
 ## Relación con reservas
 
 - SEPARADA exige idDetalleReserva nulo: venta externa.
-- RESERVA exige idDetalleReserva de una estancia EN_CURSO: venta a un huésped,
-  cobrada inmediatamente en CUENTA-V-{idVenta}, con comprobante propio.
+- RESERVA exige idDetalleReserva de una estancia EN_CURSO. Si se omite cobro,
+  se carga a la cuenta principal de la reserva. Si se envía un cobro completo,
+  la venta usa CUENTA-V-{idVenta} y puede tener su propio comprobante.
 - Los consumos históricos ya consolidados permanecen en la cuenta de alojamiento.
   No se trasladan, perdonan ni cobran dos veces. Sus saldos se regularizan por las
   rutas existentes de pagos de reserva.

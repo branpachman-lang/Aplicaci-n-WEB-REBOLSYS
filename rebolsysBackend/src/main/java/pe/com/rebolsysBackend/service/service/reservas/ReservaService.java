@@ -6,6 +6,7 @@ import pe.com.rebolsysBackend.dto.reservas.ReservaDetalleRespuestaDTO;
 import pe.com.rebolsysBackend.dto.reservas.ReservaOcupantesGuardarDTO;
 import pe.com.rebolsysBackend.dto.reservas.ReservaRegistroRequestDTO;
 import pe.com.rebolsysBackend.dto.reservas.ReservaRespuestaDTO;
+import pe.com.rebolsysBackend.dto.reservas.ReservaSalidaDTO;
 
 
 public interface ReservaService {
@@ -16,6 +17,8 @@ public interface ReservaService {
   PaginaResponseDTO<ReservaRespuestaDTO> listar(int pagina, int tamanio);
 
   ReservaDetalleRespuestaDTO cambiarEstado(Long id, String accion, OperacionUsuarioDTO r);
+
+  ReservaDetalleRespuestaDTO registrarSalida(Long id, ReservaSalidaDTO r);
 
   ReservaDetalleRespuestaDTO guardarOcupantes(Long id, ReservaOcupantesGuardarDTO r);
 }

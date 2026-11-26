@@ -122,6 +122,11 @@ El contenedor escucha internamente en `6379` y publica Redis en `127.0.0.1:6380`
 
 ## Actualizaciones manuales de datos
 
+Aplica [V22](src/main/resources/db/iteration/V22__operaciones_salida_reserva.sql)
+antes de iniciar esta versión sobre una base existente. Crea el registro de
+operaciones de check-out para recuperar reintentos y conservar los identificadores
+de pago y comprobante.
+
 [V21](src/main/resources/db/iteration/V21__estado_mobiliario_asignado.sql) corrige
 los artículos que tienen habitación pero quedaron como `ACTIVO` en la carga de
 datos. Ejecuta el script con la aplicación detenida, revisa los conteos por

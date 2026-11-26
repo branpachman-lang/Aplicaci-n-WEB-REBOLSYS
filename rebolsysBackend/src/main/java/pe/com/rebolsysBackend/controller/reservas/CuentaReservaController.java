@@ -30,10 +30,11 @@ public class CuentaReservaController {
     return servicio.cuenta(idReserva);
   }
 
-  @PreAuthorize("hasRole('GERENTE') or hasAuthority('RESERVAS:COBRAR')")
+  @PreAuthorize("hasRole('RECEPCIONISTA') and hasAuthority('RESERVAS:COBRAR')")
   @PostMapping("/pagos")
   @ResponseStatus(HttpStatus.CREATED)
-  @Operation(summary = "Registrar un anticipo o pago de alojamiento o consumo separado")
+  @Operation(summary = "Registrar un abono a la cuenta principal o a un consumo separado",
+      description = "Requiere rol RECEPCIONISTA, permiso RESERVAS:COBRAR y turno propio abierto.")
   public CuentaReservaDTO pagar(
       @PathVariable Long idReserva, @Valid @RequestBody ReservaPagoRegistroDTO request) {
     return servicio.pagar(idReserva, request);
@@ -42,13 +43,14 @@ public class CuentaReservaController {
   @PreAuthorize("hasRole('GERENTE') or hasAuthority('RESERVAS:EMITIR_COMPROBANTE')")
   @PostMapping("/comprobantes")
   @Operation(summary = "Emitir registro interno de boleta o factura de una cuenta",
-      description = "Conserva pagos y número de reserva. Esta etapa no integra SUNAT.")
+      description = "La cuenta principal se emite al completar la última salida con la reserva liquidada.")
   public CuentaDocumentoDTO emitir(
       @PathVariable Long idReserva, @Valid @RequestBody ReservaComprobanteRegistroDTO request) {
     return servicio.emitir(idReserva, request);
   }
 
-  @PreAuthorize("hasRole('GERENTE') or hasAuthority('RESERVAS:REGISTRAR_CONSUMO')")
+  @PreAuthorize("hasRole('GERENTE') or (hasAuthority('RESERVAS:REGISTRAR_CONSUMO') and "
+      + "hasAuthority('VENTAS:CREAR_Y_CONFIRMAR'))")
   @PostMapping("/consumos")
   @ResponseStatus(HttpStatus.CREATED)
   @Operation(summary = "Registrar y confirmar consumo de una habitación de la reserva")

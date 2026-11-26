@@ -1883,7 +1883,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "description": "Las ventas SEPARADA requieren el cobro completo. Las ventas RESERVA sin cobro se cargan a la cuenta principal y requieren la autorización de consumos."
       }
     },
     "/api/v1/tipos-item": {
@@ -2299,7 +2300,7 @@
         "tags": [
           "Reservas"
         ],
-        "summary": "Registrar reserva con ocupantes opcionales y pago completo en una transacción",
+        "summary": "Registrar reserva con ocupantes y anticipo opcionales",
         "operationId": "registrar_1",
         "requestBody": {
           "content": {
@@ -2327,7 +2328,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "description": "El anticipo requiere rol RECEPCIONISTA, permiso RESERVAS:COBRAR y turno propio abierto."
       }
     },
     "/api/v1/reservas/{idReserva}/pagos": {
@@ -2374,7 +2376,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "description": "Requiere rol RECEPCIONISTA, permiso RESERVAS:COBRAR y turno propio abierto."
       }
     },
     "/api/v1/reservas/{idReserva}/consumos": {
@@ -2459,7 +2462,8 @@
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "description": "Una venta RESERVA sin cobro se carga a la cuenta principal. Un cobro explícito conserva la venta pagada en cuenta separada."
       }
     },
     "/api/v1/reservas/{idReserva}/comprobantes": {
@@ -2468,7 +2472,7 @@
           "Reservas"
         ],
         "summary": "Emitir registro interno de boleta o factura de una cuenta",
-        "description": "Conserva pagos y número de reserva. Esta etapa no integra SUNAT.",
+        "description": "Emite la cuenta principal liquidada al finalizar todas las estancias; las cuentas de venta históricas conservan su emisión individual.",
         "operationId": "emitir_1",
         "parameters": [
           {
@@ -2531,7 +2535,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/OperacionUsuarioDTO"
+                "$ref": "#/components/schemas/ReservaSalidaDTO"
               }
             }
           },
@@ -2547,13 +2551,27 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "Datos inválidos"
+          },
+          "401": {
+            "description": "Sesión ausente o inválida"
+          },
+          "403": {
+            "description": "Rol o permiso insuficiente"
+          },
+          "409": {
+            "description": "Saldo, turno, estado o clave de operación en conflicto"
           }
         },
         "security": [
           {
             "bearerAuth": []
           }
-        ]
+        ],
+        "summary": "Registrar check-out y opcionalmente liquidar y emitir comprobante",
+        "description": "Con cobro o emisión, envía claveOperacion. El cobro exige RECEPCIONISTA y RESERVAS:COBRAR. Sin saldo pendiente, una solicitud de salida sin cobro sigue siendo válida. Reutiliza la misma clave al reintentar."
       }
     },
     "/api/v1/reservas/detalles/{id}/ingreso": {
@@ -6756,6 +6774,19 @@
             "items": {
               "$ref": "#/components/schemas/ReservaOcupanteRespuestaDTO"
             }
+          },
+          "saldoPendiente": {
+            "type": "number"
+          },
+          "idPago": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "idComprobante": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
           }
         }
       },
@@ -8041,7 +8072,6 @@
       "ReservaRegistroRequestDTO": {
         "required": [
           "claveRegistro",
-          "cobro",
           "detalles",
           "idCliente",
           "idUsuario"
@@ -10042,6 +10072,53 @@
             "type": "string"
           }
         }
+      },
+      "ReservaSalidaDTO": {
+        "type": "object",
+        "properties": {
+          "idUsuario": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "idTurno": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "claveOperacion": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "cobro": {
+            "$ref": "#/components/schemas/CobroInmediatoDTO"
+          },
+          "comprobante": {
+            "$ref": "#/components/schemas/ReservaSalidaComprobanteDTO"
+          }
+        }
+      },
+      "ReservaSalidaComprobanteDTO": {
+        "type": "object",
+        "properties": {
+          "tipo": {
+            "type": "string",
+            "enum": [
+              "BOLETA",
+              "FACTURA"
+            ]
+          },
+          "idClienteReceptor": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "idClienteReceptor",
+          "tipo"
+        ]
       }
     },
     "securitySchemes": {

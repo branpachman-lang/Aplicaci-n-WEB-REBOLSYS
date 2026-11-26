@@ -10,7 +10,7 @@ public record ReservaRegistroRequestDTO(
     @NotNull @Positive Long idCliente,
     @NotNull @Positive Long idUsuario,
     @NotEmpty @Size(max = 50) List<@NotNull @Valid ReservaDetalleRegistroDTO> detalles,
-    @NotNull @Valid CobroInmediatoDTO cobro) {
+    @Valid CobroInmediatoDTO cobro) {
   public ReservaRegistroRequestDTO(String claveRegistro, Long idCliente, Long idUsuario,
       List<ReservaDetalleRegistroDTO> detalles) {
     this(claveRegistro, idCliente, idUsuario, detalles, null);

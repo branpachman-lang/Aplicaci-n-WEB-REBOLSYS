@@ -28,6 +28,7 @@ import pe.com.rebolsysBackend.dto.reservas.ReservaDetalleRegistroDTO;
 import pe.com.rebolsysBackend.dto.reservas.ReservaOcupanteRegistroDTO;
 import pe.com.rebolsysBackend.dto.reservas.ReservaPagoRegistroDTO;
 import pe.com.rebolsysBackend.dto.reservas.ReservaRegistroRequestDTO;
+import pe.com.rebolsysBackend.dto.reservas.ReservaSalidaDTO;
 import pe.com.rebolsysBackend.dto.ventas.VentaConfirmacionDTO;
 import pe.com.rebolsysBackend.dto.ventas.VentaLineaRegistroDTO;
 import pe.com.rebolsysBackend.dto.ventas.VentaRequestDTO;
@@ -149,7 +150,7 @@ class CobroInmediatoIntegracionTest {
     var cuenta = cuentasReserva.cuenta(primera.idReserva());
     assertThat(cuenta.saldoPendiente()).isEqualByComparingTo("0");
     assertThat(cuenta.totalPagado()).isEqualByComparingTo("80");
-    assertThat(cuenta.admiteConsumosConsolidados()).isFalse();
+    assertThat(cuenta.admiteConsumosConsolidados()).isTrue();
     assertThat(cuenta.cuentas().getFirst().pagos()).hasSize(1);
   }
 
@@ -179,6 +180,7 @@ class CobroInmediatoIntegracionTest {
     assertThat(clientes.guardarCliente(fiscal).getIdPerfil()).isEqualTo(receptor);
 
     var reserva = reservas.registrar(reserva(UUID.randomUUID().toString(), "80.00"));
+    finalizarPagada(reserva.detalles().getFirst().idDetalleReserva());
     var antes = cuentasReserva.cuenta(reserva.idReserva()).cuentas().getFirst();
     var solicitud = new ReservaComprobanteRegistroDTO(usuario, turno, "FACTURA", receptor, null);
     var factura = cuentasReserva.emitir(reserva.idReserva(), solicitud);
@@ -204,30 +206,145 @@ class CobroInmediatoIntegracionTest {
   }
 
   @Test void boletaNuevaUsaB002YNoAvanzaElContadorAlRecuperarla() {
-    Long tipo = tx.execute(s -> {
+    var inicio = tx.execute(s -> {
       em.find(Perfil.class, cliente).setNumeroDocumento("12345678");
-      var t = new TipoComprobante(); t.setCodigo("BOLETA"); t.setNombreComprobante("Boleta"); em.persist(t);
-      var serie = new SerieComprobante(); serie.setTipoComprobante(t);
-      serie.setId(new SerieComprobanteId(t.getIdTipoComprobante(), "B002")); em.persist(serie);
-      return t.getIdTipoComprobante();
+      var id = prepararBoleta();
+      return Map.entry(id, em.find(SerieComprobante.class, id).getSiguienteNumero());
     });
     var reserva = reservas.registrar(reserva(UUID.randomUUID().toString(), "80.00"));
+    finalizarPagada(reserva.detalles().getFirst().idDetalleReserva());
     var solicitud = new ReservaComprobanteRegistroDTO(usuario, turno, "BOLETA", cliente, null);
     var boleta = cuentasReserva.emitir(reserva.idReserva(), solicitud);
-    assertThat(boleta.serie()).isEqualTo("B002"); assertThat(boleta.numero()).isEqualTo("1");
+    assertThat(boleta.serie()).isEqualTo("B002"); assertThat(boleta.numero()).isEqualTo(inicio.getValue().toString());
     assertThat(cuentasReserva.emitir(reserva.idReserva(), solicitud).idCuenta()).isEqualTo(boleta.idCuenta());
-    tx.executeWithoutResult(s -> assertThat(em.find(SerieComprobante.class, new SerieComprobanteId(tipo, "B002")).getSiguienteNumero()).isEqualTo(2L));
+    tx.executeWithoutResult(s -> assertThat(em.find(SerieComprobante.class, inicio.getKey()).getSiguienteNumero())
+        .isEqualTo(inicio.getValue() + 1L));
   }
 
-  @Test void pagoParcialOExcesivoRevierteReservaYOcupantes() {
-    for (String monto : List.of("20.00", "81.00")) {
+  private void finalizarPagada(Long id) {
+    prepararIngresoAhora(id);
+    reservas.cambiarEstado(id, "ingreso", new OperacionUsuarioDTO(usuario));
+    reservas.cambiarEstado(id, "salida", new OperacionUsuarioDTO(usuario));
+  }
+
+  @Test void pagoExcesivoRevierteReservaYOcupantes() {
+    for (String monto : List.of("81.00", "90.00")) {
       var r = reserva(UUID.randomUUID().toString(), monto);
-      assertThatThrownBy(() -> reservas.registrar(r)).hasMessageContaining("exactamente");
+      assertThatThrownBy(() -> reservas.registrar(r)).hasMessageContaining("supera el saldo");
       tx.executeWithoutResult(s -> {
         assertThat(cantidad("Reserva", "claveRegistro", r.claveRegistro())).isZero();
         assertThat(cantidad("ReservaOcupante", "huesped.perfil.idPerfil", cliente)).isZero();
       });
     }
+  }
+
+  @Test void reservaSinPagoPuedeCancelarseSinTurno() {
+    var r = reserva(UUID.randomUUID().toString(), "80.00");
+    tx.executeWithoutResult(s -> {
+      var t = em.find(TurnoCaja.class, turno);
+      t.setEstadoSesion(0);
+      t.setFechaCierre(ReglasPropuesta.ahora());
+    });
+    var guardada = reservas.registrar(new ReservaRegistroRequestDTO(r.claveRegistro(), cliente, usuario, r.detalles()));
+    assertThat(cuentasReserva.cuenta(guardada.idReserva()).saldoPendiente()).isEqualByComparingTo("80");
+    assertThat(reservas.cambiarEstado(guardada.detalles().getFirst().idDetalleReserva(), "cancelacion",
+        new OperacionUsuarioDTO(usuario)).estadoDetalle()).isEqualTo(EstadoReserva.CANCELADA);
+    assertThat(cuentasReserva.cuenta(guardada.idReserva()).saldoPendiente()).isZero();
+  }
+
+  @Test void gerenteSinRolRecepcionistaNoPuedeCobrarReservaPorHttp() throws Exception {
+    mvc.perform(post("/api/v1/reservas").contentType(MediaType.APPLICATION_JSON)
+        .content(json.writeValueAsString(reserva(UUID.randomUUID().toString(), "20.00"))))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  @org.springframework.security.test.context.support.WithMockUser(authorities = {
+      "ROLE_RECEPCIONISTA", "RESERVAS:CREAR", "RESERVAS:COBRAR"})
+  void recepcionistaConPermisoPuedeRegistrarAnticipoPorHttp() throws Exception {
+    mvc.perform(post("/api/v1/reservas").contentType(MediaType.APPLICATION_JSON)
+        .content(json.writeValueAsString(reserva(UUID.randomUUID().toString(), "20.00"))))
+        .andExpect(status().isCreated());
+  }
+
+  @Test void liquidaConsumoConTresOperadoresYRecuperaSalidaDelTurnoCerrado() throws Exception {
+    var reserva = reservas.registrar(reserva(UUID.randomUUID().toString(), "20.00"));
+    Long estancia = reserva.detalles().getFirst().idDetalleReserva();
+    var operadorVenta = nuevoOperador();
+    var operadorSalida = nuevoOperador();
+    prepararIngresoAhora(estancia);
+    reservas.cambiarEstado(estancia, "ingreso", new OperacionUsuarioDTO(operadorVenta.usuario()));
+    var consumo = new VentaRequestDTO(UUID.randomUUID().toString(), operadorVenta.usuario(), cliente, null,
+        ModalidadCobro.RESERVA, estancia, List.of(new VentaLineaRegistroDTO(producto, 4, new BigDecimal("3.50"))), null);
+    var v = ventas.registrarConfirmada(consumo);
+    assertThat(ventas.registrarConfirmada(consumo).idVenta()).isEqualTo(v.idVenta());
+    assertThat(stock()).isEqualTo(16);
+    var previa = cuentasReserva.cuenta(reserva.idReserva());
+    assertThat(previa.totalCargos()).isEqualByComparingTo("94");
+    assertThat(previa.saldoPendiente()).isEqualByComparingTo("74");
+    var emision = new ReservaSalidaDTO.Comprobante("BOLETA", cliente);
+    assertThatThrownBy(() -> reservas.registrarSalida(estancia,
+        new ReservaSalidaDTO(operadorSalida.usuario(), null, UUID.randomUUID().toString(), cobro("60.00"), emision)))
+        .hasMessageContaining("saldo vigente");
+    assertThatThrownBy(() -> reservas.registrarSalida(estancia,
+        new ReservaSalidaDTO(operadorSalida.usuario(), null, UUID.randomUUID().toString(), cobro("74.00"),
+            new ReservaSalidaDTO.Comprobante("BOLETA", Long.MAX_VALUE)))).hasMessageContaining("receptor");
+    assertThat(cuentasReserva.cuenta(reserva.idReserva()).saldoPendiente()).isEqualByComparingTo("74");
+    var solicitud = new ReservaSalidaDTO(operadorSalida.usuario(), null, UUID.randomUUID().toString(), cobro("74.00"), emision);
+    var inicio = new CountDownLatch(1);
+    try (var ejecutor = Executors.newFixedThreadPool(2)) {
+      var primero = ejecutor.submit(() -> { inicio.await(); return reservas.registrarSalida(estancia, solicitud); });
+      var segundo = ejecutor.submit(() -> { inicio.await(); return reservas.registrarSalida(estancia, solicitud); });
+      inicio.countDown();
+      var salida = primero.get(10, TimeUnit.SECONDS);
+      assertThat(segundo.get(10, TimeUnit.SECONDS)).isEqualTo(salida);
+      assertThat(salida.estadoDetalle()).isEqualTo(EstadoReserva.FINALIZADA);
+      assertThat(salida.saldoPendiente()).isZero();
+      tx.executeWithoutResult(s -> {
+        var c = em.find(Comprobante.class, salida.idComprobante());
+        var p = em.find(Pago.class, salida.idPago());
+        assertThat(c.getTurnoCaja().getIdTurno()).isEqualTo(operadorSalida.turno());
+        assertThat(p.getUsuario().getIdUsuario()).isEqualTo(operadorSalida.usuario());
+        assertThat(cantidad("Pago", "comprobante.idComprobante", c.getIdComprobante())).isEqualTo(2);
+        assertThat(em.find(Reserva.class, reserva.idReserva()).getUsuario().getIdUsuario()).isEqualTo(usuario);
+        assertThat(em.find(Venta.class, v.idVenta()).getUsuario().getIdUsuario()).isEqualTo(operadorVenta.usuario());
+        assertThat(em.find(Habitacion.class, habitacion).getEstadoHabitacion()).isEqualTo(EstadoHabitacion.POR_LIMPIAR);
+        var t = em.find(TurnoCaja.class, operadorSalida.turno());
+        t.setEstadoSesion(0);
+        t.setFechaCierre(ReglasPropuesta.ahora());
+      });
+      assertThat(reservas.registrarSalida(estancia, solicitud)).isEqualTo(salida);
+      assertThatThrownBy(() -> reservas.registrarSalida(estancia, new ReservaSalidaDTO(usuario, null,
+          solicitud.claveOperacion(), solicitud.cobro(), solicitud.comprobante()))).hasMessageContaining("clave de salida");
+    }
+  }
+
+  private record Operador(Long usuario, Long turno) {}
+
+  private Operador nuevoOperador() {
+    return tx.execute(s -> {
+      var clave = UUID.randomUUID().toString().substring(0, 8);
+      var perfil = new Perfil(); perfil.setTipoDocumento(em.find(Perfil.class, cliente).getTipoDocumento());
+      perfil.setNumeroDocumento(clave); perfil.setEsCliente(0); em.persist(perfil);
+      var persona = new PersonaNatural(); persona.setPerfil(perfil); persona.setNombres("Operador");
+      persona.setApellidos("Recepción"); persona.setFechaNacimiento(LocalDate.of(1990, 1, 1)); em.persist(persona);
+      var empleado = new Empleado(); empleado.setPersonaNatural(persona);
+      empleado.setFechaContratacion(LocalDate.now()); em.persist(empleado);
+      var cuenta = new Usuario(); cuenta.setEmpleado(empleado); cuenta.setUsername("turno-" + clave);
+      cuenta.setEstadoUsuario(EstadoUsuario.ACTIVO); em.persist(cuenta);
+      var turno = new TurnoCaja(); turno.setUsuario(cuenta); turno.setEstadoSesion(1); em.persist(turno);
+      prepararBoleta();
+      return new Operador(cuenta.getIdUsuario(), turno.getIdTurno());
+    });
+  }
+
+  private SerieComprobanteId prepararBoleta() {
+    var tipos = em.createQuery("from TipoComprobante where codigo='BOLETA'", TipoComprobante.class).getResultList();
+    if (!tipos.isEmpty()) return new SerieComprobanteId(tipos.getFirst().getIdTipoComprobante(), "B002");
+    var tipo = new TipoComprobante(); tipo.setCodigo("BOLETA"); tipo.setNombreComprobante("Boleta"); em.persist(tipo);
+    var id = new SerieComprobanteId(tipo.getIdTipoComprobante(), "B002");
+    var serie = new SerieComprobante(); serie.setTipoComprobante(tipo); serie.setId(id); em.persist(serie);
+    return id;
   }
 
   @Test void ventaRechazaPagoAusenteParcialYExcesivoSinTocarStock() {
@@ -303,16 +420,17 @@ class CobroInmediatoIntegracionTest {
     }
   }
 
-  @Test void apiExigeCobroYExponeElNuevoContrato() throws Exception {
+  @Test void apiPermiteReservaSinCobroYExponeElNuevoContrato() throws Exception {
     var r = reserva(UUID.randomUUID().toString(), "80.00");
     var cuerpo = (tools.jackson.databind.node.ObjectNode) json.valueToTree(r);
     cuerpo.remove("cobro");
     mvc.perform(post("/api/v1/reservas").contentType(MediaType.APPLICATION_JSON)
-        .content(json.writeValueAsBytes(cuerpo))).andExpect(status().isBadRequest());
-    mvc.perform(post("/api/v1/reservas").contentType(MediaType.APPLICATION_JSON)
-        .content(json.writeValueAsBytes(r))).andExpect(status().isCreated());
+        .content(json.writeValueAsBytes(cuerpo))).andExpect(status().isCreated())
+        .andExpect(jsonPath("$.detalles[0].estadoDetalle").value("CONFIRMADA"));
     mvc.perform(get("/v3/api-docs")).andExpect(status().isOk())
         .andExpect(jsonPath("$.components.schemas.CobroInmediatoDTO.required").isArray())
+        .andExpect(jsonPath("$.paths['/api/v1/reservas/detalles/{id}/salida'].post.requestBody.content['application/json'].schema['$ref']")
+            .value("#/components/schemas/ReservaSalidaDTO"))
         .andExpect(jsonPath("$.paths['/api/v1/ventas/{id}/confirmacion'].post.requestBody.content['application/json'].schema['$ref']")
             .value("#/components/schemas/VentaConfirmacionDTO"));
   }
@@ -472,7 +590,7 @@ class CobroInmediatoIntegracionTest {
     assertThat(cuentasReserva.cuenta(reservaId).saldoPendiente()).isEqualByComparingTo("0");
     assertThat(checkout.finalizar(id, ahora)).isFalse();
     assertThatThrownBy(() -> reservas.cambiarEstado(id, "salida", new OperacionUsuarioDTO(usuario)))
-        .hasMessageContaining("Liquida el saldo");
+        .hasMessageContaining("Liquida las cuentas de venta").hasMessageContaining("V" + v.idVenta());
     comprobarEstancia(id, EstadoReserva.EN_CURSO, EstadoHabitacion.OCUPADO);
   }
 

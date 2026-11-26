@@ -160,7 +160,7 @@ describe("Formulario de reserva", () => {
   it('reintenta registro y pago juntos con la misma clave si se pierde la respuesta', async () => {
     const r = {idReserva:30,idCliente:1,idUsuario:1,titular:'Empresa prueba',fechaRegistro:'',claveRegistro:'prueba',detalles:[]};
     const api = {claveRegistro:'prueba',idCliente:1,idUsuario:1,detalles:[]};
-    const cuenta = {idReserva:30,numeroReserva:'R30',totalAlojamiento:120,totalCargos:120,totalPagado:120,saldoPendiente:0,admiteConsumosConsolidados:false,cuentas:[]};
+    const cuenta = {idReserva:30,numeroReserva:'R30',totalAlojamiento:120,totalCargos:120,totalPagado:40,saldoPendiente:80,admiteConsumosConsolidados:false,cuentas:[]};
     const crear=vi.fn().mockReturnValueOnce(throwError(()=>new HttpErrorResponse({status:503}))).mockReturnValueOnce(of(r));
     const pagar=vi.fn();
     const c=(await fixture({prepararRegistro:()=>of(api),crear,pagar,cuenta:()=>of(cuenta)})).componentInstance;
@@ -168,14 +168,11 @@ describe("Formulario de reserva", () => {
     c.cliente.patchValue({empresa:true,idTipoDocumento:3,numeroDocumento:'20123456789',razonSocial:'Empresa prueba'});
     c.validarCliente();c.habitaciones.at(0).patchValue({idHabitacion:2});c.revisar();
     const cobro={idUsuario:1,idTurno:1,idFormaPago:1,numeroOperacion:null};
-    c.confirmar({forma:'EFECTIVO',recibido:50,monto:40,cobro});
-    expect(crear).not.toHaveBeenCalled();
-    expect(c.reservaRegistrada()).toBe(null);
-    const pago={forma:'EFECTIVO' as const,recibido:150,monto:c.total(),cobro};
+    const pago={forma:'EFECTIVO' as const,recibido:50,monto:40,cobro};
     c.confirmar(pago);expect(c.reservaRegistrada()).toBe(null);expect(c.pagoFijado()).toBe(true);
     c.confirmar(pago);expect(crear).toHaveBeenCalledTimes(2);
     expect(crear.mock.calls[1]).toEqual(crear.mock.calls[0]);
-    expect(crear.mock.calls[0][0].cobro).toEqual({idFormaPago:1,monto:120,numeroOperacion:null});
+    expect(crear.mock.calls[0][0].cobro).toEqual({idFormaPago:1,monto:40,numeroOperacion:null});
     expect(pagar).not.toHaveBeenCalled();expect(c.reservaRegistrada()?.idReserva).toBe(30);
   });
   it("suma varias habitaciones y permite quitar una sin perder las otras", async () => {

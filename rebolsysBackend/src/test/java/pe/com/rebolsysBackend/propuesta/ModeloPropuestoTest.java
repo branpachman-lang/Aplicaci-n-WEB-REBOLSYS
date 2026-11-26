@@ -55,7 +55,7 @@ class ModeloPropuestoTest {
               table.getColumns().stream()
                   .map(c -> c.getName().toUpperCase(Locale.ROOT))
                   .collect(Collectors.toSet()));
-      assertThat(esperado).hasSize(46);
+      assertThat(esperado).hasSize(47);
       assertThat(real).isEqualTo(esperado);
     } finally {
       StandardServiceRegistryBuilder.destroy(registry);

@@ -127,7 +127,20 @@
         </button>
       </div>
       }
-      <p class="buyer-note">Esta venta se cobra por completo al confirmar y conserva la referencia a la habitación.</p>
+      @if (consultandoCuenta()) {
+        <p class="buyer-note">Consultando la cuenta de la reserva…</p>
+      } @else if (admiteCargo()) {
+        <label class="field">
+          Cobro del consumo
+          <select [ngModel]="modoVenta()" (ngModelChange)="modoVenta.set($event)"
+            [disabled]="guardando() || solicitudFijada() || !!pendiente()">
+            <option value="CARGO_RESERVA">Cargar a la reserva</option>
+            <option value="SEPARADA">Cobrar por separado</option>
+          </select>
+        </label>
+      } @else if (r.estadoDetalle === 'EN_CURSO') {
+        <p class="buyer-note">Esta venta se cobra por separado y conserva la referencia a la habitación.</p>
+      }
       } } @else {
       <label class="field external-name"
         >Nombre para el ticket <span class="optional">Opcional</span
@@ -310,7 +323,9 @@
         {{ v.estadoCobro === 'PAGADO' ? '¡Venta registrada y pagada!' : 'Venta anterior recuperada' }}
       </h2>
       <p class="muted">
-        {{ v.estadoCobro === 'PAGADO' ? 'La venta y su pago quedaron registrados. Puedes imprimir la constancia.' : 'Revisa la cuenta y los pagos de esta operación anterior antes de darla por pagada.' }}
+        {{ v.modoVenta === 'CARGO_RESERVA' ? 'El consumo quedó cargado a la cuenta de la reserva.' :
+        v.estadoCobro === 'PAGADO' ? 'La venta y su pago quedaron registrados. Puedes imprimir la constancia.' :
+        'Consulta la cuenta de la venta para ver su saldo.' }}
       </p>
       <div class="stock-result">
         <app-icon name="box" />

@@ -197,12 +197,11 @@ describe("Venta de la tiendita", () => {
     c.pagoAbierto.set(false);
     expect(c.carrito()).toHaveLength(1);
   });
-  it('el huésped debe confirmar el pago completo y conserva el carrito si falla', async () => {
+  it('carga el consumo a la reserva y conserva el carrito si falla', async () => {
     const c = (await fixture()).componentInstance;
     c.agregar(producto);c.cambiarComprador('HOSPEDAJE');c.elegirReserva(10);c.confirmarVenta();
-    expect(registrar).not.toHaveBeenCalled();expect(c.pagoAbierto()).toBe(true);
-    c.registrar(10);
-    expect(registrar).toHaveBeenCalledWith(expect.objectContaining({modoVenta:'SEPARADA',idDetalleReserva:10,efectivoRecibido:10}));
+    expect(c.pagoAbierto()).toBe(false);
+    expect(registrar).toHaveBeenCalledWith(expect.objectContaining({modoVenta:'CARGO_RESERVA',idDetalleReserva:10,efectivoRecibido:null}));
     expect(c.carrito()).toHaveLength(1);
     const clave = registrar.mock.calls[0][0].claveRegistro;
     c.confirmarVenta();expect(registrar.mock.calls[1][0].claveRegistro).toBe(clave);

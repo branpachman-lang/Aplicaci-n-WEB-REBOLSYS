@@ -377,7 +377,7 @@
       }}</button
     ><a routerLink="/reservas" class="button danger full">Cancelar reserva</a
     ><span class="summary-footer"
-      >La reserva se registra con el pago completo.</span
+      >Puedes registrar la reserva con un anticipo o con saldo pendiente.</span
     >
   </aside>
 </form>
@@ -388,8 +388,8 @@
   [catalogos]="catalogos()"
   [idUsuario]="idUsuario()"
   [solicitudFijada]="pagoFijado()"
-  [puedePosponer]="false"
-  [permiteParcial]="false"
+  [habilitaCobro]="acceso.puedeCobrarReserva() && !registroSinCobro()"
+  [puedePosponer]="!pagoFijado() || registroSinCobro()"
   (cerrar)="cerrarPago()"
   (confirmar)="confirmar($event)"
 />

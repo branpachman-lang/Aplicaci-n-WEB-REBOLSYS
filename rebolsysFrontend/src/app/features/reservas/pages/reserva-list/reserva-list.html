@@ -145,10 +145,10 @@
               <button class="button small" (click)="verDetalle(r)">
                 Ver detalle
               </button>
-              @if(estadoReserva(r)!=='CANCELADA' && acceso.permite('RESERVAS:EMITIR_COMPROBANTE', 'FACTURACION:VER')){
+              @if((estadoReserva(r)==='FINALIZADA' || r.cuenta.cuentas.some(tieneDocumentoEmitido)) && acceso.permite('RESERVAS:EMITIR_COMPROBANTE', 'FACTURACION:VER')){
                 <button class="button small receipt-button" (click)="abrirComprobante(r)"><app-icon name="receipt"/>Boleta / Factura</button>
               }
-              @if (acceso.permite('RESERVAS:COBRAR') && saldoPrincipal(r.cuenta) > 0 && estadoReserva(r) !==
+              @if (acceso.puedeCobrarReserva() && saldoPrincipal(r.cuenta) > 0 && estadoReserva(r) !==
               "CANCELADA") {
               <button class="button small pay-button" (click)="abrirPago(r)">
                 <app-icon name="wallet" />Pagar
@@ -224,6 +224,8 @@
 <app-pago-modal
   [total]="saldoPrincipal(r.cuenta)"
   [esNueva]="false"
+  [esSalida]="!!salidaParaCobrar()"
+  [permiteParcial]="!salidaParaCobrar()"
   [ocupado]="ocupado()"
   [error]="modalError()"
   [catalogos]="catalogos()"
@@ -266,6 +268,24 @@
           date:'dd/MM/yyyy HH:mm'}}</small
         >
         <small>{{h.costoEstadia | currency:'PEN':'S/ '}}</small>
+        @if (h.estadoDetalle === 'CONFIRMADA') {
+          @if (acceso.permite('RESERVAS:REGISTRAR_INGRESO')) {
+            <button class="button small" [disabled]="ocupado()" (click)="actualizarEstancia(r, h, 'ingreso')">Registrar check-in</button>
+          }
+          @if (acceso.permite('RESERVAS:CANCELAR')) {
+            @if (cancelarDetalle() === h.idDetalleReserva) {
+              <button class="button small danger" [disabled]="ocupado()" (click)="actualizarEstancia(r, h, 'cancelacion')">Confirmar cancelación</button>
+              <button class="button small" (click)="cancelarDetalle.set(null)">Volver</button>
+            } @else {
+              <button class="button small" (click)="cancelarDetalle.set(h.idDetalleReserva)">Cancelar estancia</button>
+            }
+          }
+        }
+        @if (h.estadoDetalle === 'EN_CURSO' && acceso.permite('RESERVAS:REGISTRAR_SALIDA')) {
+          <button class="button small" [disabled]="ocupado()" (click)="abrirSalida(r, h)">
+            {{ saldoPrincipal(r.cuenta) > 0 ? 'Cobrar y registrar check-out' : 'Registrar check-out' }}
+          </button>
+        }
         @for (g of h.ocupantes; track g.idReservaOcupante) {
         <p class="muted">
           {{g.nombre}} · {{g.ocupaPlazaCama ? 'Con plaza propia' : 'Sin plaza
@@ -309,17 +329,23 @@
     <p class="muted">Todavía no hay pagos registrados.</p>
     }
     <p class="inline-note">
-      Se permite saldo pendiente al ingresar. El total debe cancelarse antes del
-      check-out.
+      Se permite saldo pendiente al ingresar. Liquida el saldo al registrar el check-out.
     </p>
-    @if (acceso.permite('RESERVAS:COBRAR') && saldoPrincipal(r.cuenta) > 0 && estadoReserva(r) !== 'CANCELADA') {
+    @if (acceso.puedeCobrarReserva() && saldoPrincipal(r.cuenta) > 0 && estadoReserva(r) !== 'CANCELADA') {
     <button class="button primary full" (click)="abrirPago(r)">
-      Registrar pago de alojamiento
+      Registrar abono
     </button>
     }
     <button class="button full" (click)="detalle.set(null)">Cerrar</button>
-    @if(estadoReserva(r)!=='CANCELADA' && acceso.permite('RESERVAS:EMITIR_COMPROBANTE', 'FACTURACION:VER')){<button class="button primary full" (click)="abrirComprobante(r)">Generar o consultar boleta / factura</button>}
+    @if((estadoReserva(r)==='FINALIZADA' || r.cuenta.cuentas.some(tieneDocumentoEmitido)) && acceso.permite('RESERVAS:EMITIR_COMPROBANTE', 'FACTURACION:VER')){<button class="button primary full" (click)="abrirComprobante(r)">Generar o consultar boleta / factura</button>}
   </section>
 </div>
+}
+@for (salida of salidasPendientes(); track salida.claveOperacion) {
+  @if (!pagando()) {
+    <button class="button small no-print" [disabled]="ocupado()" (click)="confirmarSalida(salida)">
+      Recuperar check-out de la reserva R{{ salida.idReserva }}
+    </button>
+  }
 }
 @if(comprobante();as r){@if(catalogos();as cat){<app-comprobante-dialog [reserva]="r" [catalogos]="cat" (cerrar)="comprobante.set(null)" (actualizado)="cargar()"/>}}

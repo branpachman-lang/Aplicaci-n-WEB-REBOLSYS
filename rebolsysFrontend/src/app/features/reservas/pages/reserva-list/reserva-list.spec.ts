@@ -5,20 +5,22 @@ import { CatalogoService } from '../../../../core/services/catalogo-service';
 import { ReservaService, ReservaResumen } from '../../services/reserva-service';
 import { ReservaList } from './reserva-list';
 
-describe('Actualización de reservas tras el checkout automático', () => {
+describe('Seguimiento y check-out de reservas', () => {
   const cuenta = { cuentas: [], saldoPendiente: 0, totalCargos: 80, totalPagado: 80 };
   const reserva = { idReserva: 1, titular: 'Cliente', detalles: [
     { idDetalleReserva: 2, estadoDetalle: 'EN_CURSO', ocupantes: [] },
   ], cuenta } as unknown as ReservaResumen;
   const pagina = { contenido: [reserva], pagina: 0, tamanio: 10, ultima: true };
   let servicio: { listar: ReturnType<typeof vi.fn>; obtener: ReturnType<typeof vi.fn>;
-    cuenta: ReturnType<typeof vi.fn>; pagosPendientes: () => []; registroPendiente: () => null };
+    cuenta: ReturnType<typeof vi.fn>; salir: ReturnType<typeof vi.fn>;
+    pagosPendientes: () => []; registroPendiente: () => null };
 
   beforeEach(() => {
     vi.useFakeTimers();
     servicio = {
       listar: vi.fn(() => of(pagina)), obtener: vi.fn(() => of(reserva)),
-      cuenta: vi.fn(() => of(cuenta)), pagosPendientes: () => [], registroPendiente: () => null,
+      cuenta: vi.fn(() => of(cuenta)), salir: vi.fn(() => of(reserva.detalles[0])),
+      pagosPendientes: () => [], registroPendiente: () => null,
     };
     TestBed.configureTestingModule({
       imports: [ReservaList],
@@ -81,6 +83,27 @@ describe('Actualización de reservas tras el checkout automático', () => {
     componente.verDetalle(reserva);
     expect(servicio.obtener).toHaveBeenCalledWith(1);
     expect(componente.detalle()?.detalles[0].estadoDetalle).toBe('FINALIZADA');
+  });
+
+  it('reintenta el check-out con el mismo importe y clave tras un fallo de red', () => {
+    const componente = TestBed.createComponent(ReservaList).componentInstance;
+    vi.spyOn(componente.acceso, 'puedeCobrarReserva').mockReturnValue(true);
+    const conSaldo = { ...reserva, cuenta: { ...reserva.cuenta, saldoPendiente: 74,
+      cuentas: [{ idVenta: null, saldo: 74 }] as ReservaResumen['cuenta']['cuentas'] } };
+    servicio.salir.mockReturnValueOnce(throwError(() => ({ status: 503 })));
+    componente.abrirSalida(conSaldo, conSaldo.detalles[0]);
+    const pago = { forma: 'EFECTIVO' as const, recibido: 80, monto: 74,
+      cobro: { idUsuario: 7, idTurno: 13, idFormaPago: 1, numeroOperacion: null } };
+    componente.pagar(pago);
+    expect(componente.pagoFijado()).toBe(true);
+    componente.pagar(pago);
+    expect(servicio.salir).toHaveBeenCalledTimes(2);
+    expect(servicio.salir.mock.calls[1]).toEqual(servicio.salir.mock.calls[0]);
+    expect(servicio.salir.mock.calls[0][0]).toEqual({
+      idReserva: 1, idDetalleReserva: 2, claveOperacion: expect.any(String),
+      cobro: { idFormaPago: 1, monto: 74, numeroOperacion: null },
+    });
+    expect(componente.pagando()).toBeNull();
   });
 
   it('ignora una respuesta antigua si una recarga más reciente ya terminó', () => {
