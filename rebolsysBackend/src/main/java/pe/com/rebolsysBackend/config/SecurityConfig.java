@@ -1,5 +1,6 @@
 package pe.com.rebolsysBackend.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -33,7 +34,10 @@ public class SecurityConfig {
   SecurityFilterChain securityFilterChain(HttpSecurity http,
       @org.springframework.beans.factory.annotation.Qualifier("corsConfigurationSource") CorsConfigurationSource cors,
       JwtService jwt, UsuarioDetailsService usuarios, PoliticaSeguridadService politica,
-      RestAuthenticationEntryPoint autenticacion, RestAccessDeniedHandler acceso) throws Exception {
+      RestAuthenticationEntryPoint autenticacion, RestAccessDeniedHandler acceso,
+      LoginRateLimitFilter rateLimitLogin,
+      @Value("${springdoc.api-docs.enabled:true}") boolean openApiHabilitado,
+      @Value("${springdoc.swagger-ui.enabled:true}") boolean swaggerHabilitado) throws Exception {
     http.formLogin(AbstractHttpConfigurer::disable)
         .httpBasic(AbstractHttpConfigurer::disable)
         .logout(AbstractHttpConfigurer::disable)
@@ -45,13 +49,21 @@ public class SecurityConfig {
         .sessionManagement(config -> config.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .exceptionHandling(config -> config.authenticationEntryPoint(autenticacion).accessDeniedHandler(acceso))
         .authorizeHttpRequests(auth -> {
-          auth.requestMatchers("/api/health", "/error", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-              .requestMatchers(HttpMethod.POST, "/api/v1/sesion/iniciar").permitAll();
+          auth.requestMatchers("/api/health", "/error", "/actuator/health", "/actuator/health/**").permitAll()
+              .requestMatchers("/actuator/**").hasRole("GERENTE");
+          if (openApiHabilitado) {
+            auth.requestMatchers("/v3/api-docs/**").permitAll();
+            if (swaggerHabilitado) {
+              auth.requestMatchers("/swagger-ui/**", "/swagger-ui.html").permitAll();
+            }
+          }
+          auth.requestMatchers(HttpMethod.POST, "/api/v1/sesion/iniciar").permitAll();
           auth.requestMatchers("/api/v1/**").authenticated();
           auth.anyRequest().denyAll();
         })
         .addFilterBefore(new JwtAuthenticationFilter(jwt, usuarios, politica, autenticacion),
-            UsernamePasswordAuthenticationFilter.class);
+            UsernamePasswordAuthenticationFilter.class)
+        .addFilterBefore(rateLimitLogin, JwtAuthenticationFilter.class);
     return http.build();
   }
 }

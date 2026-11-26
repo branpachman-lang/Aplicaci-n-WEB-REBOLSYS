@@ -42,13 +42,19 @@ public interface DetalleReservaRepository extends JpaRepository<DetalleReserva, 
       @Param("excluir") Long excluir);
 
   @Query(
-      "select d from DetalleReserva d join fetch d.reserva r join fetch r.cliente"
+      "select d from DetalleReserva d join fetch d.habitacion join fetch d.reserva r join fetch r.cliente"
           + " where (d.estadoDetalle=pe.com.rebolsysBackend.enums.EstadoReserva.CONFIRMADA"
           + " and d.fechaIngreso<:salida and d.fechaSalida>:ingreso) or"
           + " (d.estadoDetalle=pe.com.rebolsysBackend.enums.EstadoReserva.EN_CURSO and"
           + " d.fechaIngreso<:salida)")
   List<DetalleReserva> buscarEnPeriodo(
       @Param("ingreso") LocalDateTime ingreso, @Param("salida") LocalDateTime salida);
+
+  @Query("""
+      select distinct d.habitacion.idHabitacion from DetalleReserva d
+      where d.estadoDetalle = pe.com.rebolsysBackend.enums.EstadoReserva.EN_CURSO
+      """)
+  Set<Long> habitacionesEnCurso();
 
   List<DetalleReserva> findByHabitacionIdHabitacion(Long id);
 

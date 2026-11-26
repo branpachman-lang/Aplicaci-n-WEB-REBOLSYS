@@ -104,7 +104,7 @@ public class CajaService {
       flujo.setEvidenciaSha256(archivo.sha());
     }
     flujos.saveAndFlush(flujo);
-    auditoria.registrar(actor, "FLUJO_CAJA", flujo.getIdFlujo(), "POST", ruta(id) + "/movimientos", ip);
+    auditoria.publicarPostCommit(actor, "FLUJO_CAJA", flujo.getIdFlujo(), "POST", ruta(id) + "/movimientos", ip);
     return movimiento(flujo);
   }
 
@@ -137,7 +137,7 @@ public class CajaService {
     turno.setFechaCierre(cierre);
     turno.setEstadoSesion(0);
     arqueos.saveAllAndFlush(filas);
-    auditoria.registrar(actor, "TURNO_CAJA", id, "POST", ruta(id) + "/cierre", ip);
+    auditoria.publicarPostCommit(actor, "TURNO_CAJA", id, "POST", ruta(id) + "/cierre", ip);
     return contexto(turno);
   }
 

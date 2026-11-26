@@ -103,6 +103,7 @@ public class HabitacionServiceImpl implements HabitacionService {
         desde != null && hasta != null && hasta.isAfter(desde),
         "La fecha final debe ser posterior a la inicial");
     var periodo = detalles.buscarEnPeriodo(desde.atStartOfDay(), hasta.atStartOfDay());
+    var habitacionesEnCurso = detalles.habitacionesEnCurso();
     return habitaciones.findAll(Sort.by("numeroCuarto")).stream()
         .map(
             h -> {
@@ -110,9 +111,7 @@ public class HabitacionServiceImpl implements HabitacionService {
                   periodo.stream()
                       .filter(d -> d.getHabitacion().getIdHabitacion().equals(h.getIdHabitacion()))
                       .toList();
-              boolean enCurso =
-                  detalles.findByHabitacionIdHabitacion(h.getIdHabitacion()).stream()
-                      .anyMatch(d -> d.getEstadoDetalle() == EstadoReserva.EN_CURSO);
+              boolean enCurso = habitacionesEnCurso.contains(h.getIdHabitacion());
               var reservas =
                   bloques.stream()
                       .map(

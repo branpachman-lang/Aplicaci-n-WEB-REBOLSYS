@@ -90,7 +90,7 @@ npm run build
 
 La salida queda en `dist/rebolsys-frontend/browser`. El servidor debe entregar `index.html` para las rutas Angular y reenviar `/api/*` a una instancia accesible del backend. El backend debe permitir el origen del sitio en `CORS_ALLOWED_ORIGINS`.
 
-`vercel.json` configura instalación con `npm ci`, compilación con `npm run build` y la carpeta de salida. Su destino actual para `/api/*` es una URL temporal de Cloudflare Tunnel. Antes de desplegar, reemplázala por la URL estable del backend y confirma que CORS permite el dominio final; el túnel temporal no constituye un endpoint permanente.
+`vercel.json` configura instalación con `npm ci`, compilación con `npm run build`, cabeceras de seguridad y la carpeta de salida. Antes de desplegar en Vercel, reemplaza el marcador `https://api.rebolsys.example/api/:path*` por la URL estable del backend y confirma que `CORS_ALLOWED_ORIGINS` permite el dominio final. Para despliegue propio en servidor web, [`deploy/nginx.conf`](deploy/nginx.conf) incluye proxy `/api/`, caché inmutable para assets con hash y `no-cache` para `index.html`.
 
 ## Pruebas, rendimiento y calidad
 
@@ -101,7 +101,7 @@ npm test -- --watch=false
 npm run build
 ```
 
-`package.json` no define un comando E2E. El repositorio tampoco incluye un informe o configuración de SonarQube ni una medición comparativa de rendimiento; por eso no se publican porcentajes ni resultados de calidad estática. El build de Angular establece límites de tamaño inicial de 500 kB para advertencia y 1 MB para error, y límites por hoja de estilos de componente de 4 kB y 8 kB respectivamente.
+`package.json` no define un comando E2E. La configuración de análisis estático está en [`sonar-project.properties`](sonar-project.properties) y los informes en [`../docs/calidad/`](../docs/calidad/). El build de Angular establece límites de tamaño inicial de 500 kB para advertencia y 1 MB para error, y límites por hoja de estilos de componente de 4 kB y 8 kB respectivamente.
 
 Para revisar errores durante el desarrollo, consulta la consola del navegador y la pestaña Network. Los errores de solicitudes API también se registran en la salida del backend.
 

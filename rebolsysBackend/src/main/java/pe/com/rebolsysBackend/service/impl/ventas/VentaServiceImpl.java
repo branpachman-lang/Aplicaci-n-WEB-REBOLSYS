@@ -22,6 +22,7 @@ import pe.com.rebolsysBackend.repository.mantenimiento.MovimientoInventarioRepos
 import pe.com.rebolsysBackend.repository.mantenimiento.PerfilRepository;
 import pe.com.rebolsysBackend.repository.mantenimiento.ProductoRepository;
 import pe.com.rebolsysBackend.repository.reservas.DetalleReservaRepository;
+import pe.com.rebolsysBackend.repository.ventas.DetalleVentaRepository;
 import pe.com.rebolsysBackend.repository.ventas.VentaRepository;
 import pe.com.rebolsysBackend.service.impl.caja.cobros.CobroInmediatoService;
 import pe.com.rebolsysBackend.service.impl.caja.cobros.CuentaReservaGestion;
@@ -36,6 +37,7 @@ import pe.com.rebolsysBackend.exception.*;
 public class VentaServiceImpl implements VentaService {
   private final jakarta.persistence.EntityManager entityManager;
   private final VentaRepository ventas;
+  private final DetalleVentaRepository detallesVenta;
   private final ProductoRepository productos;
   private final PerfilRepository clientes;
   private final DetalleReservaRepository reservas;
@@ -343,8 +345,18 @@ public class VentaServiceImpl implements VentaService {
   @Transactional(readOnly = true)
   public PaginaResponseDTO<VentaResponseDTO> listar(int pagina, int tamanio) {
     var p = ventas.findAll(PageRequest.of(pagina, tamanio, Sort.by("idVenta").descending()));
+    var listaVentas = p.getContent();
+    if (listaVentas.isEmpty()) {
+      return new PaginaResponseDTO<>(List.of(), pagina, tamanio, p.getTotalElements(), p.getTotalPages(), p.isLast());
+    }
+    var ids = listaVentas.stream().map(Venta::getIdVenta).toList();
+    var detallesPorVenta = detallesVenta.findConProductoPorVentas(ids).stream()
+        .collect(java.util.stream.Collectors.groupingBy(d -> d.getVenta().getIdVenta()));
+    var contenido = listaVentas.stream()
+        .map(v -> respuesta(v, detallesPorVenta.getOrDefault(v.getIdVenta(), List.of())))
+        .toList();
     return new PaginaResponseDTO<>(
-        p.getContent().stream().map(this::respuesta).toList(),
+        contenido,
         pagina,
         tamanio,
         p.getTotalElements(),
@@ -360,8 +372,12 @@ public class VentaServiceImpl implements VentaService {
   }
 
   private VentaResponseDTO respuesta(Venta v) {
+    return respuesta(v, v.getDetalles());
+  }
+
+  private VentaResponseDTO respuesta(Venta v, List<DetalleVenta> detalles) {
     var lineas =
-        v.getDetalles().stream()
+        detalles.stream()
             .map(
                 d -> {
                   var sub = totalLinea(d).subtract(d.getIgv());

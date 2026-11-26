@@ -35,13 +35,35 @@ spring:
   profiles:
     active: dev
   flyway:
-    # El DDL ya fue ejecutado manualmente.
-    enabled: false
+    # El DDL se administra manualmente salvo habilitación explícita por entorno.
+    enabled: ${FLYWAY_ENABLED:false}
+    baseline-on-migrate: true
   jpa:
     open-in-view: false
     hibernate:
       naming:
         physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+      roles: GERENTE
+      probes:
+        enabled: true
+  health:
+    mail:
+      enabled: false
+    redis:
+      enabled: ${CACHE_ENABLED:true}
+
+logging:
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%X{requestId:-sin-id}] %-5level %logger{36} - %msg%n"
 
 app:
   cache:
@@ -61,6 +83,13 @@ app:
     secret: ${JWT_SECRET:}
     duracion-maxima: ${JWT_DURACION_MAXIMA:8h}
     inactividad-predeterminada: 30m
+    validar-instancia: ${JWT_VALIDAR_INSTANCIA:true}
+    revocar-en-redis: ${JWT_REVOCAR_EN_REDIS:false}
+  seguridad:
+    rate-limit-login:
+      habilitado: ${LOGIN_RATE_LIMIT_ENABLED:true}
+      max-intentos-ip: ${LOGIN_RATE_LIMIT_MAX_POR_MINUTO:30}
+      ventana: ${LOGIN_RATE_LIMIT_VENTANA:1m}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200,http://127.0.0.1:4200}
 

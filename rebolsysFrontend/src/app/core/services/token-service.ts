@@ -1,4 +1,4 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, computed, signal } from '@angular/core';
 import { environment } from '../../../environments/environment';
 
 const CLAVE = 'rebolsys.auth.jwt';
@@ -18,6 +18,7 @@ export function esUrlApi(url: string): boolean {
 @Injectable({ providedIn: 'root' })
 export class TokenService {
   private readonly actual = signal<Token | null>(this.leer());
+  readonly expiraEn = computed(() => this.actual()?.expira ?? null);
 
   token(): string | null {
     const token = this.actual();

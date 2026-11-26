@@ -9,6 +9,7 @@
   }
   <div class="workspace">
     <app-header [menuAbierto]="!menuColapsado()" (toggleMenu)="alternarMenu()" />
+    <app-aviso-sesion />
     <main><router-outlet /></main>
   </div>
 </div>

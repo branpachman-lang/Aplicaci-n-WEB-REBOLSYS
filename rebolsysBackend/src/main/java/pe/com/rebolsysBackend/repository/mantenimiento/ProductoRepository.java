@@ -1,7 +1,10 @@
 package pe.com.rebolsysBackend.repository.mantenimiento;
 
 import jakarta.persistence.LockModeType;
+import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -9,6 +12,9 @@ import org.springframework.data.repository.query.Param;
 import pe.com.rebolsysBackend.entity.Producto;
 
 public interface ProductoRepository extends JpaRepository<Producto, Long> {
+    @Override
+    @EntityGraph(attributePaths = "categoria")
+    List<Producto> findAll(Sort sort);
     boolean existsByCategoriaIdCategoria(Long id);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
@@ -32,6 +38,7 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
         org.springframework.data.domain.Pageable pageable
     );
 
+    @EntityGraph(attributePaths = "categoria")
     java.util.List<Producto> findByEstadoProductoOrderByNombreProductoAsc(
         pe.com.rebolsysBackend.enums.EstadoProducto estado
     );

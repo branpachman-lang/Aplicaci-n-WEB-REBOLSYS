@@ -29,8 +29,11 @@ export class Header {
   protected readonly titulo = computed(() => {
     const ruta = this.ruta();
     if (ruta.startsWith("/caja")) return "CAJA";
+    if (ruta.startsWith("/reportes")) return "REPORTES";
     if (ruta.includes("/limpieza")) return "LIMPIEZA Y MANTENIMIENTO";
     if (ruta.includes("/seguridad")) return "EMPLEADOS, USUARIOS Y ACCESOS";
+    if (ruta.includes("/configuraciones/sistema"))
+      return "CONFIGURACIÓN DEL SISTEMA";
     if (ruta.includes("/configuraciones/habitaciones"))
       return "CONFIGURACIÓN DE HABITACIONES";
     if (ruta.includes("/configuraciones/mobiliario"))
@@ -40,10 +43,13 @@ export class Header {
       return "EDITAR PRODUCTO";
     if (ruta.includes("/productos")) return "PRODUCTOS";
     if (ruta.includes("/ventas/historial")) return "HISTORIAL DE VENTAS";
+    if (ruta.includes("/ventas") && ruta.includes("/editar"))
+      return "EDITAR VENTA";
     if (ruta.includes("/ventas")) return "VENTA DE PRODUCTOS";
     if (ruta.includes("/habitaciones")) return "HABITACIONES";
     if (ruta.includes("/reservas/nueva")) return "REGISTRAR RESERVA";
-    if (ruta.includes("/editar")) return "EDITAR RESERVA";
+    if (ruta.includes("/reservas") && ruta.includes("/editar"))
+      return "EDITAR RESERVA";
     if (ruta.includes("/reservas")) return "Lista de Reservas";
     return "BIENVENIDO A “REAL BOLOGNESI MANAGEMENT SUITE”";
   });
